@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Sora } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { ThemeProvider } from "@/components/lootloom/theme-provider";
+import { AppProviders } from "@/providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,10 +55,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} antialiased bg-background text-foreground font-sans`}
       >
-        <ThemeProvider>
+        <AppProviders>
           {children}
           <Toaster />
-        </ThemeProvider>
+        </AppProviders>
       </body>
     </html>
   );

@@ -1,0 +1,3100 @@
+i am giving you against prompt 1 - 10 please complete them
+
+Continue from the existing LootLoom project. Read and understand the complete existing codebase before making any modifications. Follow every rule defined in Prompt 0 Part 1, Part 2, Part 3 and Part 4. Never restart the project. Never regenerate completed modules. Never redesign completed pages. Never replace completed functionality. Only extend the existing architecture while maintaining complete backward compatibility. Implement only the requirements of this prompt while preserving every existing rule, design language, coding standard, folder structure, responsiveness, animation philosophy and security architecture.
+
+This prompt initializes the complete production-ready LootLoom Full Stack project. Build the entire project foundation correctly before implementing individual modules. The objective is to create a scalable enterprise-grade codebase that can continue growing through all future prompts without requiring architectural changes.
+
+Initialize the frontend using React, TypeScript, Vite and Tailwind CSS.
+
+Prepare the backend architecture using Node.js and Express with modular REST API structure. Do not implement business logic yet. Create only the production-ready backend foundation.
+
+Prepare the project for future database integration. Do not connect the database yet.
+
+Configure a clean project structure separating frontend and backend into independent applications while allowing smooth communication between them.
+
+The root project should contain
+
+frontend/
+
+backend/
+
+shared/
+
+documentation/
+
+scripts/
+
+configuration/
+
+public/
+
+assets/
+
+The frontend application must contain a professional structure including
+
+src/
+
+app/
+
+assets/
+
+animations/
+
+api/
+
+components/
+
+config/
+
+constants/
+
+contexts/
+
+features/
+
+hooks/
+
+icons/
+
+layouts/
+
+pages/
+
+providers/
+
+routes/
+
+services/
+
+styles/
+
+themes/
+
+types/
+
+utils/
+
+widgets/
+
+Create reusable folders for future modules.
+
+Backend should contain
+
+src/
+
+config/
+
+controllers/
+
+database/
+
+middlewares/
+
+models/
+
+repositories/
+
+routes/
+
+schemas/
+
+security/
+
+services/
+
+types/
+
+utils/
+
+validators/
+
+jobs/
+
+logs/
+
+storage/
+
+Create a complete environment configuration.
+
+Prepare
+
+development
+
+production
+
+testing
+
+environment configuration.
+
+Never hardcode secrets.
+
+Prepare
+
+.env.example
+
+configuration placeholders.
+
+Prepare package configuration.
+
+Configure
+
+TypeScript
+
+ESLint
+
+Prettier
+
+Path Aliases
+
+Import Aliases
+
+Tailwind
+
+PostCSS
+
+Vite
+
+Build Scripts
+
+Development Scripts
+
+Production Scripts
+
+Testing Scripts
+
+Create centralized configuration files.
+
+Prepare reusable configuration modules.
+
+Create centralized constants.
+
+Create centralized helper functions.
+
+Create centralized utility modules.
+
+Prepare global error handling architecture.
+
+Prepare reusable response structures.
+
+Prepare API versioning architecture.
+
+Prepare reusable middleware registration.
+
+Create a reusable logging foundation.
+
+Prepare future monitoring integration.
+
+Prepare centralized exception handling.
+
+Create global loading architecture.
+
+Create global application providers.
+
+Prepare global context providers for
+
+Authentication
+
+Theme
+
+Wallet
+
+Notifications
+
+User
+
+Application Settings
+
+Future Advertisement System
+
+Prepare centralized route management.
+
+Separate
+
+Public Routes
+
+Authenticated User Routes
+
+CEO Protected Routes
+
+System Routes
+
+Error Routes
+
+Maintain one routing configuration.
+
+Prepare reusable layout system.
+
+Public Layout
+
+Authentication Layout
+
+Application Layout
+
+CEO Layout
+
+System Layout
+
+Error Layout
+
+Create the permanent desktop layout.
+
+Desktop must always use
+
+Glass Left Sidebar
+
+Minimal Top Header
+
+Large Dynamic Content Area
+
+Floating Glass Widgets
+
+Responsive Grid System
+
+Desktop sidebar must include
+
+Dashboard
+
+Earn Coins
+
+Wallet
+
+Rewards
+
+Redeem
+
+History
+
+Referral
+
+Notifications
+
+Achievements
+
+Leaderboard
+
+Daily Bonus
+
+Missions
+
+Support
+
+Settings
+
+CEO Dashboard
+
+CEO Dashboard should always display a lock icon.
+
+Normal users selecting CEO Dashboard should be redirected to a professional restricted-access screen.
+
+The restricted screen must explain that this section is reserved exclusively for authorized administrators and that unauthorized access is not permitted.
+
+Do not expose administrator information.
+
+Prepare the future CEO authentication architecture.
+
+Prepare reusable navigation components.
+
+Sidebar
+
+Header
+
+Breadcrumb
+
+Search
+
+Notification Center
+
+Profile Menu
+
+Theme Controller
+
+Language Placeholder
+
+Prepare reusable design tokens.
+
+Colors
+
+Spacing
+
+Typography
+
+Radius
+
+Blur
+
+Shadows
+
+Gradients
+
+Animations
+
+Breakpoints
+
+Transitions
+
+Z Index
+
+Glass Levels
+
+Depth Levels
+
+Every page must inherit these tokens.
+
+Prepare the complete animation engine foundation.
+
+Do not implement all animations yet.
+
+Create reusable animation infrastructure supporting
+
+Page Transition
+
+Fade
+
+Slide
+
+Scale
+
+Floating Motion
+
+Hover Lift
+
+Glass Reflection
+
+Notification Motion
+
+Drawer Animation
+
+Sidebar Expansion
+
+Loading Animation
+
+Success Animation
+
+Card Reveal
+
+Prepare centralized asset management.
+
+Prepare folders for
+
+Images
+
+Icons
+
+Illustrations
+
+Lottie
+
+Videos
+
+Audio
+
+Fonts
+
+Logos
+
+Future Advertisement Assets
+
+Create reusable component categories.
+
+Buttons
+
+Inputs
+
+Cards
+
+Dialogs
+
+Tables
+
+Badges
+
+Charts
+
+Wallet Components
+
+Reward Components
+
+Profile Components
+
+CEO Components
+
+Analytics Components
+
+Support Components
+
+Loading Components
+
+Error Components
+
+Empty State Components
+
+All future UI must reuse these components.
+
+Prepare global responsiveness.
+
+Desktop First
+
+Tablet
+
+Mobile
+
+Foldable
+
+Ultra Wide
+
+No duplicated responsive logic.
+
+Create centralized responsive utilities.
+
+Prepare accessibility foundation.
+
+Semantic HTML
+
+Keyboard Navigation
+
+Focus Management
+
+Reduced Motion Support
+
+Screen Reader Support
+
+High Contrast Preparation
+
+Large Touch Targets
+
+Prepare production optimization.
+
+Lazy Loading
+
+Code Splitting
+
+Tree Shaking
+
+Dynamic Imports
+
+Asset Optimization
+
+Image Optimization
+
+Font Optimization
+
+Animation Optimization
+
+Bundle Optimization
+
+Performance Monitoring Preparation
+
+Do not implement any business features yet.
+
+Do not implement authentication.
+
+Do not implement wallet logic.
+
+Do not implement reward logic.
+
+Do not implement redeem logic.
+
+Do not implement notifications.
+
+Do not implement advertisements.
+
+Do not implement database operations.
+
+This prompt only establishes the production-ready foundation upon which every future feature will be implemented.
+
+The final result after this prompt must be a clean, scalable, professional Full Stack architecture ready for all remaining implementation prompts without requiring structural changes.
+
+Continue from the existing LootLoom project. Read and understand the complete existing codebase before making any modifications. Follow every rule defined in Prompt 0 and Prompt 1. Never restart the project. Never regenerate completed modules. Never redesign completed pages. Never replace completed functionality. Only extend the existing architecture while maintaining complete backward compatibility. Implement only the requirements of this prompt while preserving every existing rule, design language, folder structure, coding standard, responsiveness, animation philosophy and security architecture.
+
+This prompt establishes the permanent visual identity, component system, design tokens, animation foundation and reusable UI library for the entire LootLoom application. Do not create business pages. Do not create user features. Do not create backend logic. Build only the production-ready design system.
+
+The complete application must permanently use a Premium Professional White Theme. The interface must feel like a modern desktop application instead of a traditional website. The visual style should combine professional software products with subtle futuristic elements while maintaining readability, performance and accessibility.
+
+Primary colors should use Pure White, Soft Gray, Electric Blue, Cyan and Purple accents with Deep Navy used only for depth and emphasis. Never use excessive dark backgrounds. Maintain bright, premium and elegant interfaces.
+
+Create a centralized design token system including colors, typography, font weights, spacing scale, border radius, shadows, blur intensity, glass transparency levels, gradients, transition timing, animation duration, z-index layers, responsive breakpoints, icon sizes and elevation levels. No UI component should hardcode visual values. Every visual property must inherit from centralized design tokens.
+
+Create a reusable glassmorphism system supporting multiple glass intensity levels including navigation glass, sidebar glass, dialog glass, floating card glass, widget glass and overlay glass. Glass surfaces should use soft blur, subtle transparency, elegant reflections and layered depth while remaining readable.
+
+Create reusable component categories including Buttons, Icon Buttons, Inputs, Password Fields, Search Bars, Dropdowns, Select Components, Checkboxes, Radio Buttons, Switches, Cards, Glass Cards, Statistic Cards, Wallet Cards, Reward Cards, Profile Cards, CEO Cards, Tables, Data Tables, Charts, Badges, Chips, Progress Bars, Progress Rings, Tabs, Accordions, Tooltips, Dialogs, Modals, Toast Notifications, Drawers, Pagination, Breadcrumbs, Empty States, Error States, Success Components, Skeleton Loaders, Timeline Components, Avatar Components, Navigation Components, Sidebar Components, Header Components, Footer Components and Loading Components. Every future page must reuse these components instead of creating new variations.
+
+Create a premium icon system using a consistent icon library. Every icon should have uniform sizing, spacing, hover animation and accessibility support. Icons should support animated states for notifications, wallet updates, rewards, loading and navigation.
+
+Prepare a global typography system. Use modern professional fonts optimized for web applications. Create typography presets for Display, Heading, Subheading, Section Titles, Card Titles, Body Text, Captions, Labels, Buttons, Navigation and Table Content. Maintain consistent line height and spacing across the application.
+
+Create the permanent desktop application shell. The application should always use a floating glass left sidebar and a minimal floating top header. The top header should contain only the LootLoom logo, global search, notification shortcut, wallet shortcut and user profile menu. The main content area should occupy the remaining space using responsive layouts and adaptive grids.
+
+The left sidebar should permanently support Dashboard, Earn Coins, Wallet, Rewards, Redeem, History, Referral, Notifications, Achievements, Leaderboard, Daily Bonus, Missions, Support, Settings and CEO Dashboard. Sidebar items should include animated icons, hover effects, active indicators, glass backgrounds, subtle glow, expand/collapse functionality and smooth transitions. On mobile devices the sidebar should automatically become a responsive animated drawer.
+
+The CEO Dashboard navigation item must always display a lock icon. If a normal user selects this item the application should display a professional restricted-access interface explaining that the CEO Dashboard is reserved exclusively for authorized administrators. The interface should provide a Return button while never exposing administrator information.
+
+Prepare the complete animation engine. Create reusable animation presets supporting page transitions, fade, slide, scale, floating motion, hover lift, ripple effects, sidebar expansion, drawer transitions, modal animations, notification appearance, loading sequences, success animations, progress animations, card reveal animations and shared element transitions. All animations must be GPU accelerated, optimized and reusable.
+
+Create the global background engine. The application should use subtle animated aurora gradients, animated mesh gradients, softly moving stars, occasional shooting stars, ambient floating particles and elegant lighting effects behind the interface. Background animations must remain lightweight and never reduce readability or performance.
+
+Implement premium interaction effects. Desktop should support subtle mouse parallax, card tilt, glass reflections, interactive hover lighting and smooth cursor feedback. Mobile devices should receive optimized touch interactions without relying on hover states.
+
+Prepare reusable loading experiences including splash loading, page loading, skeleton loading, card loading, dashboard loading, wallet loading, notification loading and modal loading. Every loading state should match the premium design language.
+
+Prepare reusable success, warning, information and error components. Every future module must use these centralized status components instead of designing custom messages.
+
+Create a centralized responsive system supporting desktop, laptop, tablet, Android phones, iPhone, foldable devices and ultra-wide displays. Responsive behavior should be defined once and reused throughout the application.
+
+Prepare accessibility support including semantic HTML, keyboard navigation, visible focus indicators, reduced motion mode, screen reader compatibility, sufficient color contrast and large touch targets.
+
+Do not build Home, Dashboard, Login, Wallet, Earn, Redeem, CEO Dashboard or any business page during this prompt. Do not implement authentication, APIs, database logic or backend functionality. This prompt exists only to establish the permanent visual language, reusable UI components, animation engine, glass system, responsive foundation and design system that every future implementation prompt will inherit without modification.
+
+
+Continue from the existing LootLoom project. Read and understand the complete existing codebase before making any modifications. Follow every rule defined in Prompt 0, Prompt 1 and Prompt 2. Never restart the project. Never regenerate completed modules. Never redesign completed pages. Never replace completed functionality. Only extend the existing architecture while maintaining complete backward compatibility. Implement only the requirements of this prompt while preserving every existing rule, design language, coding standards, responsiveness, animation philosophy, accessibility and security architecture.
+
+This prompt builds the permanent application shell for the entire LootLoom platform. Do not build business features. Do not implement authentication logic. Do not implement wallet logic. Do not implement rewards. Do not implement backend APIs. Build only the permanent navigation framework, routing architecture, layouts and application containers that every future page will use.
+
+Create a permanent desktop application shell using the Premium White Theme, Glassmorphism System and Animation Engine created in previous prompts.
+
+The desktop layout must always contain three major regions.
+
+Region One.
+
+Permanent floating glass left sidebar.
+
+Region Two.
+
+Minimal floating top header.
+
+Region Three.
+
+Dynamic content workspace.
+
+The application should feel like a professional desktop application instead of a traditional website.
+
+The sidebar should remain fixed while only the content area changes.
+
+The sidebar should support
+
+Dashboard
+
+Earn Coins
+
+Wallet
+
+Rewards
+
+Redeem
+
+Transactions
+
+History
+
+Referral
+
+Notifications
+
+Achievements
+
+Leaderboard
+
+Daily Bonus
+
+Missions
+
+Support
+
+Settings
+
+CEO Dashboard
+
+Every navigation item should include
+
+Animated icon
+
+Hover animation
+
+Glass background
+
+Active indicator
+
+Keyboard navigation
+
+Accessibility labels
+
+Smooth transition
+
+Subtle glow
+
+Responsive behavior
+
+Support expanded mode and collapsed mode.
+
+Collapsed mode should show only icons.
+
+Expanded mode should display icons and labels.
+
+Sidebar width transition must remain smooth.
+
+On tablets and phones automatically transform the sidebar into an animated mobile drawer.
+
+Never duplicate navigation.
+
+Use one centralized navigation configuration.
+
+The top header must remain minimal.
+
+Display
+
+LootLoom Logo
+
+Global Search
+
+Notification Shortcut
+
+Wallet Shortcut
+
+Current User Placeholder
+
+Profile Menu Placeholder
+
+Future Theme Switch Placeholder
+
+Future Language Switch Placeholder
+
+Do not overload the top header with unnecessary links.
+
+All navigation must primarily use the left sidebar.
+
+Prepare breadcrumb navigation.
+
+Prepare page titles.
+
+Prepare dynamic route titles.
+
+Prepare global page transition support.
+
+Create reusable layouts.
+
+Public Layout
+
+Authentication Layout
+
+User Application Layout
+
+CEO Dashboard Layout
+
+Maintenance Layout
+
+Error Layout
+
+Loading Layout
+
+Every page must inherit one of these layouts.
+
+Never recreate navigation inside individual pages.
+
+Prepare complete routing architecture.
+
+Public Routes
+
+/
+
+Home
+
+About
+
+Features
+
+How It Works
+
+FAQ
+
+Privacy Policy
+
+Terms
+
+Cookie Policy
+
+Security
+
+Support
+
+Contact
+
+Authentication Routes
+
+Login
+
+Register
+
+Forgot Password
+
+Reset Password
+
+Verify Email
+
+Application Routes
+
+Dashboard
+
+Earn
+
+Wallet
+
+Rewards
+
+Redeem
+
+Transactions
+
+History
+
+Referral
+
+Notifications
+
+Achievements
+
+Leaderboard
+
+Daily Bonus
+
+Missions
+
+Profile
+
+Settings
+
+Support Tickets
+
+CEO Routes
+
+CEO Login
+
+CEO Dashboard
+
+Users
+
+Wallet Management
+
+Reward Management
+
+Redeem Management
+
+Reports
+
+Analytics
+
+Audit Logs
+
+Broadcast
+
+Security Center
+
+Platform Settings
+
+System Monitoring
+
+Future AI Assistant
+
+System Routes
+
+Loading
+
+Maintenance
+
+403
+
+404
+
+500
+
+Unauthorized
+
+Session Expired
+
+Offline
+
+Update Required
+
+Create centralized protected route architecture.
+
+Public Routes.
+
+Authenticated User Routes.
+
+CEO Protected Routes.
+
+System Routes.
+
+Future Moderator Routes.
+
+Prepare role guards.
+
+Visitor
+
+User
+
+Support
+
+Moderator
+
+Administrator
+
+CEO
+
+Prepare navigation guards.
+
+Prepare future JWT integration.
+
+Do not implement authentication yet.
+
+Only prepare architecture.
+
+The CEO Dashboard entry must always remain visible inside the sidebar with a lock icon.
+
+If a normal user clicks CEO Dashboard the application must display a premium restricted-access page.
+
+Display a beautiful glass security panel.
+
+Display a security illustration.
+
+Display the message.
+
+Restricted CEO Dashboard
+
+This administration area is reserved exclusively for authorized Chief Executive Officers and approved administrators.
+
+Your current account does not have permission to access this area.
+
+If you believe you require administrator access please contact the platform owner.
+
+Return to Dashboard
+
+Display a premium animated Return button.
+
+Do not expose administrator pages.
+
+Do not expose administrator data.
+
+Do not expose administrator routes.
+
+Prepare future CEO authentication.
+
+CEO Login
+
+↓
+
+Identity Verification
+
+↓
+
+Password
+
+↓
+
+Future OTP
+
+↓
+
+Future Device Verification
+
+↓
+
+Future Session Validation
+
+↓
+
+CEO Dashboard
+
+Do not implement authentication.
+
+Prepare reusable page containers.
+
+Every page should automatically inherit
+
+Responsive spacing
+
+Animation presets
+
+Glass cards
+
+Typography
+
+Grid system
+
+Responsive utilities
+
+Loading states
+
+Error states
+
+Empty states
+
+Prepare centralized grid layouts.
+
+1 Column
+
+2 Column
+
+3 Column
+
+4 Column
+
+Auto Responsive
+
+Dashboard Grid
+
+Analytics Grid
+
+CEO Grid
+
+Wallet Grid
+
+Reward Grid
+
+Prepare reusable content wrappers.
+
+Page Header
+
+Section Header
+
+Section Body
+
+Floating Widget Area
+
+Statistics Area
+
+Sidebar Widget Area
+
+Bottom Action Area
+
+Floating Action Button Placeholder
+
+Create centralized responsive breakpoints.
+
+Mobile
+
+Tablet
+
+Laptop
+
+Desktop
+
+Ultra Wide
+
+Foldable
+
+Prepare accessibility.
+
+Keyboard shortcuts.
+
+Tab navigation.
+
+Screen readers.
+
+Reduced motion.
+
+Visible focus.
+
+ARIA labels.
+
+High contrast support.
+
+Prepare global loading overlays.
+
+Prepare page loading transitions.
+
+Prepare suspense boundaries.
+
+Prepare lazy route loading.
+
+Prepare centralized route animations.
+
+Prepare application startup animation.
+
+Prepare reusable error boundaries.
+
+Do not implement any page content.
+
+Do not create Home.
+
+Do not create Dashboard.
+
+Do not create Wallet.
+
+Do not create Login.
+
+Do not create CEO Dashboard.
+
+Do not create business features.
+
+Only build the permanent application shell, layouts, routing architecture, navigation framework, protected route infrastructure, page containers and reusable navigation system that every future module will inherit without modification.
+
+Continue from the existing LootLoom project. Read and understand the complete existing codebase before making any modifications. Follow every rule defined in Prompt 0, Prompt 1, Prompt 2 and Prompt 3. Never restart the project. Never regenerate completed modules. Never redesign completed pages. Never replace completed functionality. Only extend the existing architecture while maintaining complete backward compatibility. Implement only the requirements of this prompt while preserving every existing rule, design language, coding standards, responsiveness, animation philosophy, accessibility and security architecture.
+
+This prompt creates the permanent Home experience of LootLoom.
+
+IMPORTANT
+
+Do NOT build a corporate website.
+
+Do NOT build a SaaS landing page.
+
+Do NOT build a business homepage.
+
+Do NOT create unnecessary marketing sections.
+
+Do NOT create enterprise sales content.
+
+Do NOT create pricing tables.
+
+Do NOT create investors.
+
+Do NOT create business growth sections.
+
+Do NOT create customer testimonials.
+
+Do NOT create unnecessary long scrolling pages.
+
+Instead...
+
+Build the application entry experience.
+
+Users should immediately understand they are opening a premium reward application.
+
+The application should feel similar to a desktop application.
+
+The Home page should smoothly guide users toward registration and login.
+
+The primary objective is
+
+Register
+
+↓
+
+Login
+
+↓
+
+Dashboard
+
+↓
+
+Earn
+
+↓
+
+Wallet
+
+↓
+
+Redeem
+
+↓
+
+Return Daily
+
+Everything should support this journey.
+
+Create a premium Hero section.
+
+Large application headline.
+
+Beautiful supporting subtitle.
+
+Professional illustration.
+
+Animated application preview.
+
+Glass cards.
+
+Floating widgets.
+
+Wallet preview.
+
+Coin preview.
+
+Reward preview.
+
+Mission preview.
+
+Notification preview.
+
+Everything should feel alive.
+
+The right side should display an animated live application preview.
+
+Never use laptop mockups.
+
+Never use browser mockups.
+
+Instead create floating application windows.
+
+The application preview should include
+
+Dashboard
+
+Wallet
+
+Earn
+
+Rewards
+
+History
+
+Notification
+
+Beautiful floating glass widgets.
+
+Subtle 3D depth.
+
+Mouse parallax.
+
+Soft reflections.
+
+Smooth animations.
+
+Create quick action cards.
+
+Start Earning
+
+Register
+
+Login
+
+Explore Features
+
+Every button should inherit the global design system.
+
+Create an application overview.
+
+Instead of "Features"
+
+Create
+
+What You Can Do
+
+Display beautiful interactive cards.
+
+Earn Coins
+
+Wallet
+
+Redeem Rewards
+
+Daily Bonus
+
+Referral
+
+Leaderboard
+
+Achievements
+
+Support
+
+Each card should include
+
+Animated Icon
+
+Glass Card
+
+Hover Animation
+
+Floating Motion
+
+Soft Glow
+
+3D Depth
+
+Create a "How LootLoom Works" section.
+
+Step 1
+
+Create Account
+
+↓
+
+Step 2
+
+Verify Account
+
+↓
+
+Step 3
+
+Start Earning
+
+↓
+
+Step 4
+
+Coins Added
+
+↓
+
+Step 5
+
+Redeem Rewards
+
+Display beautiful animated timeline.
+
+Prepare a live Dashboard Preview.
+
+Display
+
+Coin Balance
+
+Wallet
+
+Daily Streak
+
+Recent Rewards
+
+Notifications
+
+XP Progress
+
+Animated Counters
+
+Floating Cards
+
+Glass Effects
+
+Never use static screenshots.
+
+Create a Wallet Preview.
+
+Animated balance.
+
+Recent transactions.
+
+Floating coins.
+
+Beautiful graphs.
+
+Create an Earn Preview.
+
+Rewarded Ads Placeholder
+
+Offerwall Placeholder
+
+Daily Bonus
+
+Missions
+
+Future Activities
+
+Everything should remain interactive.
+
+Create a Referral Preview.
+
+Referral Code Placeholder.
+
+Friends Joined.
+
+Referral Rewards.
+
+Progress.
+
+Create a Leaderboard Preview.
+
+Top Users Placeholder.
+
+XP.
+
+Coins.
+
+Levels.
+
+Beautiful cards.
+
+Create an Achievement Preview.
+
+Badges.
+
+Levels.
+
+Milestones.
+
+Animated progress rings.
+
+Create a Security Preview.
+
+Explain
+
+Secure Authentication.
+
+Encrypted Sessions.
+
+Privacy.
+
+Safe Reward Processing.
+
+Beautiful security cards.
+
+Create a Download App section.
+
+Prepare future Android application download.
+
+Future iOS placeholder.
+
+QR Code Placeholder.
+
+Store Buttons Placeholder.
+
+Do not implement downloads.
+
+Create a FAQ preview.
+
+Only show important questions.
+
+The complete FAQ page will be implemented later.
+
+Create a Support Preview.
+
+Support Center.
+
+Help Center.
+
+Contact.
+
+Ticket System.
+
+Future Live Chat Placeholder.
+
+Footer should remain professional.
+
+Include
+
+Quick Links
+
+Privacy Policy
+
+Terms & Conditions
+
+Cookie Policy
+
+Community Guidelines
+
+Security
+
+Contact
+
+Support
+
+Copyright
+
+Social Links Placeholder
+
+Everything should inherit the premium white theme.
+
+Backgrounds should continue using
+
+Animated Aurora.
+
+Animated Mesh Gradient.
+
+Moving Stars.
+
+Occasional Shooting Stars.
+
+Floating Ambient Particles.
+
+Glass Reflections.
+
+Gradient Motion.
+
+Maintain premium motion.
+
+Maintain GPU acceleration.
+
+Maintain responsiveness.
+
+Desktop should prioritize the advanced left sidebar application shell.
+
+Mobile should automatically switch to drawer navigation.
+
+Do not create Login.
+
+Do not create Register.
+
+Do not create Dashboard.
+
+Do not create Wallet.
+
+Do not create Earn.
+
+Do not create Redeem.
+
+Only create the application entry experience which naturally guides users toward authentication while making the platform feel like a premium desktop application rather than a marketing website.
+
+The final result should feel modern, immersive, responsive, elegant and production-ready.
+
+Continue from the existing LootLoom project. Read and understand the complete existing codebase before making any modifications. Follow every rule defined in Prompt 0 through Prompt 4. Never restart the project. Never regenerate completed modules. Never redesign completed pages. Never replace completed functionality. Only extend the existing architecture while maintaining complete backward compatibility. Implement only the requirements of this prompt while preserving every existing rule, design language, coding standards, responsiveness, animation philosophy, accessibility and security architecture.
+
+This prompt implements the complete frontend Authentication Module. Do not implement backend authentication logic yet. Build production-ready authentication screens, layouts, reusable authentication components and routing prepared for future backend integration.
+
+Create a dedicated Authentication Layout that inherits the global application design system. The layout should feel premium, modern and application-like rather than a generic login page. Maintain the Premium White Theme, Glassmorphism, Aurora Background, Animated Mesh Gradient, Moving Stars, Ambient Particles, Floating Glass Cards and smooth GPU-accelerated animations established in previous prompts.
+
+Implement the following authentication screens:
+
+Home Login
+
+User Registration
+
+Forgot Password
+
+Reset Password
+
+Email Verification
+
+Verification Success
+
+Verification Failed
+
+Authentication Loading
+
+Session Expired
+
+Unauthorized Access
+
+Every authentication screen must reuse centralized authentication components instead of creating duplicate UI.
+
+Create reusable authentication components including authentication card, authentication header, authentication footer, logo component, form container, reusable input fields, password input with visibility toggle, email input, username input, phone placeholder input, verification code input placeholder, remember me checkbox, terms acceptance checkbox, primary authentication button, secondary button, social login placeholders, divider component, validation message component, loading button, success message component and error message component.
+
+Registration should include placeholder fields for Full Name, Username, Email Address, Password, Confirm Password and Terms & Conditions acceptance. Do not implement backend validation yet. Prepare the UI for future integration.
+
+Login should include Email or Username, Password, Remember Me, Forgot Password link, Login button and Register navigation.
+
+Forgot Password should allow users to request a password reset using their email address. Reset Password should support New Password and Confirm Password fields prepared for future secure token validation.
+
+Email Verification pages should provide elegant verification states with premium success and error illustrations, progress indicators and smooth transitions.
+
+Prepare centralized client-side validation architecture. Support required fields, email format validation, password confirmation validation, password strength indicator, loading states, disabled buttons during submission, success messages and consistent error presentation. Validation logic should be modular and reusable.
+
+Prepare placeholders for future backend integration including registration API, login API, logout API, forgot password API, reset password API, email verification API, refresh token API and session validation API. Do not implement actual API calls yet.
+
+Prepare authentication state management using the centralized architecture established previously. Authentication state should support unauthenticated, loading, authenticated, verification pending and session expired states.
+
+Prepare future JWT integration without implementing tokens yet. Protected routes should already be compatible with future authentication middleware.
+
+Design every authentication screen using premium glass cards with subtle depth, soft shadows, elegant spacing, responsive layouts and smooth transitions. Desktop should display an elegant split layout with authentication form on one side and animated application preview on the other. Mobile devices should automatically switch to a single-column responsive layout.
+
+The animated preview should showcase LootLoom features such as Dashboard Preview, Wallet Preview, Rewards Preview, Daily Bonus Preview and Notification Preview using floating application cards instead of screenshots.
+
+Prepare reusable loading animations, skeleton states and transition effects for every authentication action.
+
+Accessibility must support semantic HTML, keyboard navigation, proper labels, focus management, screen readers and reduced motion mode.
+
+Do not implement Dashboard, Wallet, Rewards, Earn, Redeem, CEO Dashboard or backend business logic during this prompt. This prompt is exclusively responsible for delivering a complete, reusable, production-quality frontend authentication module ready for future backend integration.
+
+Continue from the existing LootLoom project. Read and understand the complete existing codebase before making any modifications. Follow every rule defined in Prompt 0 through Prompt 5. Never restart the project. Never regenerate completed modules. Never redesign completed pages. Never replace completed functionality. Only extend the existing architecture while maintaining complete backward compatibility. Implement only the requirements of this prompt while preserving every existing rule, design language, coding standards, responsiveness, animation philosophy, accessibility and security architecture.
+
+This prompt initializes the authenticated user application after successful login. Do not implement wallet business logic, reward business logic, redeem logic, CEO logic or advertisements. Build only the authenticated application bootstrap, protected session architecture, user initialization flow and reusable application providers.
+
+After successful authentication the application should initialize a complete user session.
+
+Prepare centralized user initialization.
+
+Future authenticated user
+
+↓
+
+Load User Profile
+
+↓
+
+Load User Preferences
+
+↓
+
+Load Wallet Summary Placeholder
+
+↓
+
+Load Notification Summary Placeholder
+
+↓
+
+Load Dashboard Summary Placeholder
+
+↓
+
+Initialize Application Providers
+
+↓
+
+Render User Dashboard
+
+Prepare reusable session states.
+
+Authenticating
+
+Loading Session
+
+Initializing Application
+
+Ready
+
+Session Expired
+
+Unauthorized
+
+Preparing User Data
+
+Prepare a centralized authenticated application provider.
+
+The provider should prepare future support for
+
+Current User
+
+Wallet
+
+Rewards
+
+Notifications
+
+Achievements
+
+Referral
+
+Leaderboard
+
+Settings
+
+Theme
+
+Application Configuration
+
+Advertisement Placeholder
+
+Future Feature Flags
+
+Create reusable session guards.
+
+Authenticated User Guard
+
+Guest Guard
+
+CEO Guard
+
+Future Moderator Guard
+
+Prepare protected route infrastructure.
+
+Do not implement authentication again.
+
+Reuse the authentication architecture from Prompt 5.
+
+Prepare reusable loading screens.
+
+Application Startup Loader
+
+Dashboard Loader
+
+Wallet Loader
+
+Notification Loader
+
+Profile Loader
+
+Global Loading Overlay
+
+Every loader must inherit the premium white theme, glassmorphism, subtle 3D depth, animated aurora background, moving stars, floating particles and smooth animations.
+
+Create reusable empty states.
+
+No Notifications
+
+No Rewards
+
+No Transactions
+
+No History
+
+No Referrals
+
+No Achievements
+
+No Missions
+
+No Wallet Activity
+
+Every empty state should feel premium instead of blank.
+
+Create reusable error states.
+
+Unauthorized
+
+Network Placeholder
+
+Session Expired
+
+Server Error Placeholder
+
+Access Denied
+
+Maintenance
+
+Create centralized user profile architecture.
+
+Prepare placeholders for
+
+Profile Picture
+
+Full Name
+
+Username
+
+Email
+
+Member Since
+
+Current Level
+
+Current XP
+
+Current Coins
+
+Wallet Summary
+
+Referral Code
+
+Notification Count
+
+Current Rank
+
+Daily Streak
+
+Last Login
+
+Future Badge Collection
+
+Do not implement real backend data.
+
+Prepare reusable application widgets.
+
+Small Statistics Card
+
+Large Statistics Card
+
+Quick Action Card
+
+Glass Information Card
+
+Floating Widget
+
+Animated Counter
+
+Progress Ring
+
+Status Badge
+
+Notification Preview Card
+
+Activity Card
+
+Reward Preview Card
+
+Wallet Preview Card
+
+These widgets will be reused throughout the application.
+
+Prepare centralized application initialization.
+
+Initialize Theme
+
+Initialize Responsive Engine
+
+Initialize Navigation
+
+Initialize Layout
+
+Initialize Providers
+
+Initialize Route Guards
+
+Initialize Motion Engine
+
+Initialize Accessibility
+
+Initialize Global Error Boundary
+
+Prepare reusable dashboard placeholders.
+
+Do not build the complete Dashboard.
+
+Only create reusable containers and placeholder sections.
+
+Overview Area
+
+Quick Actions
+
+Wallet Preview
+
+Notification Preview
+
+Recent Activity Placeholder
+
+Reward Preview
+
+Mission Preview
+
+Referral Preview
+
+Leaderboard Preview
+
+Achievement Preview
+
+Every placeholder should use skeleton loading and glass cards.
+
+Desktop layout must always preserve the permanent left glass sidebar and minimal top header.
+
+Mobile must automatically convert into the responsive drawer.
+
+Prepare centralized notification initialization.
+
+Future unread count.
+
+Future notification history.
+
+Future push notification placeholder.
+
+Future announcement placeholder.
+
+Do not implement backend logic.
+
+Prepare centralized application startup animation.
+
+Smooth fade.
+
+Glass reveal.
+
+Floating motion.
+
+Page transition.
+
+Animated logo.
+
+Application ready transition.
+
+Accessibility must remain fully supported including keyboard navigation, semantic HTML, reduced motion mode, focus management and screen reader compatibility.
+
+Do not build Wallet.
+
+Do not build Rewards.
+
+Do not build Earn.
+
+Do not build Redeem.
+
+Do not build History.
+
+Do not build CEO Dashboard.
+
+Do not build backend APIs.
+
+Only build the authenticated application bootstrap, reusable session architecture, protected application initialization, reusable widgets, loading system, placeholders and startup experience that every authenticated module will inherit during future prompts.
+
+Continue from the existing LootLoom project. Read and understand the complete existing codebase before making any modifications. Follow every rule defined in Prompt 0 through Prompt 6. Never restart the project. Never regenerate completed modules. Never redesign completed pages. Never replace completed functionality. Only extend the existing architecture while maintaining complete backward compatibility. Implement only the requirements of this prompt while preserving every existing rule, design language, coding standards, responsiveness, animation philosophy, accessibility and security architecture.
+
+This prompt creates the complete User Dashboard which becomes the primary home for every authenticated user. The Dashboard must feel like a premium desktop application control center rather than a traditional website. It should immediately communicate account status, earning opportunities and reward progress while encouraging users to continue using the platform daily.
+
+The dashboard must inherit the permanent desktop application shell created previously including the floating glass left sidebar, minimal top header, responsive layouts, reusable widgets, centralized animation engine and premium white design system.
+
+Do not implement backend APIs or business logic yet. Prepare every widget for future backend integration using reusable placeholders and clean architecture.
+
+Create a professional dashboard layout divided into logical sections.
+
+Top Welcome Area.
+
+Display personalized greeting placeholder.
+
+User avatar placeholder.
+
+Current membership level placeholder.
+
+Daily streak placeholder.
+
+Current rank placeholder.
+
+Current coin balance placeholder.
+
+Current wallet summary placeholder.
+
+Animated greeting card.
+
+Quick Statistics Area.
+
+Display premium animated statistic cards for
+
+Current Coins
+
+Today's Earnings
+
+Pending Rewards
+
+Completed Redeems
+
+Referral Count
+
+Achievement Progress
+
+Unread Notifications
+
+Current Level
+
+Each statistic card must include animated counters, glass effects, subtle 3D depth, hover lift animation, soft reflections and beautiful icons.
+
+Quick Actions Area.
+
+Create beautiful floating action cards for
+
+Start Earning
+
+Wallet
+
+Redeem Rewards
+
+Referral
+
+Daily Bonus
+
+Missions
+
+Leaderboard
+
+Support
+
+Profile
+
+Each quick action should use reusable components with premium hover effects, glass backgrounds and responsive layouts.
+
+Wallet Preview.
+
+Display wallet summary placeholder.
+
+Available Coins.
+
+Pending Coins.
+
+Recent Wallet Activity Placeholder.
+
+Future transaction preview.
+
+Animated balance card.
+
+Reward Center Preview.
+
+Display future reward categories using beautiful glass cards.
+
+Rewarded Ads Placeholder.
+
+Offerwall Placeholder.
+
+Daily Bonus Placeholder.
+
+Special Events Placeholder.
+
+Future Tasks Placeholder.
+
+Mission Center.
+
+Display today's mission placeholders.
+
+Mission progress rings.
+
+Mission completion indicators.
+
+Reward values.
+
+Future progress synchronization.
+
+Daily Bonus Section.
+
+Display daily login calendar placeholder.
+
+Current streak.
+
+Future reward preview.
+
+Animated progress.
+
+Achievement Center.
+
+Display beautiful badges.
+
+XP progress.
+
+Achievement placeholders.
+
+Completion rings.
+
+Glass cards.
+
+Leaderboard Preview.
+
+Display top users placeholder.
+
+Current user ranking placeholder.
+
+Animated ranking cards.
+
+Referral Center Preview.
+
+Referral code placeholder.
+
+Friends invited placeholder.
+
+Referral earnings placeholder.
+
+Future sharing button placeholder.
+
+Recent Activity Timeline.
+
+Display placeholder activities.
+
+Coins earned.
+
+Rewards redeemed.
+
+Notifications received.
+
+Future transaction events.
+
+Use animated timeline cards.
+
+Notification Preview.
+
+Display unread notification placeholder.
+
+Recent announcements placeholder.
+
+System alerts placeholder.
+
+Future push notification preview.
+
+Security Status Card.
+
+Display
+
+Account Status
+
+Email Verification Placeholder
+
+Password Status Placeholder
+
+Session Security Placeholder
+
+Future Device Verification Placeholder
+
+Support Center Preview.
+
+Open Ticket Placeholder.
+
+Recent Ticket Placeholder.
+
+Help Center Shortcut.
+
+FAQ Shortcut.
+
+Performance Section.
+
+Prepare beautiful responsive dashboard grids.
+
+Automatic responsive card layouts.
+
+Floating widget containers.
+
+Adaptive spacing.
+
+Skeleton loading.
+
+Loading placeholders.
+
+Empty states.
+
+Every dashboard widget must inherit the premium white glass design system.
+
+Use floating glass cards with layered depth.
+
+Use subtle perspective.
+
+Use elegant shadows.
+
+Use animated highlights.
+
+Use GPU accelerated animations.
+
+Desktop should display a premium multi-column dashboard similar to professional desktop software.
+
+Mobile devices should automatically transform into a clean responsive stacked layout while preserving all functionality.
+
+Prepare dashboard widgets for future backend integration including wallet summary, notifications, rewards, leaderboard, achievements, referral statistics, missions and analytics.
+
+Do not implement actual wallet logic.
+
+Do not implement earning logic.
+
+Do not implement redeem logic.
+
+Do not implement advertisements.
+
+Do not implement backend APIs.
+
+Prepare reusable dashboard widget architecture that will be connected during future implementation prompts.
+
+Accessibility must support keyboard navigation, semantic HTML, focus management, reduced motion mode and screen readers.
+
+The final result should feel like opening a premium productivity application rather than a marketing website. Every widget should invite users to continue earning rewards while maintaining a beautiful, immersive and highly responsive experience.
+
+Continue from the existing LootLoom project. Read and understand the complete existing codebase before making any modifications. Follow every rule defined in Prompt 0 through Prompt 7. Never restart the project. Never regenerate completed modules. Never redesign completed pages. Never replace completed functionality. Only extend the existing architecture while maintaining complete backward compatibility. Implement only the requirements of this prompt while preserving every existing rule, design language, coding standards, responsiveness, animation philosophy, accessibility and security architecture.
+
+This prompt implements the complete Wallet Module of LootLoom. The Wallet should become the financial control center for every authenticated user. Do not implement backend business logic yet. Build production-ready frontend architecture prepared for future API integration.
+
+The Wallet page must inherit the permanent application shell including the floating glass left sidebar, minimal top header, premium white design system, reusable component library, animation engine and responsive layouts established in previous prompts.
+
+The Wallet interface must feel like a modern desktop financial application while remaining simple, elegant and highly responsive.
+
+Create a premium Wallet Overview section.
+
+Display
+
+Current Coin Balance
+
+Pending Coins
+
+Lifetime Coins Earned
+
+Lifetime Coins Redeemed
+
+Estimated Reward Value Placeholder
+
+Wallet Status
+
+Membership Level
+
+Current XP
+
+Animated balance counters.
+
+Glass summary cards.
+
+Floating widgets.
+
+Soft reflections.
+
+Subtle 3D depth.
+
+Hover animations.
+
+Create Quick Wallet Actions.
+
+Earn Coins
+
+Redeem Rewards
+
+Transaction History
+
+Referral Rewards
+
+Daily Bonus
+
+Support
+
+Future Withdraw Placeholder
+
+Every action should use reusable glass cards.
+
+Create Wallet Statistics.
+
+Today's Earnings
+
+Weekly Earnings
+
+Monthly Earnings
+
+Current Streak
+
+Reward Success Rate
+
+Future Conversion Statistics
+
+Use animated charts prepared for future backend integration.
+
+Create Recent Transactions section.
+
+Display reusable transaction table.
+
+Prepare columns for
+
+Transaction ID
+
+Date
+
+Type
+
+Amount
+
+Status
+
+Description
+
+Future Export
+
+Future Filter
+
+Future Search
+
+Do not generate fake transactions.
+
+Use premium skeleton placeholders.
+
+Create Wallet Timeline.
+
+Future wallet activity.
+
+Future coin credits.
+
+Future reward redemptions.
+
+Future adjustments.
+
+Display beautiful animated timeline cards.
+
+Create Coin Analytics section.
+
+Prepare reusable charts.
+
+Daily
+
+Weekly
+
+Monthly
+
+Yearly
+
+Use placeholders only.
+
+Create Reward Progress section.
+
+Coin goal.
+
+Progress ring.
+
+Milestone progress.
+
+Future achievement rewards.
+
+Animated circular indicators.
+
+Create Wallet Insights.
+
+Future earning recommendations.
+
+Future reward suggestions.
+
+Future saving tips.
+
+Future streak reminders.
+
+Display premium information cards.
+
+Create Referral Earnings section.
+
+Referral bonus summary placeholder.
+
+Invited friends placeholder.
+
+Pending rewards placeholder.
+
+Referral history placeholder.
+
+Create Wallet Security section.
+
+Display
+
+Account Verification Placeholder
+
+Future Identity Verification
+
+Future Two-Factor Authentication
+
+Future Trusted Devices
+
+Session Status
+
+Password Status Placeholder
+
+Display security badges.
+
+Create Payment Information placeholder.
+
+Future UPI
+
+Future Bank Account
+
+Future PayPal
+
+Future Crypto
+
+Future Gift Cards
+
+Do not implement payment methods.
+
+Only prepare reusable interface.
+
+Create Wallet Settings placeholder.
+
+Preferred currency.
+
+Notification preferences.
+
+Privacy placeholder.
+
+Display options only.
+
+Prepare reusable wallet widgets.
+
+Balance Card
+
+Transaction Card
+
+Statistic Card
+
+Progress Card
+
+Security Card
+
+Chart Card
+
+Timeline Card
+
+Insight Card
+
+Every widget must inherit the centralized component system.
+
+Prepare reusable wallet loading states.
+
+Wallet skeleton.
+
+Transaction skeleton.
+
+Chart skeleton.
+
+Card loading.
+
+Create reusable empty states.
+
+No Transactions.
+
+No Rewards.
+
+No Earnings.
+
+No Wallet Activity.
+
+Create reusable error states.
+
+Wallet unavailable placeholder.
+
+Connection placeholder.
+
+Maintenance placeholder.
+
+Desktop must display a premium multi-column financial dashboard with floating glass widgets.
+
+Tablet should automatically reorganize the layout.
+
+Mobile devices should display beautiful stacked responsive cards.
+
+Maintain the Premium White Theme.
+
+Continue using
+
+Glassmorphism
+
+Animated Aurora Background
+
+Animated Mesh Gradient
+
+Moving Stars
+
+Occasional Shooting Stars
+
+Floating Ambient Particles
+
+Soft Lighting
+
+Subtle 3D Glass Depth
+
+Smooth GPU Accelerated Animations
+
+Maintain premium mouse interactions including subtle parallax, hover lift, perspective effects and floating reflections.
+
+Accessibility must support semantic HTML, keyboard navigation, screen readers, reduced motion mode, visible focus indicators and large touch targets.
+
+Prepare future backend integration for
+
+Wallet Summary API
+
+Transaction API
+
+Reward API
+
+Redeem API
+
+Referral API
+
+Analytics API
+
+Security API
+
+Do not implement backend logic.
+
+Do not implement coin calculations.
+
+Do not implement transaction processing.
+
+Do not implement redeem processing.
+
+Do not implement advertisements.
+
+Only build the complete production-ready Wallet Module UI, reusable wallet architecture, reusable financial widgets, responsive layouts and future API integration structure while preserving every previous architectural and visual rule.
+
+Continue from the existing LootLoom project. Read and understand the complete existing codebase before making any modifications. Follow every rule defined in Prompt 0 through Prompt 8. Never restart the project. Never regenerate completed modules. Never redesign completed pages. Never replace completed functionality. Only extend the existing architecture while maintaining complete backward compatibility. Implement only the requirements of this prompt while preserving every existing rule, design language, coding standards, responsiveness, animation philosophy, accessibility and security architecture.
+
+This prompt implements the complete Earn Center of LootLoom. The Earn Center is the heart of the entire platform. Every authenticated user should naturally return to this page every day to continue earning rewards. Do not implement advertisement SDKs, backend APIs, reward calculations or business logic yet. Build only the complete production-ready frontend architecture prepared for future backend integration.
+
+The Earn Center must inherit the permanent application shell including the floating glass left sidebar, minimal top header, Premium White Theme, centralized component library, animation engine, responsive layouts and reusable widgets established in previous prompts.
+
+Create a premium Earn Overview section.
+
+Display
+
+Today's Earnings Placeholder
+
+Today's Available Activities
+
+Daily Progress
+
+Current XP
+
+Current Level
+
+Current Streak
+
+Coins Earned Today
+
+Future Reward Multiplier
+
+Future VIP Bonus
+
+Use animated statistic cards with glass effects, floating depth, soft reflections, animated counters and premium hover animations.
+
+Create the primary earning activities grid.
+
+Display premium glass cards for
+
+Rewarded Ads
+
+Offerwall
+
+Daily Bonus
+
+Daily Missions
+
+Weekly Missions
+
+Monthly Missions
+
+Achievement Rewards
+
+Referral Rewards
+
+Seasonal Events Placeholder
+
+Special Promotions Placeholder
+
+Future Lucky Spin Placeholder
+
+Future Scratch Card Placeholder
+
+Future Quiz Rewards Placeholder
+
+Future Survey Rewards Placeholder
+
+Every activity card should contain
+
+Beautiful animated icon
+
+Reward amount placeholder
+
+Estimated completion time
+
+Difficulty indicator
+
+Availability badge
+
+Status placeholder
+
+Hover lift animation
+
+Subtle 3D depth
+
+Smooth transitions
+
+Prepare Rewarded Ads section.
+
+Display
+
+Available Ads Placeholder
+
+Estimated Coins
+
+Daily Limit Placeholder
+
+Remaining Ads Placeholder
+
+Reward Preview
+
+Future Watch Button Placeholder
+
+Future Verification Placeholder
+
+Future Loading Animation
+
+Do not implement advertisement logic.
+
+Do not implement SDK integration.
+
+Prepare Offerwall section.
+
+Display placeholder providers.
+
+Offer Categories
+
+Reward Estimates
+
+Completion Status
+
+Future Launch Button
+
+Future Verification
+
+Use reusable provider cards.
+
+Prepare Daily Bonus section.
+
+Display
+
+Daily Login Calendar
+
+Current Streak
+
+Today's Reward Placeholder
+
+Tomorrow's Reward Placeholder
+
+Future Claim Button Placeholder
+
+Animated calendar.
+
+Progress indicators.
+
+Glass cards.
+
+Prepare Daily Missions.
+
+Display reusable mission cards.
+
+Mission Name Placeholder
+
+Mission Description
+
+Reward Placeholder
+
+Progress Ring
+
+Completion Indicator
+
+Difficulty Badge
+
+Estimated Time
+
+Future Start Button
+
+Prepare Weekly Missions.
+
+Prepare Monthly Missions.
+
+Maintain reusable mission architecture.
+
+Create Achievement Rewards section.
+
+Display
+
+Current XP
+
+Level Progress
+
+Achievement Badges
+
+Milestones
+
+Completion Percentage
+
+Animated progress rings.
+
+Create Referral Rewards section.
+
+Display
+
+Referral Code Placeholder
+
+Friends Joined Placeholder
+
+Pending Rewards
+
+Total Referral Earnings
+
+Future Share Button Placeholder
+
+Create Event Center.
+
+Display placeholders for
+
+Limited Time Events
+
+Festival Events
+
+Bonus Campaigns
+
+Weekend Boost
+
+Holiday Rewards
+
+Future Tournament
+
+Future Challenge
+
+Use reusable event cards.
+
+Create Reward History Preview.
+
+Display future completed earning activities.
+
+Skeleton loading.
+
+Timeline cards.
+
+Placeholder table.
+
+Create Earn Analytics.
+
+Prepare charts for
+
+Daily Earnings
+
+Weekly Earnings
+
+Monthly Earnings
+
+Activity Distribution
+
+Reward Sources
+
+Future backend integration only.
+
+Create Tips & Recommendations section.
+
+Display reusable information cards.
+
+Future earning suggestions.
+
+Streak reminders.
+
+Mission recommendations.
+
+Reward optimization tips.
+
+Create Earn Center loading states.
+
+Activity skeletons.
+
+Mission skeletons.
+
+Calendar skeletons.
+
+Analytics skeletons.
+
+Create reusable empty states.
+
+No Activities Available
+
+No Missions
+
+No Rewards
+
+No Events
+
+No Referral Rewards
+
+Create reusable error states.
+
+Activity unavailable placeholder.
+
+Future network placeholder.
+
+Maintenance placeholder.
+
+Desktop layout must display a premium application experience with responsive dashboard grids, floating glass cards and adaptive widgets.
+
+Tablet should reorganize content automatically.
+
+Mobile devices must display beautiful stacked cards while preserving all functionality.
+
+Continue using
+
+Premium White Theme
+
+Glassmorphism
+
+Animated Aurora Background
+
+Animated Mesh Gradient
+
+Moving Stars
+
+Occasional Shooting Stars
+
+Floating Ambient Particles
+
+Soft Lighting
+
+Subtle 3D Glass Depth
+
+GPU Accelerated Motion
+
+Mouse Parallax
+
+Hover Lift
+
+Perspective Effects
+
+Floating Reflections
+
+Accessibility must support semantic HTML, keyboard navigation, visible focus indicators, reduced motion mode, screen readers and large touch targets.
+
+Prepare future backend integration for
+
+Reward Activity API
+
+Advertisement API
+
+Offerwall API
+
+Mission API
+
+Achievement API
+
+Referral API
+
+Daily Bonus API
+
+Analytics API
+
+Do not implement backend logic.
+
+Do not implement advertisement SDKs.
+
+Do not implement reward calculations.
+
+Do not implement coin credit logic.
+
+Do not implement verification logic.
+
+Do not implement anti-fraud logic.
+
+Do not implement ads waterfall.
+
+Only build the complete production-ready Earn Center UI, reusable earning architecture, reusable reward widgets, responsive layouts and future API integration structure while preserving every previous architectural and visual rule.
+
+Continue from the existing LootLoom project. Read and understand the complete existing codebase before making any modifications. Follow every rule defined in Prompt 0 through Prompt 9. Never restart the project. Never regenerate completed modules. Never redesign completed pages. Never replace completed functionality. Only extend the existing architecture while maintaining complete backward compatibility. Implement only the requirements of this prompt while preserving every existing rule, design language, coding standards, responsiveness, animation philosophy, accessibility and security architecture.
+
+This prompt implements the complete Rewards & Redeem Center of LootLoom. This page represents the final destination of the earning journey where users browse available rewards, view redemption eligibility, submit redemption requests and track their redemption progress. Do not implement backend APIs, payment processing, approval logic or advertisement logic yet. Build only the complete production-ready frontend architecture prepared for future backend integration.
+
+The Rewards & Redeem Center must inherit the permanent application shell including the floating glass left sidebar, minimal top header, Premium White Theme, centralized component library, animation engine, responsive layouts and reusable widgets established in previous prompts.
+
+Create a premium Rewards Overview section.
+
+Display
+
+Current Coin Balance
+
+Redeemable Coins
+
+Pending Redeem Requests
+
+Completed Redeems
+
+Lifetime Rewards
+
+Estimated Reward Value
+
+Reward Eligibility Status
+
+Animated statistic cards.
+
+Glass cards.
+
+Floating widgets.
+
+Soft reflections.
+
+Subtle 3D depth.
+
+Hover animations.
+
+Animated counters.
+
+Create Reward Categories.
+
+Display beautiful premium reward cards for
+
+UPI Cash Placeholder
+
+Gift Cards Placeholder
+
+Gaming Rewards Placeholder
+
+Digital Vouchers Placeholder
+
+Mobile Recharge Placeholder
+
+Shopping Rewards Placeholder
+
+Premium Membership Placeholder
+
+Future Custom Rewards Placeholder
+
+Each reward card should contain
+
+Reward Image Placeholder
+
+Reward Name
+
+Required Coins
+
+Estimated Processing Time Placeholder
+
+Availability Badge
+
+Popularity Badge Placeholder
+
+Future Redeem Button Placeholder
+
+Hover Lift
+
+Glass Effects
+
+Animated Glow
+
+Subtle 3D Perspective
+
+Create Reward Details Panel.
+
+Prepare reusable detail cards showing
+
+Reward Description
+
+Required Coins
+
+Eligibility Placeholder
+
+Estimated Processing Time
+
+Future Terms Placeholder
+
+Future Instructions Placeholder
+
+Reward Preview Image Placeholder
+
+Create Redeem Workflow section.
+
+Display a beautiful step timeline.
+
+Step 1
+
+Select Reward
+
+↓
+
+Step 2
+
+Review Eligibility
+
+↓
+
+Step 3
+
+Confirm Redeem
+
+↓
+
+Step 4
+
+Pending Review
+
+↓
+
+Step 5
+
+Administrator Verification
+
+↓
+
+Step 6
+
+Reward Completed
+
+Use premium animated timeline cards.
+
+Prepare Redeem Confirmation Dialog.
+
+Display
+
+Selected Reward
+
+Required Coins
+
+Current Balance
+
+Confirmation Message
+
+Future Terms Acceptance
+
+Future Submit Button Placeholder
+
+Future Cancel Button
+
+Do not implement redeem submission logic.
+
+Create Pending Redeem section.
+
+Display reusable redeem request cards.
+
+Request ID Placeholder
+
+Reward Placeholder
+
+Requested Date Placeholder
+
+Coins Used Placeholder
+
+Status Badge
+
+Estimated Completion Placeholder
+
+Administrator Notes Placeholder
+
+Skeleton loading.
+
+Create Redeem History section.
+
+Prepare responsive transaction table.
+
+Columns
+
+Redeem ID
+
+Reward
+
+Coins
+
+Status
+
+Requested Date
+
+Completed Date
+
+Future View Details
+
+Future Filter
+
+Future Search
+
+Do not generate fake redemption history.
+
+Use placeholders and skeleton loaders.
+
+Create Reward Eligibility section.
+
+Display premium information cards.
+
+Minimum Coins Placeholder
+
+Account Verification Placeholder
+
+Future Email Verification
+
+Future Identity Verification
+
+Future Security Check
+
+Future Device Validation
+
+Display beautiful eligibility badges.
+
+Create Featured Rewards section.
+
+Display premium highlighted reward cards.
+
+Recommended Reward Placeholder
+
+Most Popular Reward Placeholder
+
+Best Value Reward Placeholder
+
+Limited Time Reward Placeholder
+
+Future Seasonal Reward Placeholder
+
+Create Reward Recommendations.
+
+Future recommendation engine placeholders.
+
+Recommended based on balance.
+
+Recommended based on history.
+
+Recommended based on achievements.
+
+Display beautiful suggestion cards.
+
+Create Reward FAQ Preview.
+
+Display common redemption questions.
+
+Link to complete FAQ page.
+
+Create Support Preview.
+
+Redeem Support Placeholder.
+
+Future Live Chat Placeholder.
+
+Ticket System Shortcut.
+
+Contact Support Shortcut.
+
+Create loading states.
+
+Reward Grid Skeleton.
+
+Reward Card Skeleton.
+
+Redeem History Skeleton.
+
+Statistics Skeleton.
+
+Dialog Loading.
+
+Create reusable empty states.
+
+No Rewards Available.
+
+No Redeem Requests.
+
+No History.
+
+No Recommendations.
+
+Create reusable error states.
+
+Rewards unavailable placeholder.
+
+Future network placeholder.
+
+Maintenance placeholder.
+
+Desktop layout must display a premium financial application experience with floating glass cards, responsive dashboard grids and adaptive widgets.
+
+Tablet layout should automatically reorganize content.
+
+Mobile devices must display elegant stacked responsive cards while preserving all functionality.
+
+Continue using
+
+Premium White Theme
+
+Glassmorphism
+
+Animated Aurora Background
+
+Animated Mesh Gradient
+
+Moving Stars
+
+Occasional Shooting Stars
+
+Floating Ambient Particles
+
+Soft Lighting
+
+Subtle 3D Glass Depth
+
+GPU Accelerated Motion
+
+Mouse Parallax
+
+Hover Lift
+
+Perspective Effects
+
+Floating Reflections
+
+Smooth Page Transitions
+
+Maintain complete accessibility.
+
+Support keyboard navigation.
+
+Semantic HTML.
+
+Visible focus indicators.
+
+Reduced motion mode.
+
+Screen reader compatibility.
+
+Large touch targets.
+
+Prepare future backend integration for
+
+Reward Catalog API
+
+Redeem API
+
+Eligibility API
+
+Wallet API
+
+History API
+
+Notification API
+
+Administrator Review API
+
+Do not implement backend logic.
+
+Do not implement coin deduction.
+
+Do not implement payment processing.
+
+Do not implement administrator approval.
+
+Do not implement notifications.
+
+Do not implement advertisement logic.
+
+Only build the complete production-ready Rewards & Redeem Center UI, reusable redemption architecture, reusable reward components, responsive layouts and future API integration structure while preserving every previous architectural and visual rule.
+
+this all are total overall 10 prompt please complete fully

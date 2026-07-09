@@ -318,3 +318,31 @@ Stage Summary:
 - Single `/` route with Zustand-driven view state; lazy-loaded feature views for code splitting
 - `bun run lint` passes clean (0 errors, 0 warnings)
 - App is interactive end-to-end: home -> auth -> dashboard -> all modules -> CEO restricted access
+
+---
+Task ID: 9-prompt1-completion
+Agent: main
+Task: Fill Prompt 1 (Foundation) scaffold gaps identified during verification
+
+Work Log:
+- Honest verification of Prompts 1-10: Prompts 2-10 functionally complete & browser-verified; Prompt 1 had scaffold gaps
+- Created .env.example with development/production/testing placeholders (APP, DATABASE, AUTH/JWT, CEO, API versioning, security, encryption, logging, storage, ads)
+- Created src/constants/index.ts: APP_CONFIG, API_CONFIG, AUTH_CONFIG, COIN_CONFIG, LIMITS, STORAGE_KEYS, Z_INDEX, ROLES, NOTIFICATION_TYPES, MISSION_DIFFICULTY, ACHIEVEMENT_RARITY, REWARD_AVAILABILITY
+- Created src/utils/index.ts: cn, formatNumber, coinsToCurrency, truncate, uid, timeAgo, timeGreeting, clamp, percent, sleep, copyToClipboard, isValidEmail, passwordStrength, initials
+- Created src/providers/index.tsx: AppProviders composing ThemeProvider + ViewTransitionProvider
+- Created src/layouts/index.ts: layout barrel (AppShell)
+- Created src/services/index.ts: service layer stubs (auth, wallet, reward, earn, referral, notification, leaderboard, achievement, support, user, ceo) prepared for future API integration
+- Created src/themes/index.ts: theme palette JS mirror + chartPalette + chartGradients
+- Created src/assets/index.ts, src/animations/index.ts, src/icons/index.ts, src/widgets/index.ts, src/contexts/index.ts, src/api/index.ts, src/styles/index.ts (barrel exports)
+- Created shared/ folder: shared/types/index.ts (User, Wallet, Transaction, Reward, RedeemRequest, ApiResponse, Paginated), shared/constants/index.ts, shared/index.ts
+- Created backend/ modular scaffold (15 modules: config, controllers, database, middlewares, models, repositories, routes, schemas, security, services, types, utils, validators, jobs, logs, storage) each with index.ts stub + backend/README.md documenting module responsibilities, API versioning, response envelope
+- Created documentation/ARCHITECTURE.md, configuration/README.md, scripts/README.md
+- Updated src/app/layout.tsx to use AppProviders (centralized provider composition)
+- Removed src/pages/ folder (conflicted with Next.js App Router — interpreted as legacy Pages Router, caused "skipping / (conflict)" 500 error)
+- Restarted dev server with clean .next cache after structural changes
+- Verified: bun run lint passes (0 errors), home renders, login→dashboard flow works, zero console errors
+
+Stage Summary:
+- Prompt 1 foundation scaffold now complete: .env.example, centralized constants/utils/providers/layouts/services/themes, shared types, full backend modular scaffold (documented), all frontend src subfolders per spec
+- All 10 prompts (1-10) now complete
+- Lint: 0 errors; Dev server: 200; Browser-verified: home + auth + dashboard render with zero errors
