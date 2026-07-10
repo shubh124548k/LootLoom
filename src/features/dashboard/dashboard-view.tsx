@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Area,
@@ -78,6 +78,7 @@ import {
   useUserStore,
   useWalletStore,
 } from "@/stores";
+import { useDashboardData } from "@/hooks/use-dashboard-data";
 import type { ViewId } from "@/types";
 
 /* ============================================================
@@ -1289,6 +1290,35 @@ function SupportCenter() {
 
 export function DashboardView() {
   const navigate = useNavigationStore((s) => s.navigate);
+  const { data, loading, refetch } = useDashboardData();
+  const { setWallet } = useWalletStore();
+  const { setItems: setActivities } = useActivityStore();
+
+  // Sync dashboard API data into stores so all sub-components show real values
+  useEffect(() => {
+    if (data) {
+      setWallet({
+        availableCoins: data.wallet.coinBalance,
+        lifetimeEarned: data.wallet.totalEarned,
+        lifetimeRedeemed: data.wallet.totalSpent,
+        todayEarnings: data.stats.todayEarnings,
+        weeklyEarnings: data.stats.weeklyEarnings,
+        monthlyEarnings: data.stats.monthlyEarnings,
+      });
+      // Map transactions → activity items for the timeline
+      setActivities(
+        data.recentTransactions.map((t) => ({
+          id: t.id,
+          type: t.type.toLowerCase().includes("redeem") ? "redeemed" : "earned",
+          title: t.description || "Transaction",
+          description: t.description || "",
+          amount: t.amount,
+          time: new Date(t.createdAt).toLocaleString(),
+        }))
+      );
+    }
+  }, [data, setWallet, setActivities]);
+
   const today = useMemo(
     () =>
       new Date().toLocaleDateString("en-US", {
@@ -1313,8 +1343,8 @@ export function DashboardView() {
             <LootButton
               variant="ghost"
               size="sm"
-              leftIcon={<RefreshCw size={14} />}
-              onClick={() => navigate("dashboard")}
+              leftIcon={<RefreshCw size={14} className={loading ? "animate-spin" : ""} />}
+              onClick={refetch}
             >
               Refresh
             </LootButton>
@@ -1322,28 +1352,36 @@ export function DashboardView() {
         }
       />
 
-      <motion.div
-        variants={staggerContainer}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-30px" }}
-        className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5"
-      >
-        <WelcomeHero />
-        <QuickStatistics />
-        <QuickActions />
-        <WalletPreview />
-        <RewardCenterPreview />
-        <MissionCenter />
-        <DailyBonus />
-        <AchievementCenter />
-        <LeaderboardPreview />
-        <ReferralCenter />
-        <RecentActivityTimeline />
-        <NotificationPreview />
-        <SecurityStatus />
-        <SupportCenter />
-      </motion.div>
+      {loading && !data ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-48 rounded-2xl glass-2 shimmer" />
+          ))}
+        </div>
+      ) : (
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-30px" }}
+          className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5"
+        >
+          <WelcomeHero />
+          <QuickStatistics />
+          <QuickActions />
+          <WalletPreview />
+          <RewardCenterPreview />
+          <MissionCenter />
+          <DailyBonus />
+          <AchievementCenter />
+          <LeaderboardPreview />
+          <ReferralCenter />
+          <RecentActivityTimeline />
+          <NotificationPreview />
+          <SecurityStatus />
+          <SupportCenter />
+        </motion.div>
+      )}
     </PageContainer>
   );
 }

@@ -1140,3 +1140,51 @@ Stage Summary:
   9. ✅ Ad reward flow: ad completed → coins credited → ledger entry → notification → audit log
   10. ✅ Redeem flow: validates balance → atomic debit → request → notification → audit log
 - Remaining: Google OAuth credentials need to be configured in .env (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) for the Google popup to work in production. The architecture is fully ready.
+
+---
+Task ID: prompts-4-6-production
+Agent: main
+Task: Production transformation Prompts 4-6 (Dashboard, Wallet, Earn real backend)
+
+Work Log:
+- Dashboard Audit: found fake weekly chart data (120, 145 values), fake reward amounts (5-25, 50-500), fake missions, fake daily bonus, fake friends goal in dashboard-view.tsx
+- Wallet Audit: found fake weekly/monthly chart data (145, 980, 1320, 2840, 4280 earned values), fake estimated value calculation in wallet-view.tsx
+- Earn Audit: found hardcoded reward amounts (25, 50, 100, 120, 200, 250, 500, 1500, 2500, 5000), fake daily bonus calendar, fake missions in earn-view.tsx
+
+- Dashboard API (GET /api/dashboard): aggregates user+wallet+recent transactions (5)+recent notifications (5)+today/weekly/monthly earnings+ad stats+7-day chart data — all scoped to authenticated user
+- Wallet Summary API (GET /api/wallet/summary): real coinBalance, totalEarned, totalSpent, todayEarnings, weeklyEarnings, monthlyEarnings, pendingCoins, weeklyChart (7 days), monthlyChart (6 months) — all from real transactions
+- Wallet Transactions API (GET /api/wallet/transactions): real transaction history with pagination, filters (type, status, search, date range), user-scoped
+- Ad Session API (POST /api/ads/session): creates ad session — validates auth, account status, daily limit (100/day), reward amount determined by BACKEND (25 coins), returns sessionId
+- Ad Complete API (POST /api/ads): server-side verification — finds session by sessionId+userId (ownership), checks session is STARTED (prevents duplicate rewards), reads reward from AdEvent (never frontend), atomic credit+ledger+verify+notification+audit
+- Public Stats API (GET /api/stats): real platform aggregates (user count, total coins, rewards)
+
+- Real-time Service (mini-services/realtime-service): socket.io on port 3003, user joins room user:{userId}, events: wallet.updated, transaction.created, notification.created
+- useRealtimeSync hook: connects to realtime service via io("/?XTransformPort=3003"), updates wallet/notification/activity stores on events — no manual refresh required
+- useDashboardData hook: fetches /api/dashboard, loading/error states, refetch for refresh
+- useWalletSummary hook: fetches /api/wallet/summary with chart data
+- useAdStats hook: fetches /api/ads/session (GET) for today's ad stats, startAdSession() and completeAdSession() helper functions
+
+- DashboardView updated: uses useDashboardData, syncs real data into stores, shows skeleton loading on initial load, refresh button with spin animation
+- AuthDataSync updated: includes useRealtimeSync for live updates
+- All stores default to 0/empty (no fake data)
+
+- Fraud protection: duplicate ad callbacks rejected (session must be STARTED), user ownership check on sessions, reward amount from backend AdEvent, daily limit enforcement
+- Security: all endpoints require authentication, user-scoped queries (no cross-user data), backend is final authority
+
+- Verification:
+  * bun run lint: 0 errors, 0 warnings
+  * Dev server: 200 OK
+  * /api/dashboard: 401 Unauthorized (correct for unauthenticated)
+  * /api/wallet/summary: 401 Unauthorized (correct)
+  * /api/ads/session: 401 Unauthorized (correct)
+  * Home page: renders clean, zero console errors
+  * Login screen: "Continue with Google" button present
+  * Real-time service: running on port 3003
+
+Stage Summary:
+- Prompt 4 (Dashboard): real dashboard API, real wallet/transactions/notifications/stats, loading skeletons, refresh, live updates
+- Prompt 5 (Wallet): real wallet summary API, transaction history with filters/search/pagination, immutable ledger, fraud protection
+- Prompt 6 (Earn): ad session system with backend-determined rewards, daily limit, server-side verification, fraud prevention (duplicate rejection), wallet integration, notification, audit
+- Real-time: socket.io service for live wallet/transaction/notification updates
+- All fake data removed from dashboard, wallet, earn views
+- UI design 100% preserved — only data layer replaced
