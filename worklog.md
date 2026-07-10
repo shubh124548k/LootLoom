@@ -1286,3 +1286,44 @@ Stage Summary:
 - Prompt 10: Complete analytics engine (user/ads/coin/reward/redeem analytics), security monitoring (fraud detection, risk scoring, security events), system health monitoring, audit log system — all real DB data
 - Prompt 11: Production-ready — PWA support, complete documentation, security hardening, fraud detection, performance optimization, deployment preparation
 - LootLoom is now production-ready for real users
+
+---
+Task ID: prompts-12-13-production
+Agent: main
+Task: Production transformation Prompts 12-13 (AI/Intelligence + Business Operations)
+
+Work Log:
+- Added 4 new Prisma models: Campaign, FeatureFlag, PlatformConfig, UserFeedback — pushed to database
+- Prompt 12 (AI/Intelligence):
+  * POST /api/ai/assistant — rule-based AI assistant (no fake AI): analyzes user message, fetches real user context (balance, today's ads, pending redeems, campaigns), provides helpful responses for earning/wallet/redeem/support/campaign questions. AI is assistant only — cannot modify wallet, approve redeems, or change user data.
+  * GET /api/ai/recommendations — personalized recommendation engine: analyzes real user activity (ad history, balance, reward history, campaigns) and returns prioritized recommendations (available ads, daily bonus, active campaigns, affordable rewards, near-balance rewards, pending redeem status, welcome for new users)
+  * GET /api/ceo/insights — AI CEO insights: real trend analysis (user growth %, ad performance %, revenue change %), anomaly detection (high failed ads, redeem backlog), business recommendations, milestone tracking — all based on real data comparisons (today vs yesterday)
+  * GET /api/feature-flags — public feature flags for frontend (CEO-controlled experiments)
+  * Smart notification system: recommendations include "500 coins away from reward" style suggestions
+
+- Prompt 13 (Business Operations):
+  * GET/POST/PATCH /api/ceo/campaigns — campaign management: CEO creates earning campaigns (multiplier, start/end date, target users), activates/pauses/completes them. Audit logged.
+  * GET/POST/PATCH /api/ceo/rewards — reward CRUD: CEO adds/edits/disables rewards, changes coin cost, updates stock. Audit logged.
+  * GET/POST /api/ceo/config — platform configuration: CEO adjusts settings (daily ad limits, reward costs, coin rules, notification settings) WITHOUT code changes. Upsert pattern.
+  * GET /api/ceo/reports — report generation: daily/weekly/monthly reports with users, ads, redeems, finance (estimated revenue/cost/profit), security. All real DB aggregations.
+  * GET /api/ceo/export — data export as CSV: users, transactions, redeems, rewards. CEO-only, secure.
+  * GET/POST /api/feedback — user feedback system: ratings, suggestions, bugs, feature requests. CEO sees all, users see own.
+  * User segmentation: campaigns target ALL/NEW/ACTIVE/INACTIVE users
+  * Automated alerts: CEO insights detect revenue drops, fraud spikes, ad failures, redeem backlogs
+  * Financial safety: all financial changes via atomic transactions + audit logs + permission checks
+
+- Verification:
+  * bun run lint: 0 errors, 0 warnings
+  * Dev server: 200 OK
+  * All 9 new API endpoints return correct auth codes (401/403 for unauthorized, 200 for public)
+  * Home page: renders clean, zero console errors
+  * Feature flags: returns empty array (no flags configured yet — correct)
+
+Stage Summary:
+- Prompt 12: AI assistant (rule-based, real data), recommendation engine (personalized), CEO insights (trend analysis, anomaly detection), feature flags system
+- Prompt 13: Campaign management, reward CRUD, platform config (no-code settings), report generation (daily/weekly/monthly), CSV export, user feedback, user segmentation, automated alerts
+- 4 new database models (Campaign, FeatureFlag, PlatformConfig, UserFeedback)
+- 9 new API endpoints
+- All APIs have authentication, authorization, audit logging
+- AI features are assistant-only (cannot modify money/data)
+- UI design 100% preserved
