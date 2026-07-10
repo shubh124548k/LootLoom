@@ -48,6 +48,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Ad session failed", code: "SESSION_FAILED" }, { status: 400 });
   }
 
+  // Fraud check: rapid ad completion (ad created less than 5 seconds ago = likely bot)
+  const sessionAge = Date.now() - adEvent.createdAt.getTime();
+  if (sessionAge < 5000) {
+    await db.adEvent.update({ where: { id: adEvent.id }, data: { status: "FAILED" } });
+    return NextResponse.json({ success: false, message: "Ad completed too quickly. Please watch the full ad.", code: "FRAUD_TOO_FAST" }, { status: 422 });
+  }
+
+  // Fraud check: velocity — more than 10 ads in the last minute
+  const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+  const recentVerifiedCount = await db.adEvent.count({
+    where: { userId, status: "VERIFIED", createdAt: { gte: oneMinuteAgo } },
+  });
+  if (recentVerifiedCount >= 10) {
+    await db.adEvent.update({ where: { id: adEvent.id }, data: { status: "FAILED" } });
+    return NextResponse.json({ success: false, message: "Ad velocity limit reached. Please slow down.", code: "FRAUD_VELOCITY" }, { status: 429 });
+  }
+
   // Get user's wallet
   const wallet = await db.wallet.findUnique({ where: { userId } });
   if (!wallet) {

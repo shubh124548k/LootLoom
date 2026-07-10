@@ -34,8 +34,10 @@ export const metadata: Metadata = {
     "daily bonus",
   ],
   authors: [{ name: "LootLoom" }],
+  manifest: "/manifest.json",
   icons: {
     icon: "/logo.svg",
+    apple: "/logo.svg",
   },
   openGraph: {
     title: "LootLoom — Premium Reward Platform",
