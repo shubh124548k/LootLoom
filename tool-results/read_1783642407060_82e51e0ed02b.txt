@@ -1,0 +1,534 @@
+     1→     1→# LootLoom — Project Worklog
+     2→     2→
+     3→     3→This file tracks all work completed across prompts and subagents.
+     4→     4→Each section starts with `---` and follows the standard template.
+     5→     5→
+     6→     6→---
+     7→     7→Task ID: 0-foundation
+     8→     8→Agent: main
+     9→     9→Task: Initialize LootLoom full-stack foundation (Prompts 0–9 adapted to Next.js 16 single-route SPA)
+    10→    10→
+    11→    11→Work Log:
+    12→    12→- Read uploaded prompt file (Prompts 0–9 covering LootLoom platform spec)
+    13→    13→- Analyzed existing project: Next.js 16 + shadcn/ui, single `/` route constraint
+    14→    14→- Established design token system in globals.css (Premium White theme: electric blue, cyan, purple, navy, gold; glassmorphism levels 1-4 + nav; aurora/mesh/star/particle background; shimmer/glow/ring animations)
+    15→    15→- Created type system (src/types/index.ts): ViewId, NavItem, PageMeta, StatConfig, NotificationItem, ActivityItem, MissionItem, RewardItem, TransactionItem, LeaderboardUser, AchievementItem
+    16→    16→- Created design tokens JS mirror (src/config/design-tokens.ts)
+    17→    17→- Created navigation config (src/config/navigation.ts): 16 sidebar items incl. CEO Dashboard with lock, PAGE_META, route group classifications
+    18→    18→- Created animation presets (src/lib/animations.ts): pageTransition, fade, slideUp/Down, scaleIn, floating, hoverLift, cardReveal, staggerContainer, drawerLeft, modalPop, overlayFade, notificationIn, sidebarItem, sidebarExpand, successCheck, progressFill, loadingSpin, pulseGlow, auroraDrift, twinkle
+    19→    19→- Created Zustand stores (src/stores/index.ts): navigation, auth, user, ui, wallet, notification, activity, appLifecycle
+    20→    20→- Built core components (src/components/lootloom/):
+    21→    21→  - background-engine (aurora + mesh + stars + shooting star + particles)
+    22→    22→  - glass-card (4 levels + nav, hover/sheen/reflect/glow)
+    23→    23→  - loot-button (10 variants: primary/electric/cyan/purple/gold/emerald/outline/ghost/glass/destructive × 4 sizes)
+    24→    24→  - logo (animated hexagon coin mark)
+    25→    25→  - icon-badge (accent-colored icon container)
+    26→    26→  - animated-counter (in-view number animation)
+    27→    27→  - progress-ring (gradient circular progress)
+    28→    28→  - stat-card (glass stat card with counter + trend)
+    29→    29→  - status-badge (pill with pulsing dot)
+    30→    30→  - widget-card (section widget with header)
+    31→    31→  - page-container + page-header + section-header + grid
+    32→    32→  - states (PageLoader/GlassLoader/SkeletonCard/SkeletonRow/DashboardSkeleton/EmptyState/ErrorState)
+    33→    33→  - restricted-access (premium CEO lockout screen)
+    34→    34→  - sidebar (floating glass, collapse + mobile drawer, grouped nav, pro upsell)
+    35→    35→  - header (logo mobile, search modal Ctrl+K, wallet shortcut, notification center, theme controller, profile menu, breadcrumb)
+    36→    36→  - app-shell (composes sidebar+header+main with --sidebar-w CSS var)
+    37→    37→  - theme-provider (light/dark on <html>)
+    38→    38→  - view-transition (non-blocking view change tracker)
+    39→    39→- Updated root layout with Geist + Geist_Mono + Sora fonts and providers
+    40→    40→
+    41→    41→Stage Summary:
+    42→    42→- Foundation + design system + app shell + core components complete
+    43→    43→- Single `/` route SPA architecture with Zustand navigation established
+    44→    44→- CEO Dashboard shows lock icon in sidebar; selecting it shows RestrictedAccess screen
+    45→    45→- Ready to build feature views (home, auth, dashboard, wallet, earn, rewards, placeholder pages)
+    46→    46→
+    47→    47→---
+    48→    48→Task ID: 4-wallet
+    49→    49→Agent: full-stack-developer
+    50→    50→Task: Build LootLoom Wallet module
+    51→    51→
+    52→    52→Work Log:
+    53→    53→- Read worklog.md and explored LootLoom architecture (design tokens, lootloom component library, Zustand stores, animation presets, types)
+    54→    54→- Confirmed WalletView is lazy-imported as named export in app-router.tsx
+    55→    55→- Inspected reusable components: PageContainer, PageHeader, WidgetCard, GlassCard, LootButton, IconBadge, AnimatedCounter, ProgressRing, StatCard, StatusBadge, SkeletonRow, Grid
+    56→    56→- Verified recharts@2.15.4, framer-motion@12, lucide-react@0.525, zustand@5 available; design tokens + glass/shimmer classes in globals.css
+    57→    57→- Created src/features/wallet/wallet-view.tsx with "use client" first line and named export WalletView
+    58→    58→- Built internal helpers: SegmentedTabs (animated layoutId pill), MiniStatTile (icon+counter+trend)
+    59→    59→- Built all 12 sections:
+    60→    60→  1. Wallet Overview — gradient hero with floating coin icons, huge gradient AnimatedCounter, ProgressRing for XP, 4 mini-stat tiles, Active status badge, membership level
+    61→    61→  2. Quick Wallet Actions — 7 cards (Earn, Redeem, History, Referral, Daily Bonus, Support, Withdraw-locked) with IconBadge + hover lift + navigate()
+    62→    62→  3. Wallet Statistics — SegmentedTabs Today/Weekly/Monthly + recharts BarChart (electric/purple gradients), 3 StatCards, Streak + Success Rate ProgressRings
+    63→    63→  4. Recent Transactions — Filter/Search/Export placeholder buttons, column header row (ID, Date, Type, Amount, Status, Description), 5 skeleton rows (no fake data), "View all" footer → history
+    64→    64→  5. Wallet Timeline — vertical gradient line + 4 skeleton event cards with type icons
+    65→    65→  6. Coin Analytics — SegmentedTabs Daily/Weekly/Monthly/Yearly + AreaChart (electric/purple gradients) + PieChart (Earned/Redeemed/Bonus) with center label
+    66→    66→  7. Reward Progress — large ProgressRing (12840/20000) + 4 milestone cards each with mini ProgressRing + animated bar + Unlocked/Locked badge
+    67→    67→  8. Wallet Insights — 4 tip tiles (boost, recommended reward, saving, streak) with CTAs
+    68→    68→  9. Referral Earnings — 3 stat tiles + 3-row SkeletonRow history + Invite Friends button → referral
+    69→    69→  10. Wallet Security — 6 security cards (verification, identity, 2FA, devices, session, password) with badges + lock icons
+    70→    70→  11. Payment Information — 5 disabled "Coming soon" cards (UPI, Bank, PayPal, Crypto, Gift Cards) with shimmer mocks
+    71→    71→  12. Wallet Settings — currency selector placeholder, privacy card, 4 notification toggles with spring animation
+    72→    72→- Wired PageHeader actions: Earn More (electric) → earn, Redeem (glass) → redeem
+    73→    73→- Used staggerContainer for section orchestration and cardReveal for individual cards
+    74→    74→- Ran eslint on the new file — zero errors (remaining 3 lint errors are in pre-existing shared files header.tsx/view-transition.tsx, out of scope)
+    75→    75→- Verified dev server compiles wallet module; dev.log errors are for other not-yet-built feature views (rewards/earn/pages/system), not wallet
+    76→    76→- Wrote agent work record to /agent-ctx/4-wallet-full-stack-developer.md
+    77→    77→
+    78→    78→Stage Summary:
+    79→    79→- src/features/wallet/wallet-view.tsx created — named WalletView export, "use client" first line
+    80→    80→- 12 premium glass sections ready for backend integration; no fake transaction data (skeletons used for future backend data)
+    81→    81→- All navigations wired via useNavigationStore.navigate(); recharts BarChart/AreaChart/PieChart with electric/cyan/purple/gold gradient fills
+    82→    82→- File passes ESLint cleanly; ready to be lazy-loaded by existing AppRouter
+    83→    83→
+    84→    84→---
+    85→    85→Task ID: 2-auth
+    86→    86→Agent: full-stack-developer
+    87→    87→Task: Build LootLoom Auth views (login, register, forgot, reset, verify, success/failed, loading, session-expired, unauthorized)
+    88→    88→
+    89→    89→Work Log:
+    90→    90→- Read worklog.md to understand established architecture (Premium White theme, glassmorphism, Zustand navigation store, single-route SPA, design tokens in globals.css)
+    91→    91→- Inspected existing infrastructure: GlassCard, LootButton, Logo, IconBadge, StatusBadge, AnimatedCounter, animations library, navigation/auth stores, ViewId type system
+    92→    92→- Created `/home/z/my-project/src/features/auth/auth-view.tsx` (single file, named export `AuthView`, first line `"use client"`)
+    93→    93→- Built reusable internal components (not exported): AuthInput, PasswordInput, PasswordStrengthMeter, AuthHeader, Divider, SocialPlaceholders, PremiumCheckbox (TermsCheckbox + RememberMe), AuthFooter, OtpInput (6-box with paste/arrow-key nav), AuthShell (split-layout wrapper with floating Logo + staggered GlassCard), AuthPreview (animated LEFT side with 5 floating glass widgets: balance, daily bonus, rewards, streak, notification toast + mesh backdrop + headline overlay)
+    94→    94→- Implemented 10 screens keyed off `useNavigationStore().current`:
+    95→    95→  1. login — identifier + password (eye toggle) + remember + forgot link + electric submit + social placeholders + register footer; on submit calls `useAuthStore.login()` then `navigate("dashboard")`
+    96→    96→  2. register — full name, username, email, password (strength meter), confirm (match validation), terms checkbox, social placeholders, sign-in footer; on submit `navigate("verify-email")`
+    97→    97→  3. forgot-password — email input → success state with "Continue to Reset" → reset-password
+    98→    98→  4. reset-password — new password (strength) + confirm (match) → login
+    99→    99→  5. verify-email — 6-box OTP input with progress bar, resend countdown (30s), change-email link; on submit → verify-success
+   100→   100→  6. verify-success — animated CheckCircle (successCheck variant + pulsing glow halo) + "Continue to Dashboard" (calls login then navigate dashboard)
+   101→   101→  7. verify-failed — animated XCircle (rose) + "Try Again" → verify-email + resend code link
+   102→   102→  8. auth-loading — full-screen premium loader: animated Logo with dual counter-rotating rings, floating particles (18), "Securing your session…" text, progress dots; auto-redirects to dashboard after 2s via useEffect
+   103→   103→  9. session-expired — LockKeyhole icon (gold), "session expired" copy, "Sign In Again" (logout → login)
+   104→   104→  10. unauthorized — ShieldAlert icon (rose), "Access Denied" + 403 badge, "Return Home" → home
+   105→   105→- Client-side validation: required, email format, password length/match, terms acceptance; inline error messages with AnimatePresence; submit disabled while loading; LootButton shows built-in spinner
+   106→   106→- Premium inputs use exact required class: `h-12 rounded-xl glass-2 ring-1 ring-border px-4 text-sm focus:ring-electric/40 focus:ring-2 outline-none transition-all w-full`
+   107→   107→- Split layout: `min-h-screen flex items-center` + `lg:grid-cols-2`; LEFT preview hidden on mobile (`hidden lg:block h-[640px]`); RIGHT form `max-w-md mx-auto`
+   108→   108→- Top-left floating Logo button (clickable → home) with glass-2 ring styling
+   109→   109→- `useSimulatedApi` hook provides local loading state with setTimeout 1200ms
+   110→   110→- AuthPreview uses `perspective-1000` utility, `floating` variant with staggered delays, mesh-bg + aurora drift backdrops, AnimatedCounter for live numbers
+   111→   111→- AnimatePresence mode="wait" wraps the screen switch for premium page transitions
+   112→   112→- Lint clean (0 errors in new file); remaining lint errors are pre-existing in header.tsx and view-transition.tsx from prior tasks
+   113→   113→
+   114→   114→Stage Summary:
+   115→   115→- Single file `src/features/auth/auth-view.tsx` (named export `AuthView`, `"use client"` first line) — no shared files modified
+   116→   116→- All 10 auth screens wired to `useNavigationStore` and `useAuthStore`; matches the lazy-import contract in `app-router.tsx` (`m.AuthView`)
+   117→   117→- Reusable internal components (AuthInput, PasswordInput, OtpInput, PasswordStrengthMeter, AuthHeader, AuthFooter, Divider, SocialPlaceholders, PremiumCheckbox, AuthPreview) defined in-file per spec
+   118→   118→- Premium WHITE glassmorphism design with electric/cyan/purple brand accents, split layout on lg+, floating animated preview widgets, password strength meter, OTP with paste support, simulated API loading states
+   119→   119→- Ready for downstream agents to build remaining feature views (dashboard, wallet, earn, rewards, pages)
+   120→   120→
+   121→   121→---
+   122→   122→Task ID: 3-dashboard
+   123→   123→Agent: full-stack-developer
+   124→   124→Task: Build LootLoom Dashboard view
+   125→   125→
+   126→   126→Work Log:
+   127→   127→- Read worklog.md to understand architecture (Next.js 16 single-route SPA, Zustand stores, lootloom component library, framer-motion + recharts available)
+   128→   128→- Reviewed lootloom components: PageContainer/PageHeader/Grid, WidgetCard, StatCard, GlassCard, IconBadge, AnimatedCounter, ProgressRing, StatusBadge, LootButton, SkeletonRow, EmptyState, Logo
+   129→   129→- Reviewed stores: navigation (navigate), user (fullName, level, xp, xpToNext, rank, dailyStreak, referralCode), wallet (availableCoins, pendingCoins, lifetimeEarned, todayEarnings), notification (items, unreadCount), activity (items)
+   130→   130→- Reviewed animations: cardReveal, staggerContainer, hoverLift, floating, floatingSmall
+   131→   131→- Created /home/z/my-project/src/features/dashboard/dashboard-view.tsx (single new file, no shared files modified)
+   132→   132→- Built 14 sections inside PageContainer with PageHeader (Refresh ghost button + date pill):
+   133→   133→  1. WelcomeHero — gradient avatar initials, time-based greeting, level/streak/rank badges, large AnimatedCounter coin balance, wallet mini summary, XP progress bar (gradient fill), mini BarChart (weekly earnings), floating gradient accents, Start Earning / My Wallet CTAs
+   134→   134→  2. QuickStatistics — Grid cols={4} of 8 StatCards (Current Coins, Today's Earnings, Pending Rewards, Completed Redeems, Referral Count, Achievement Progress, Unread Notifications, Current Level) with varied accents + trend chips, staggered reveal
+   135→   135→  3. QuickActions — Grid cols="auto" of 9 floating glass action tiles (Start Earning, Wallet, Redeem Rewards, Referral, Daily Bonus, Missions, Leaderboard, Support, Profile) each with IconBadge + hover lift + navigate()
+   136→   136→  4. WalletPreview — WidgetCard with Available/Pending AnimatedCounters, AreaChart (electric gradient), 3 SkeletonRows for future transactions, View Wallet + Redeem footer
+   137→   137→  5. RewardCenterPreview — WidgetCard with 4 reward category glass tiles (Rewarded Ads, Offerwall, Daily Bonus, Special Events) + Explore Rewards
+   138→   138→  6. MissionCenter — WidgetCard with 3 mission cards (ProgressRing, reward, difficulty badge, estimated time) + View all missions
+   139→   139→  7. DailyBonus — WidgetCard with 7-day calendar row (claimed/today/unclaimed states with gradient today highlight), tomorrow preview, streak progress bar, Claim button
+   140→   140→  8. AchievementCenter — WidgetCard with 6 achievement tiles (ProgressRing + rarity badges common/rare/epic/legendary) + XP progress bar + View all
+   141→   141→  9. LeaderboardPreview — WidgetCard with top 3 podium (gold/silver/bronze gradient avatars + Crown for #1), current user ranking highlight card (electric glow) + View all
+   142→   142→  10. ReferralCenter — WidgetCard with styled referral code box + Copy button (clipboard + copied state), PieChart progress, friends/earnings stats, Share button
+   143→   143→  11. RecentActivityTimeline — WidgetCard using useActivityStore().items, vertical timeline with gradient line, per-type IconBadge, +/- amount colors, timestamps, View history
+   144→   144→  12. NotificationPreview — WidgetCard using useNotificationStore().items (top 3 unread), per-type accent, pulsing unread dot, scrollable max-h-72, View all
+   145→   145→  13. SecurityStatus — WidgetCard with 5 rows (Account Active, Email Pending, Password Strong, Session Protected, Device Verification Coming soon) using emerald-accented shield icons + StatusBadge variants
+   146→   146→  14. SupportCenter — WidgetCard with 4 tiles (Open Ticket, Recent Ticket, Help Center, FAQ) + New Ticket CTA
+   147→   147→- Used responsive dashboard grid: grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 with col-span utilities (Welcome/Stats/QuickActions span 4 on xl, all other widgets span 2 on xl)
+   148→   148→- Wired all navigation calls to useNavigationStore().navigate() with proper ViewIds (earn, wallet, redeem, referral, daily-bonus, missions, leaderboard, support, profile, notifications, achievements, rewards, history, dashboard)
+   149→   149→- All data sourced from existing stores or hardcoded placeholders — no real APIs, SkeletonRow used for future "Recent Transactions" as instructed
+   150→   150→- Verified: eslint on dashboard-view.tsx passes with 0 errors, tsc --noEmit shows no dashboard-related errors (pre-existing errors are in header.tsx/view-transition.tsx from prior task and missing sibling views from other agents)
+   151→   151→
+   152→   152→Stage Summary:
+   153→   153→- DashboardView component (named export, "use client") delivered at /home/z/my-project/src/features/dashboard/dashboard-view.tsx
+   154→   154→- Premium white glassmorphism theme with floating gradient accents, staggered cardReveal entrance animations, hover lift on all interactive glass tiles
+   155→   155→- 14 sections covering welcome hero, 8 stat cards, 9 quick actions, wallet/rewards/missions/daily-bonus/achievements/leaderboard/referral/activity/notifications/security/support previews
+   156→   156→- Recharts used for AreaChart (wallet), BarChart (welcome weekly), PieChart (referral progress)
+   157→   157→- Already wired into app-router via lazy(() => import("@/features/dashboard/dashboard-view").then(m => ({ default: m.DashboardView }))) — no shared files modified
+   158→   158→- Fully responsive: mobile stacked → lg 2-col → xl 4-col dashboard layout
+   159→   159→
+   160→   160→---
+   161→   161→Task ID: 1-home
+   162→   162→Agent: full-stack-developer
+   163→   163→Task: Build LootLoom Home view (premium entry experience)
+   164→   164→
+   165→   165→Work Log:
+   166→   166→- Read worklog, design tokens (globals.css), shared components (GlassCard, LootButton, Logo, IconBadge, AnimatedCounter, ProgressRing, StatusBadge, WidgetCard, page-container helpers, states), animation presets, Zustand stores (navigation, user, wallet), ViewId type system, and app-router to confirm HomeView contract (named export, "use client" first line, lazy-loaded via `m.HomeView`).
+   167→   167→- Created `/home/z/my-project/src/features/home/home-view.tsx` as a single-file view containing all 15 sections plus a sticky floating top bar and footer.
+   168→   168→- Built a sticky `TopBar` using `GlassCard level="nav"` with Logo, anchor-scroll nav links (Overview, How it Works) + view-navigating links (Rewards, Support), and Sign In + Get Started buttons.
+   169→   169→- Section 1 (Hero): two-column layout. Left column uses staggerContainer + cardReveal to entrance the status badge, gradient headline "Earn Rewards. Redeem Joy.", subtitle, two CTAs (electric → register, glass → login), and a stats row (AnimatedCounter for members, coins redeemed, rating). Right column is a `perspective-1000` floating composition with 5 glass widgets (Dashboard, Wallet, Earn, Rewards, Notification toast) each animated with `floating`/`floatingSmall` variants, staggered delays, plus 2 FloatingCoin decorations and rotateX/rotateY on hover.
+   170→   170→- Section 2 (Quick Actions): 4-card grid (Start Earning → earn, Register → register, Login → login, Explore Features → scroll to #overview) with IconBadge, hover lift, and themed glow.
+   171→   171→- Section 3 (What You Can Do): 8-card responsive grid (Earn Coins, Wallet, Redeem Rewards, Daily Bonus, Referral, Leaderboard, Achievements, Support) — each card uses IconBadge with varied accents, floating motion, hover lift, glow, and navigates to its target view.
+   172→   172→- Section 4 (How LootLoom Works): 5-step timeline (Create Account → Verify Account → Start Earning → Coins Added → Redeem Rewards). Desktop horizontal layout with animated gradient connector (scaleX origin-left), numbered glass circles; mobile vertical layout with side rail and glass step cards.
+   173→   173→- Section 5 (Live Dashboard Preview): large GlassCard level=3 panel with balance (AnimatedCounter), XP ProgressRing, daily streak StatusBadge, 4 stat tiles (Today/Week/Month/Lifetime), and recent rewards list — pulls `dailyStreak`, `xp`, `xpToNext` from useUserStore.
+   174→   174→- Section 6 (Wallet Preview): GlassCard with AnimatedCounter balance, today/lifetime tiles, recharts AreaChart (electric gradient fill) of weekly earnings, 3-row recent transactions list, and FloatingCoin decorations. Pulls `availableCoins`, `lifetimeEarned`, `todayEarnings` from useWalletStore.
+   175→   175→- Section 7 (Earn Preview): 4-card grid (Rewarded Ads, Offerwall, Daily Bonus, Missions) each with reward-amount gold badge, time hint, and Start affordance — navigates to earn.
+   176→   176→- Section 8 (Referral Preview): referral code (LOOT-7K2X from useUserStore) in dashed border box with copy button, friends-joined + referral-earnings tiles, and ProgressRing showing progress to next milestone (25 friends).
+   177→   177→- Section 9 (Leaderboard Preview): podium layout for top 3 (silver, gold elevated center, bronze) with avatar initials, rank medals (Crown/Medal), Level badges, XP and coins tiles. Champion card has electric glow + gold ring.
+   178→   178→- Section 10 (Achievement Preview): 4 ProgressRing badge cards (First Steps common, Streak Keeper rare, Coin Collector epic, Legendary Earner legendary) with rarity-mapped gradient colors and progress %.
+   179→   179→- Section 11 (Security Preview): 4 emerald-accented cards (Secure Authentication, Encrypted Sessions, Privacy, Safe Reward Processing) each with shield/lock/eye icons.
+   180→   180→- Section 12 (Download App): GlassCard with "Take LootLoom Anywhere" gradient headline, Coming Soon badge, disabled App Store + Google Play buttons (placeholder, not real downloads), and a 49-cell grid QR placeholder with "Placeholder QR · Not active" badge. FloatingCoin decorations.
+   181→   181→- Section 13 (FAQ Preview): 5-item accordion built with framer-motion AnimatePresence for smooth height/opacity transitions. ChevronDown rotates 180° when open. "View all FAQs" button → support view.
+   182→   182→- Section 14 (Support Preview): 5-card grid (Support Center, Help Center, Contact, Open a Ticket, Live Chat). Live Chat marked as "Soon" with reduced opacity and disabled click.
+   183→   183→- Section 15 (Footer): GlassCard with electric top-border accent. Four columns: Brand+Logo+tagline+social icon buttons (Twitter/GitHub/LinkedIn/YouTube/Telegram), Quick Links (navigate), Legal (Privacy/Terms/Cookie/Community Guidelines/Security as buttons), Support (Contact/Support Center/Help Center with 24/7 Available badge). Bottom bar with copyright + Secure Platform / Premium Rewards trust badges.
+   184→   184→- All sections use `whileInView` with `staggerContainer` + `cardReveal` for scroll-triggered entrance. Used existing design tokens (`text-gradient-electric`, `glass-1/2/3/4`, accent color classes, `bg-electric/10`, etc.) — no hardcoded colors.
+   185→   185→- Verified with `npx eslint src/features/home/home-view.tsx` (clean) and `npx tsc --noEmit` (no errors in home-view.tsx). Pre-existing errors in other agents' WIP files (auth/earn/wallet/rewards/system-view) are unrelated to this task.
+   186→   186→
+   187→   187→Stage Summary:
+   188→   188→- HomeView file created at `/home/z/my-project/src/features/home/home-view.tsx` (~1100 lines, single named export `HomeView`, `"use client";` first line).
+   189→   189→- Premium WHITE theme, glassmorphism throughout (GlassCard level 1-4 + nav), GPU-accelerated framer-motion animations, fully responsive (mobile single-column → desktop multi-column), semantic HTML, ARIA labels, keyboard-accessible controls.
+   190→   190→- 15 sections delivered in order: Hero, Quick Actions, What You Can Do, How It Works, Dashboard Preview, Wallet Preview, Earn Preview, Referral Preview, Leaderboard Preview, Achievements Preview, Security Preview, Download App, FAQ Preview, Support Preview, Footer — plus a sticky floating top bar with Logo + Sign In + Get Started.
+   191→   191→- All navigation wired to `useNavigationStore.navigate()` for: register, login, dashboard, earn, wallet, redeem, rewards, referral, leaderboard, achievements, support, daily-bonus.
+   192→   192→- Pulls live state from useUserStore (xp, xpToNext, dailyStreak, referralCode) and useWalletStore (availableCoins, lifetimeEarned, todayEarnings) so previews reflect real store data.
+   193→   193→- Recharts AreaChart used for hero wallet mini-chart and wallet preview chart with electric/cyan gradient fills.
+   194→   194→- File passes ESLint and TypeScript checks cleanly. Ready for integration once sibling feature views (auth, dashboard, wallet, earn, rewards, pages, system) are completed by other agents.
+   195→   195→
+   196→   196→---
+   197→   197→Task ID: 6-rewards
+   198→   198→Agent: full-stack-developer
+   199→   199→Task: Build LootLoom Rewards & Redeem Center
+   200→   200→
+   201→   201→Work Log:
+   202→   202→- Read worklog + existing infra (lootloom components, stores, animations, dialog/checkbox/accordion/table UI primitives, design tokens) to match architecture
+   203→   203→- Created single file src/features/rewards/rewards-view.tsx (named export RewardsView, "use client" first line) — no shared files modified
+   204→   204→- Defined placeholder data: REWARD_CATEGORIES (8 categories with icon/gradient/coins/processing/availability/popularity), FEATURED_REWARDS (4 cards: recommended/popular/best-value/limited-time), REDEEM_STEPS (6-step workflow), FAQ_ITEMS, ELIGIBILITY_ITEMS, RECOMMENDATIONS
+   205→   205→- Built all 12 sections: (1) Rewards Overview hero glass card with ProgressRing + AnimatedCounter + 9 mini-stats + eligibility badge, (2) Browse Rewards 8-card grid with 120px gradient placeholders + 3D perspective hover + glow + floating icons, (3) Featured Rewards 4 ribboned cards, (4) Redeem Workflow 6-step timeline (horizontal desktop / vertical mobile with gradient connector), (5) Reward Details Panel, (6) Redeem Confirmation Dialog (radix dialog + checkbox terms + sufficient-balance gating + toast on submit), (7) Pending Redeem Requests skeleton cards, (8) Redeem History table header + SkeletonRow(5) + filter/search/export buttons, (9) Reward Eligibility with progress ring + Met/Pending badges, (10) Reward Recommendations, (11) Reward FAQ accordion preview, (12) Support preview with locked Live Chat
+   206→   206→- View mode switch: reads useNavigationStore().current; isRedeem leads with Redeem Workflow section, otherwise workflow sits between Featured and Details
+   207→   207→- Interactive selection state: clicking any Redeem button (category/featured/recommendation/details) opens the dialog with that reward and updates the details panel; featured card body click previews into details panel
+   208→   208→- Navigation shortcuts wire to navigate("wallet"|"earn"|"history"|"support")
+   209→   209→- Cleaned unused imports (AnimatePresence, hoverLift, CreditCard, Grid, useMemo) — verified file passes eslint with zero errors
+   210→   210→
+   211→   211→Stage Summary:
+   212→   212→- rewards-view.tsx complete (single new file, ~1870 lines), zero lint errors on the file
+   213→   213→- Serves both "rewards" and "redeem" routes via shared component with reorder emphasis
+   214→   214→- Premium white glassmorphism, 3D perspective reward cards, animated counters, gradient timelines, skeleton placeholders (no fake history data), demo-only redeem dialog with toast confirmation
+   215→   215→- App-router lazy import for @/features/rewards/rewards-view now resolves; remaining dev-server module-not-found errors are for sibling feature views (home/auth/dashboard/wallet/earn/pages/system) owned by other agents
+   216→   216→
+   217→   217→---
+   218→   218→Task ID: 7-pages
+   219→   219→Agent: full-stack-developer
+   220→   220→Task: Build LootLoom secondary pages + system views
+   221→   221→
+   222→   222→Work Log:
+   223→   223→- Read worklog.md + design system (GlassCard, PageContainer/PageHeader, StatCard, ProgressRing, StatusBadge, WidgetCard, states, RestrictedAccess) and stores (navigation, user, wallet, notification, activity, auth)
+   224→   224→- Created src/features/pages/pages-view.tsx (named export PagesView) — routes on useNavigationStore().current across 11 secondary app views, each wrapped in <PageContainer> + <PageHeader> with staggered cardReveal/staggerContainer entrances:
+   225→   225→  * notifications: filter tabs (All/Unread/Rewards/System/Security), notification cards from store with type-aware IconBadge, unread highlight + mark-read onClick, Mark-all-read action, EmptyState fallback
+   226→   226→  * achievements: 3 stat rings (Level XP, Completion %, Mastery), 10-badge grid with ProgressRing + rarity colors (common/rare/epic/legendary → cyan/electric/purple/gold), locked/unlocked states, vertical milestones timeline
+   227→   227→  * leaderboard: Top-3 podium (silver/gold/bronze order, crown/medal icons, floating gold card), 15-row ranking table with avatar initials, current-user row highlighted, period tabs (Daily/Weekly/Monthly/All-time)
+   228→   228→  * daily-bonus: 7-day calendar row (claimed=check, today=highlighted+Claim, future=locked), streak flame counter, next-milestone progress, tomorrow reward preview, streak milestones, monthly grid preview
+   229→   229→  * missions: Tabs (Daily/Weekly/Monthly), MissionCard helper with ProgressRing, difficulty badge, reward, status-aware CTA (Continue/Start/Locked/Completed)
+   230→   230→  * referral: referral-code glass card with copy button (clipboard + copied state), 5 share buttons, 4 StatCards, How-it-works 3 steps, reward tiers (1/5/10/25), SkeletonRow referral history
+   231→   231→  * transactions: 3 summary StatCards (in/out/pending), filter bar (search, Type/Status/Date/Export placeholders), transactions table with SkeletonRow × 8 (no fake data)
+   232→   232→  * history: filter chips, activity timeline from useActivityStore with type icons + amount, EmptyState "No activity yet" when empty
+   233→   233→  * support: 6 quick-action cards (Live Chat locked), FAQ accordion (8 Q&As), contact form placeholder (disabled), SkeletonRow recent tickets
+   234→   234→  * settings: 5 tabs (Profile/Security/Notifications/Preferences/Privacy) with Switch toggles, disabled Save buttons, active-sessions list, 2FA placeholders
+   235→   235→  * profile: profile card (gradient initials avatar, floating, Level badge, XP ring, coins/rank/streak/member stats, referral code), 3 StatCards, badge collection preview (4 unlocked), recent activity preview, Edit Profile → settings
+   236→   236→- Created src/features/pages/system-view.tsx (named export SystemView) — full-screen centered system/error pages, all composed from a reusable SystemScreen component ({icon, title (ReactNode for big numbers), subtitle, description, actions, accent, footer, extra}) rendered in a premium GlassCard with accent bar + glow halo + staggered text reveal:
+   237→   237→  * ceo-restricted: renders <RestrictedAccess /> directly (no reimplementation)
+   238→   238→  * session-expired: Clock icon, "Session Expired", Sign In Again (electric → login) + Return Home (glass → home), security footer
+   239→   239→  * unauthorized: ShieldAlert (rose), "Access Denied", Return Home + Go Back (uses navigation goBack/canGoBack)
+   240→   240→  * maintenance: animated rotating Wrench, progress bar (68%), Status Updates + Status Page buttons
+   241→   241→  * error-403: big gradient "403" title, Lock icon, "Forbidden", Return Home + Go Back
+   242→   242→  * error-404: big gradient "404" title, Compass icon, "Page Not Found", Return Home + Dashboard
+   243→   243→  * error-500: big gradient "500" title, ServerCrash icon, "Server Error", Retry (reload) + Return Home
+   244→   244→  * offline: WifiOff icon, "You're Offline", Retry Connection (reload)
+   245→   245→  * update-required: animated rotating RefreshCw, "Update Required", Update Now (reload)
+   246→   246→  * auth-loading: animated Logo + dual contra-rotating spinner rings + "Securing your session…" floating text + progress dots, useEffect auto-redirect to dashboard after 2s
+   247→   247→- SystemView router maps current → matching screen via SYSTEM_SCREENS registry, with defensive 404 fallback for unknown system views
+   248→   248→- Verified: bun run lint shows zero errors in either new file (pre-existing errors in header.tsx/view-transition.tsx untouched); dev server recompiles cleanly (✓ Compiled in 4.6s) after both files created
+   249→   249→- Did NOT modify any shared files; only created the two requested files
+   250→   250→
+   251→   251→Stage Summary:
+   252→   252→- src/features/pages/pages-view.tsx: PagesView named export covering 11 secondary authenticated app views (notifications, achievements, leaderboard, daily-bonus, missions, referral, transactions, history, support, settings, profile) with premium glass styling, staggered animations, responsive layouts, and store-driven data (notification, activity, user, wallet)
+   253→   253→- src/features/pages/system-view.tsx: SystemView named export covering 10 full-screen system/error pages (ceo-restricted, session-expired, unauthorized, maintenance, error-403, error-404, error-500, offline, update-required, auth-loading) built on a reusable SystemScreen component; auth-loading auto-redirects to dashboard after 2s
+   254→   254→- Both files use "use client"; first line, named exports only, all required infrastructure imports (GlassCard, LootButton, Logo, ProgressRing, StatCard, StatusBadge, WidgetCard, PageContainer, PageHeader, SectionHeader, Grid, EmptyState, SkeletonRow, RestrictedAccess, stores, animations)
+   255→   255→- App router (app-router.tsx) already lazy-imports both views; compilation succeeds with no new errors
+   256→   256→- Ready for wiring/integration with the rest of the feature set
+   257→   257→
+   258→   258→---
+   259→   259→Task ID: 5-earn
+   260→   260→Agent: full-stack-developer
+   261→   261→Task: Build LootLoom Earn Center
+   262→   262→
+   263→   263→Work Log:
+   264→   264→- Read worklog.md to understand architecture: single-route SPA, glass design system, Zustand stores, lootloom component library
+   265→   265→- Inspected lootloom component APIs: GlassCard, WidgetCard, PageContainer/PageHeader/SectionHeader/Grid, IconBadge (accepts lucide name string), ProgressRing, AnimatedCounter, StatusBadge, LootButton, EmptyState/ErrorState, SkeletonRow
+   266→   266→- Inspected stores: useNavigationStore(navigate), useWalletStore(todayEarnings, availableCoins), useUserStore(level, xp, xpToNext, dailyStreak, referralCode)
+   267→   267→- Inspected animation presets: cardReveal, staggerContainer, floating, floatingSmall, hoverLift
+   268→   268→- Created /home/z/my-project/src/features/earn/earn-view.tsx (~2030 lines) with named export EarnView, "use client" first line
+   269→   269→- Defined strongly-typed placeholder data arrays: ACTIVITIES (14 cards), OFFER_PROVIDERS (4), OFFER_CATEGORIES (7), DAILY_BONUS_DAYS (7-day calendar), DAILY/WEEKLY/MONTHLY MISSIONS (3/3/3), ACHIEVEMENTS (6 with rarity tiers), EVENTS (6 with gradients), ANALYTICS_DAILY/WEEKLY/DISTRIBUTION, TIPS (4)
+   270→   270→- Built 15 sections: (1) Earn Overview Hero with AnimatedCounter + ProgressRing + mini-stats + VIP lock card; (2) Earning Activities Grid with 14 ActivityCards (reward badge, difficulty bars 1-3, availability badge, time/difficulty/status meta, future lock); (3) Rewarded Ads WidgetCard with 4 stat boxes + progress + reward preview + disabled Start Watching; (4) Offerwall with category chips + 4 provider cards + disabled Launch; (5) Daily Bonus with 7-day tile calendar + claim card; (6/7/8) Daily/Weekly/Monthly Missions using reusable MissionCard helper (ProgressRing + difficulty badge + animated progress bar + Start button); (9) Achievements with level ProgressRing + 6 rarity-colored badge cards; (10) Referral with code box + copy + milestone progress; (11) Event Center with 6 gradient banner event cards; (12) Reward History with SkeletonRow timeline + history nav; (13) Analytics with period tabs (BarChart + PieChart + AreaChart via recharts); (14) Tips with 4 glass tiles; (15) States Preview with collapsible NoActivitiesEmpty + EarnUnavailableError demo
+   271→   271→- Defined in-file helper components: DifficultyBars, AvailabilityBadge, ActivityCard, MissionCard, DailyDayTile, OfferProviderCard, EventCard, AchievementBadgeCard, TipCard, NoActivitiesEmpty, EarnUnavailableError, ChartTooltip, MiniStat, MiniStatBox
+   272→   272→- Wired navigation: navigate("wallet"/"rewards"/"daily-bonus"/"missions"/"achievements"/"referral"/"history") on relevant buttons/cards
+   273→   273→- Marked all future/placeholder features (Lucky Spin, Scratch Card, Quiz, Survey, Seasonal, Promotions, ad watching, offerwall launch, claim bonus, share code) with Lock icons + "Coming Soon" / "Placeholder" labels and disabled LootButtons
+   274→   274→- Used IconBadge with lucide name strings (string-typed icon fields in data) for consistent icon rendering
+   275→   275→- Applied premium white glass theme: GlassCard levels 1-3, varied accents (electric/cyan/purple/gold/emerald/rose/navy), sheen + glow on hero/activity cards, floating decorative blobs, staggered cardReveal animations
+   276→   276→- Responsive grids throughout (Grid cols auto/3/4 + custom grid-cols breakpoints)
+   277→   277→- Ran eslint: earn-view.tsx passes with zero errors/warnings (remaining lint errors are in pre-existing shared files header.tsx + view-transition.tsx which are out of scope)
+   278→   278→- Verified dev server compiles successfully; app-router.tsx lazy-loads @/features/earn/earn-view → m.EarnView as expected
+   279→   279→
+   280→   280→Stage Summary:
+   281→   281→- EarnView (single file, named export, "use client") complete and production-ready
+   282→   282→- All 15 required sections built with placeholder data, no ad SDK / no backend / no reward calculations
+   283→   283→- Reusable helper components (MissionCard, ActivityCard, EventCard, OfferProviderCard, DailyDayTile, AchievementBadgeCard, TipCard) defined in-file
+   284→   284→- NoActivitiesEmpty and EarnUnavailableError state components defined and demoed in collapsible States Preview section
+   285→   285→- File lint-clean; compiles; matches app-router import contract
+   286→   286→- Did not modify any shared files; only created src/features/earn/earn-view.tsx
+   287→   287→
+   288→   288→---
+   289→   289→Task ID: 8-verification
+   290→   290→Agent: main
+   291→   291→Task: Final integration, lint, and Agent Browser end-to-end verification
+   292→   292→
+   293→   293→Work Log:
+   294→   294→- Fixed app-router.tsx: added "ceo-dashboard" case rendering <RestrictedAccess /> inside AppShell so normal users clicking CEO Dashboard see the premium lockout screen (never exposing admin data)
+   295→   295→- Fixed earn-view.tsx: moved invalid `Activity` import from recharts to lucide-react (recharts has no Activity export; it's a lucide icon used for the difficulty label)
+   296→   296→- Fixed header.tsx: replaced require() import with static NAV_ITEMS import; restructured SearchModal query reset to use event-handler close() instead of setState-in-effect (lint rule react-hooks/set-state-in-effect)
+   297→   297→- Simplified view-transition.tsx: removed setState-in-effect; AppRouter now uses `current` view directly as AnimatePresence key
+   298→   298→- Fixed BackgroundEngine: gated Math.random-generated stars/particles/shooting-star behind a `mounted` flag to eliminate SSR/client hydration mismatch
+   299→   299→- Resolved all 3 initial lint errors -> `bun run lint` now passes with 0 errors, 0 warnings
+   300→   300→- Restarted dev server (detached subshell) after it crashed from a runtime error during testing; server now stable on port 3000
+   301→   301→- Agent Browser end-to-end verification:
+   302→   302→  * Home page renders: hero "Earn Rewards. Redeem Joy.", all 16 sections, sticky top bar, footer
+   303→   303→  * Login flow: Sign In -> split-layout login screen -> form fill -> submit -> auth.login() -> navigate("dashboard")
+   304→   304→  * Dashboard renders inside AppShell: glass sidebar (16 nav items incl. CEO with lock), minimal header (search Ctrl+K, wallet shortcut, notification center, theme controller, profile menu, breadcrumb), 14 dashboard sections
+   305→   305→  * All 15 sidebar views verified via h1: Dashboard, Earn Coins, Wallet, Rewards, Redeem, Transactions, History(->Activity History), Referral, Notifications, Achievements, Leaderboard, Daily Bonus, Missions, Support(->Support Center), Settings
+   306→   306→  * CEO Dashboard -> "Restricted CEO Dashboard" lockout screen with Return to Dashboard button
+   307→   307→  * Mobile responsive (390x844): home top bar, login single-column, dashboard with mobile drawer navigation
+   308→   308→  * Dark mode toggle: applies .dark class to <html> correctly
+   309→   309→  * Search modal (Ctrl+K): opens, filters NAV_ITEMS, navigates on select
+   310→   310→  * Zero console errors; only a non-fatal recharts fixed-size warning
+   311→   311→  * Hydration mismatch resolved (was caused by Math.random in BackgroundEngine)
+   312→   312→  * Dev server stable, returning 200
+   313→   313→
+   314→   314→Stage Summary:
+   315→   315→- LootLoom full-stack foundation + complete UI is production-ready and browser-verified
+   316→   316→- Premium White theme, glassmorphism, aurora/mesh/star/particle background engine all rendering
+   317→   317→- All Prompts 0-9 requirements implemented as a Next.js 16 single-route SPA (adapted from Vite/Express spec due to environment constraints, preserving all design intent)
+   318→   318→- Single `/` route with Zustand-driven view state; lazy-loaded feature views for code splitting
+   319→   319→- `bun run lint` passes clean (0 errors, 0 warnings)
+   320→   320→- App is interactive end-to-end: home -> auth -> dashboard -> all modules -> CEO restricted access
+   321→   321→
+   322→   322→---
+   323→   323→Task ID: 9-prompt1-completion
+   324→   324→Agent: main
+   325→   325→Task: Fill Prompt 1 (Foundation) scaffold gaps identified during verification
+   326→   326→
+   327→   327→Work Log:
+   328→   328→- Honest verification of Prompts 1-10: Prompts 2-10 functionally complete & browser-verified; Prompt 1 had scaffold gaps
+   329→   329→- Created .env.example with development/production/testing placeholders (APP, DATABASE, AUTH/JWT, CEO, API versioning, security, encryption, logging, storage, ads)
+   330→   330→- Created src/constants/index.ts: APP_CONFIG, API_CONFIG, AUTH_CONFIG, COIN_CONFIG, LIMITS, STORAGE_KEYS, Z_INDEX, ROLES, NOTIFICATION_TYPES, MISSION_DIFFICULTY, ACHIEVEMENT_RARITY, REWARD_AVAILABILITY
+   331→   331→- Created src/utils/index.ts: cn, formatNumber, coinsToCurrency, truncate, uid, timeAgo, timeGreeting, clamp, percent, sleep, copyToClipboard, isValidEmail, passwordStrength, initials
+   332→   332→- Created src/providers/index.tsx: AppProviders composing ThemeProvider + ViewTransitionProvider
+   333→   333→- Created src/layouts/index.ts: layout barrel (AppShell)
+   334→   334→- Created src/services/index.ts: service layer stubs (auth, wallet, reward, earn, referral, notification, leaderboard, achievement, support, user, ceo) prepared for future API integration
+   335→   335→- Created src/themes/index.ts: theme palette JS mirror + chartPalette + chartGradients
+   336→   336→- Created src/assets/index.ts, src/animations/index.ts, src/icons/index.ts, src/widgets/index.ts, src/contexts/index.ts, src/api/index.ts, src/styles/index.ts (barrel exports)
+   337→   337→- Created shared/ folder: shared/types/index.ts (User, Wallet, Transaction, Reward, RedeemRequest, ApiResponse, Paginated), shared/constants/index.ts, shared/index.ts
+   338→   338→- Created backend/ modular scaffold (15 modules: config, controllers, database, middlewares, models, repositories, routes, schemas, security, services, types, utils, validators, jobs, logs, storage) each with index.ts stub + backend/README.md documenting module responsibilities, API versioning, response envelope
+   339→   339→- Created documentation/ARCHITECTURE.md, configuration/README.md, scripts/README.md
+   340→   340→- Updated src/app/layout.tsx to use AppProviders (centralized provider composition)
+   341→   341→- Removed src/pages/ folder (conflicted with Next.js App Router — interpreted as legacy Pages Router, caused "skipping / (conflict)" 500 error)
+   342→   342→- Restarted dev server with clean .next cache after structural changes
+   343→   343→- Verified: bun run lint passes (0 errors), home renders, login→dashboard flow works, zero console errors
+   344→   344→
+   345→   345→Stage Summary:
+   346→   346→- Prompt 1 foundation scaffold now complete: .env.example, centralized constants/utils/providers/layouts/services/themes, shared types, full backend modular scaffold (documented), all frontend src subfolders per spec
+   347→   347→- All 10 prompts (1-10) now complete
+   348→   348→- Lint: 0 errors; Dev server: 200; Browser-verified: home + auth + dashboard render with zero errors
+   349→   349→
+   350→   350→---
+   351→   351→Task ID: 12-notifications
+   352→   352→Agent: full-stack-developer
+   353→   353→Task: Build LootLoom Notifications & Communication Center
+   354→   354→
+   355→   355→Work Log:
+   356→   356→- Read worklog.md, types/index.ts, stores/index.ts, animations.ts, and existing lootloom primitives (GlassCard, StatCard, WidgetCard, IconBadge, StatusBadge, ProgressRing, AnimatedCounter, LootButton, states, page-container) to learn architecture & APIs.
+   357→   357→- Reviewed existing feature views (wallet-view, rewards-view) for chart patterns, dynamic icon patterns, and section composition conventions.
+   358→   358→- Created /home/z/my-project/src/features/notifications/notifications-view.tsx as a single client-side feature file.
+   359→   359→- Defined static maps: CATEGORIES (13 categories incl. locked Future Advertisements / Future Promotions), TYPE_ICONS (property-access pattern to satisfy react-hooks/static-components rule), accentFor / priorityFor helpers, PRIORITY_VARIANT, accent bg/text records.
+   360→   360→- Built reusable helpers: NotificationCard (icon-by-type, title/desc/relative time, read/unread state with electric accent bar + pulse dot, priority StatusBadge, category tag, hover lift, Archive/Pin/Mark-read/Delete icon buttons), NotificationFilterBar (search + 4 Select dropdowns + sort + Export placeholder), NotificationDetailDialog (Dialog with title/desc/date/category/status/priority + future action/attachment/administrator message placeholders), AnnouncementCard (gradient banner + pinned indicator + skeleton body), PlaceholderRowCard (icon + title + desc + badge + time, locked dashed style for future items), PreferenceToggle (Switch with local state, locked state for future channels), AnalyticsTabs (BarChart/AreaChart/PieChart/ProgressRing with 4 sub-views).
+   361→   361→- Implemented all 15 sections: (1) NotificationOverview 8 StatCards with AnimatedCounter for unread, (2) NotificationCategories 13-card grid with active indicator + soft glow + lock, (3) NotificationFeed filtered by selected category + filters with AnimatePresence list transitions + EmptyState when empty, (4) AnnouncementCenter 7 premium announcement cards, (5) WalletNotificationPreview 5 placeholder rows, (6) RewardNotifications 6 placeholders, (7) RedeemNotifications 6 placeholders, (8) SecurityNotifications 7 placeholders with emerald/rose accents, (9) SupportNotifications 4 placeholders, (10) NotificationTimeline combining store items + 2 placeholders with floating motion nodes, (11) NotificationDetailDialog triggered by clicking feed cards (auto-marks read), (12) NotificationPreferences 12 toggle cards (collapsible via settings gear), (13) Search & Filters inline bar, (14) NotificationAnalytics tabbed charts + ProgressRing read rate, (15) NoNotificationsEmpty + NotificationUnavailableError state components.
+   362→   362→- Wired PageHeader with "Mark all read" (markAllRead from store) + Settings gear (toggles preferences section).
+   363→   363→- Added quick navigation pills at top linking to wallet/rewards/redeem/referral/achievements/leaderboard/support via useNavigationStore.navigate.
+   364→   364→- Removed unused imports (Star, Coins, MegaphoneIcon, SkeletonRow, Inbox, AlertTriangle) and fixed dynamic-icon lint error (typeIcon function → TYPE_ICONS constant for property-access pattern).
+   365→   365→- Verified: bun run lint passes with 0 errors. dev.log shows only pre-existing missing-module errors for OTHER not-yet-built feature views (system, transactions, profile, gamification, support, legal); notifications-view.tsx resolves and compiles cleanly.
+   366→   366→
+   367→   367→Stage Summary:
+   368→   368→- Single new file: src/features/notifications/notifications-view.tsx (~1840 lines).
+   369→   369→- Named export NotificationsView, "use client" first line.
+   370→   370→- Premium white glassmorphism design consistent with rest of platform; fully responsive (mobile-stacked cards, lg/xl grids).
+   371→   371→- Functional client-side filter pipeline: category + priority + read status + query + sort; store items filtered live via useNotificationStore.
+   372→   372→- All required sections present; future-locked items (Email/Push/SMS, 2FA, Account Lock, Live Chat, Administrator Notes, Advertisements, Promotions, CEO Broadcast, Action/Attachment/Admin Message in dialog) visually marked with Lock icons and dashed/skeleton styling.
+   373→   373→- Reusable helpers NotificationCard, NotificationFilterBar, NotificationDetailDialog, AnnouncementCard, PreferenceToggle, AnalyticsTabs, NoNotificationsEmpty, NotificationUnavailableError all defined and used.
+   374→   374→
+   375→   375→---
+   376→   376→Task ID: 15-support
+   377→   377→Agent: full-stack-developer
+   378→   378→Task: Build LootLoom Support Center, Help Desk & User Assistance
+   379→   379→
+   380→   380→Work Log:
+   381→   381→- Read worklog.md to understand architecture: single-route Next.js 16 SPA, premium WHITE glass design system, Zustand stores (navigation, notification), lootloom component library (GlassCard, WidgetCard, StatCard, ProgressRing, StatusBadge, IconBadge, SkeletonRow, EmptyState, ErrorState, PageContainer/PageHeader/Grid), shadcn/ui primitives (accordion, input, textarea, select, dialog), recharts, framer-motion animations (cardReveal, staggerContainer)
+   382→   382→- Verified app-router already lazy-imports `@/features/support/support-view` → `m.SupportView` and maps the `support` route to it
+   383→   383→- Created /home/z/my-project/src/features/support/support-view.tsx (named export `SupportView`, `"use client";` first line, single new file, no shared files modified)
+   384→   384→- Defined strongly-typed placeholder data: SUPPORT_STATS (8), QUICK_ACTIONS (12, two locked), KNOWLEDGE_ARTICLES (12 across 12 categories), FAQ_CATEGORIES (11 categories incl. 3 future), TICKET_TABLE_COLUMNS (8), CONTACT_CHANNELS (7 incl. 3 locked), COMMUNITY_RULES (6 incl. 1 future), SECURITY_TIPS (6 incl. 1 future), TIMELINE_STEPS (7), NOTIFICATION_PREVIEW (5 incl. 1 future), FEATURE_REQUEST_CARDS (4), ANALYTICS data (open-tickets bar, resolution pie, categories bar, priority pie)
+   385→   385→- Built all 16 required sections: (1) Support Dashboard with 8 StatCards via <Grid cols={4}> incl. operational StatusBadge card + future Avg Response Time locked card; (2) Quick Support Actions — 12-card responsive grid (2/3/4/6 cols), IconBadge + label + description, hover lift + glow, locked cards with gold "Soon" badge + disabled state, "New Ticket" opens dialog; (3) Support Ticket Center — WidgetCard with display-only filter bar (search/filter/category/status disabled buttons) + desktop table header (8 columns) + TicketRow × 5 skeleton + mobile TicketCardMobile × 5, plus toggle buttons to preview NoTicketsEmpty and SupportUnavailableError states, "New Ticket" button opens dialog; (4) NewTicketDialog — radix Dialog with Subject Input, Category Select, Priority Select, Description Textarea, Screenshot placeholder, Attachment placeholder, Save Draft + Submit (disabled) buttons, no submission; (5) Help Center — 12 KnowledgeCard grid with reading time + category badge + Read More; (6) FAQ Center — FaqAccordion helper using shadcn Accordion, 11 categories with placeholder questions, all answers say "This answer will be provided once the FAQ content is finalized" + Placeholder content tag; (7) Bug Report Center — BugReportForm with title/category/device/browser selects, description, screenshot + logs placeholders, disabled Submit; (8) Feature Request Center — FeatureRequestForm (title/category/priority/description, future Voting + Status placeholders, disabled Submit) + 4 premium FeatureRequestCards with status badges + Vote/Discuss disabled buttons; (9) Feedback Center — FeedbackWidget with local-state star rating (1-5 with hover), mood selector (Happy/Neutral/Unhappy), comments + suggestion Textareas, future Satisfaction Survey + Recommendation Score placeholder cards, disabled Submit; (10) Contact Center — 7 ContactCard grid with active/soon/placeholder badges, Open Channel / Coming Soon buttons; (11) Community Guidelines Preview — 6 rule cards with future Full Guidelines locked; (12) Security Help — 6 tip cards with emerald ring accent + shield icons + future Recovery Guide locked; (13) Support Timeline — 7-step vertical timeline with gradient connector + accent icon dots + Step badges; (14) Notification Preview — 5 notification-type cards + SkeletonRow recent notifications + "View all" → navigate("notifications"); (15) Support Analytics — 2×2 chart grid: Open Tickets BarChart, Resolution Status PieChart with legend, Categories horizontal BarChart, Priority Distribution PieChart + Satisfaction Score ProgressRing (—" label, future badge); (16) Loading/Empty/Error — NoTicketsEmpty + SupportUnavailableError defined and demoed via toggles in Ticket Center
+   386→   386→- Defined reusable helpers in-file: TicketRow, TicketCardMobile, NewTicketDialog, FaqAccordion, KnowledgeCard, ContactCard, BugReportForm, FeatureRequestForm, FeedbackWidget
+   387→   387→- Wired navigation: navigate("notifications"), navigate("settings"), navigate("profile") on footer shortcut strip + notification "View all" buttons
+   388→   388→- All forms are display-only/non-functional — clearly labelled with placeholder notices (electric/emerald/rose info banners) and Submit buttons disabled
+   389→   389→- Premium WHITE glass theme throughout: GlassCard levels 1-2, varied accents (electric/cyan/purple/gold/emerald/rose/navy), sheen + glow on key cards, staggered cardReveal animations via staggerContainer, hover lift on interactive cards
+   390→   390→- Responsive: mobile single-column → desktop multi-column grids (2/3/4/6 col breakpoints); ticket table collapses to TicketCardMobile cards on mobile
+   391→   391→- Cleaned imports: removed unused (ChevronDown, Smartphone, Monitor, Chrome, Hash, ShieldQuestion, Eye, EyeOff, FileWarning, Zap, Calendar, Download, ExternalLink, Languages, GraduationCap, ThumbsDown, Area, AreaChart, AnimatedCounter, SectionHeader, floating, hoverLift); replaced non-existent lucide `Feedback` export with `MessageSquare`; added missing icon imports (Wallet, Gift, ShoppingBag, Trophy, Medal, BadgeCheck, CreditCard)
+   392→   392→- Verified: `npx eslint src/features/support/support-view.tsx` → 0 errors, 0 warnings; `npx tsc --noEmit` → 0 errors in support-view.tsx; dev server compiles successfully (✓ Compiled in 3.4s — pre-existing module-not-found errors are for sibling feature views owned by other agents: system/transactions/notifications/profile)
+   393→   393→
+   394→   394→Stage Summary:
+   395→   395→- src/features/support/support-view.tsx complete (single new file, ~2850 lines, named export SupportView, "use client" first line)
+   396→   396→- All 16 required sections built with placeholder data — no backend, no live chat, no email, no ticket processing; forms are display-only and clearly labelled for future integration
+   397→   397→- 9 reusable helper components defined in-file: TicketRow, TicketCardMobile, NewTicketDialog, FaqAccordion, KnowledgeCard, ContactCard, BugReportForm, FeatureRequestForm, FeedbackWidget — plus NoTicketsEmpty + SupportUnavailableError state components
+   398→   398→- Premium white glassmorphism, accent variety (electric/cyan/purple/gold/emerald/rose/navy), staggered animations, fully responsive (mobile cards ↔ desktop tables), accessible (aria labels, keyboard buttons, semantic sections)
+   399→   399→- File passes ESLint + TypeScript cleanly; app-router lazy-load contract satisfied; ready for integration
+   400→   400→- Did NOT modify any shared files; only created src/features/support/support-view.tsx
+   401→   401→
+   402→   402→---
+   403→   403→Task ID: 13-profile
+   404→   404→Agent: full-stack-developer
+   405→   405→Task: Build LootLoom Profile & Account Center
+   406→   406→
+   407→   407→Work Log:
+   408→   408→- Read /home/z/my-project/worklog.md to understand the LootLoom architecture (Next.js 16 single-route SPA, premium WHITE glassmorphism, Zustand stores, lootloom component library, framer-motion + lucide-react, lazy-loaded feature views)
+   409→   409→- Inspected infrastructure contracts: PageContainer/PageHeader/SectionHeader/Grid, WidgetCard, GlassCard (4 levels + nav), LootButton (10 variants), IconBadge (string name + 7 accents), AnimatedCounter, ProgressRing (5 gradients), StatCard, StatusBadge (9 variants + pulsing dot), EmptyState, ErrorState, SkeletonRow
+   410→   410→- Verified store APIs: useNavigationStore(navigate), useUserStore(fullName, username, email, memberSince, level, xp, xpToNext, rank, dailyStreak, referralCode, avatarUrl, setUser), useWalletStore(availableCoins, lifetimeEarned, lifetimeRedeemed, todayEarnings), useUIStore(theme, setTheme, sidebarCollapsed, setSidebarCollapsed)
+   411→   411→- Verified ui primitives: @/components/ui/switch (Switch), @/components/ui/input (Input), @/components/ui/dialog (Dialog/DialogContent/DialogHeader/DialogTitle/DialogDescription/DialogFooter), @/hooks/use-toast (toast)
+   412→   412→- Confirmed AppRouter lazy-imports ProfileView via m.ProfileView → existing route contract
+   413→   413→- Created /home/z/my-project/src/features/profile/profile-view.tsx (single file, "use client" first line, named export ProfileView)
+   414→   414→- Built reusable helper components in-file:
+   415→   415→  * SettingRow — labelled row with trailing control (icon + label + description + locked indicator + accent text)
+   416→   416→  * ToggleCard — compact glass card with Switch (icon + label + description + accent ring + locked state)
+   417→   417→  * ConfirmDialog — warning-style Dialog (icon, title, description, confirm/cancel, danger/warning variants)
+   418→   418→  * BadgeCard — badge grid tile (rarity ring/text/bg, ProgressRing or unlocked checkmark, progress bar)
+   419→   419→  * DeviceCard — device row (icon, current/trusted/locked badges, sign-out action)
+   420→   420→  * ConnectedAccountCard — OAuth placeholder row (icon, name, description, connect/disconnect/locked)
+   421→   421→  * Field — labelled form input wrapper with icon
+   422→   422→  * SelectField — segmented selector (Low/Medium/High/Ultra etc.)
+   423→   423→  * Local SVG icon helpers (Edit, Plus, AtSign, Search, Accessibility, LifeBuoy, Settings, ShoppingBagIcon, SendIcon, XIcon, LogInIcon) with optional size/className
+   424→   424→  * showToast() wrapper around toast() for placeholder action feedback
+   425→   425→  * getInitials() helper for avatar initials
+   426→   426→- Built all 14 sections inside PageContainer + PageHeader (title "Profile & Account", description, actions: Settings glass button + Edit Profile electric button that scrolls to #personal-information):
+   427→   427→  1. ProfileOverview — gradient cover banner with floating decorative shapes, large gradient initials avatar (size-28) with camera upload button, full name + Active/Verified badges, username/email/phone/memberSince inline meta, quick actions (Share / Edit), 4 stat tiles (Level+ProgressRing, Coins+AnimatedCounter, Rank, Streak) — pulls fullName/username/email/level/xp/xpToNext/rank/dailyStreak from useUserStore and availableCoins/lifetimeEarned from useWalletStore
+   428→   428→  2. PersonalInformation — WidgetCard with profile photo row + 10-input form grid (Full Name, Display Name, Username, Email, Phone, DOB, Country, Language, Timezone, Website), Bio textarea with character counter, 4 social link placeholder inputs; "Save Changes" LootButton calls setUser + toast (non-functional save)
+   429→   429→  3. AccountSecurity — WidgetCard with Security Score ProgressRing (emerald gradient, 72%), 8 setting rows (Password Strong, Email Verified, Phone Pending, 2FA toggle, Biometric locked, Trusted Devices locked, Login History skeleton, Recovery Codes locked) using StatusBadge variants + Switch + Lock indicators
+   430→   430→  4. PrivacyCenter — WidgetCard with 7 ToggleCards (Profile/Activity/Leaderboard/Referral visibility + locked Data Sharing/Public Profile/Search Visibility), each toggle fires toast on change
+   431→   431→  5. AppearanceSettings — WidgetCard wired to useUIStore: Theme toggle (Light/Dark via setTheme), 6 accent color swatches (Electric/Purple/Gold/Emerald/Rose/Navy gradient buttons), Sidebar Mode toggle (Expanded/Collapsed via setSidebarCollapsed), Glass Intensity + Font Size segmented selectors, 5 ToggleCards (Animations, Reduced Motion, Compact Mode, High Contrast locked, Accessibility Theme locked)
+   432→   432→  6. NotificationPreferences — WidgetCard with 11 ToggleCards (Reward, Wallet, Redeem, Referral, Achievement, Security, Support, Announcements, Email, Push locked, SMS locked) + Enable all action
+   433→   433→  7. ConnectedAccounts — WidgetCard with 7 ConnectedAccountCards (Google connected, Apple locked, Facebook, GitHub, Discord connected, Telegram locked, Twitter/X locked) — no OAuth implemented, Connect buttons show toast
+   434→   434→  8. AccountStatistics — WidgetCard with Grid cols={4} of 8 StatCards (Lifetime Earnings/Redeems, Referral Count, Achievements, Missions Completed, Leaderboard Rank, Daily Streak, Current Level) + 3 wallet summary glass tiles (Available Coins, Today's Earnings, Total XP) using AnimatedCounter
+   435→   435→  9. BadgeCollection — WidgetCard with animated badge grid (staggerContainer + cardReveal), 10 badges across all rarities (common=gray, rare=electric, epic=purple, legendary=gold, special=emerald, vip=rose with lock), unlocked checkmark, progress bar for in-progress badges, Show all/Show less toggle, View all → achievements navigation
+   436→   436→  10. ActivitySummary — WidgetCard with vertical timeline (gradient line + electric dots), 5 placeholder event cards (Recent Login, Wallet Activity, Reward, Notification, Redeem) with accent-colored icons + skeleton row for future Device Activity, Full history → history view
+   437→   437→  11. DeviceManagement — WidgetCard with current device highlighted (electric ring + Active badge), 3 other devices (smartphone/laptop/tablet icons), Trusted Devices + Session Management placeholder cards (locked), Logout all action
+   438→   438→  12. DownloadData — WidgetCard with 5 placeholder export cards (Profile, Wallet, History, Rewards, GDPR) each with disabled Export button + format badge (JSON/CSV/PDF/ZIP)
+   439→   439→  13. DangerZone — WidgetCard with rose/red accent (ring-rose-brand/20, bg-rose-brand/[0.03]), 5 warning cards (Change Password warning, Logout All danger, Account Recovery warning, Deactivate danger, Delete danger) each opening a ConfirmDialog with appropriate icon/description/variant; AnimatePresence wraps dialog
+   440→   440→  14. StatesPreview — collapsible WidgetCard showcasing NoBadgesEmpty (EmptyState with Start Earning CTA → earn) and ProfileUnavailableError (ErrorState warning variant with Back to Dashboard CTA) defined in-file
+   441→   441→- Added QuickNavRow chips (Settings, Wallet, Rewards, Achievements, Support) between hero and Personal Information for quick cross-view navigation
+   442→   442→- All toggles use Switch with local useState; all toasts use showToast() wrapper; all navigations via useNavigationStore.navigate()
+   443→   443→- Premium white glass theme: GlassCard levels 1-3, electric/cyan/purple/gold/emerald/rose/navy accents, card-sheen on hero, floating motion on banner decorations, staggerContainer for section orchestration, cardReveal for individual cards, hoverLift on interactive tiles
+   444→   444→- Responsive throughout: mobile single-column → sm:2-col → lg:3-4-col grids; avatar scales 24→28 across breakpoints; form grid uses md:grid-cols-2; stat tiles use grid-cols-2 lg:grid-cols-4
+   445→   445→- Accessibility: aria-labels on switches/buttons, semantic headings, sr-only close text in Dialog, focus-visible rings on LootButton, disabled states with reduced opacity, icon-only buttons have aria-label
+   446→   446→- Verified: npx eslint src/features/profile/profile-view.tsx passes with 0 errors 0 warnings; npx tsc --noEmit shows no profile-related errors (pre-existing errors are for missing sibling feature views owned by other agents — system/transactions/notifications/gamification/support/legal/ceo)
+   447→   447→- Did NOT modify any shared files; only created /home/z/my-project/src/features/profile/profile-view.tsx
+   448→   448→- Wrote agent work record to /agent-ctx/13-profile-full-stack-developer.md
+   449→   449→
+   450→   450→Stage Summary:
+   451→   451→- src/features/profile/profile-view.tsx created (~2590 lines) with named export ProfileView and "use client" first line
+   452→   452→- All 14 required sections built with placeholder forms/toggles, store-driven profile data, glass badges, animated counters, ProgressRings, ConfirmDialogs
+   453→   453→- Reusable helpers (SettingRow, ToggleCard, ConfirmDialog, BadgeCard, DeviceCard, ConnectedAccountCard, Field, SelectField) + local SVG icon helpers defined in-file
+   454→   454→- NoBadgesEmpty and ProfileUnavailableError state components defined and demoed in collapsible States Preview
+   455→   455→- No backend, no save logic, no OAuth, no real exports — all marked as future/placeholder via Lock icons, disabled buttons, and toast notifications
+   456→   456→- File passes ESLint (0 errors) and TypeScript (0 errors); already wired into app-router via existing lazy import `m.ProfileView`
+   457→   457→- Ready for integration with downstream feature views and backend
+   458→   458→
+   459→   459→---
+   460→   460→Task ID: 11-transactions
+   461→   461→Agent: full-stack-developer
+   462→   462→Task: Build LootLoom Transactions & Activity Center
+   463→   463→
+   464→   464→Work Log:
+   465→   465→- Read worklog.md to understand established architecture: Premium White glassmorphism, lootloom component library, Zustand stores, animation presets, design tokens
+   466→   466→- Confirmed AppRouter already lazy-imports TransactionsView (named export) for both `transactions` and `history` routes
+   467→   467→- Verified shadcn `dialog` component exists with full Dialog/DialogContent/DialogHeader/DialogTitle/DialogDescription/DialogFooter/DialogClose exports
+   468→   468→- Verified ViewId includes wallet/earn/rewards/redeem/referral/achievements/leaderboard/daily-bonus/missions/notifications/support — wired navigations accordingly
+   469→   469→- Created `/home/z/my-project/src/features/transactions/transactions-view.tsx` — `"use client"` first line, named export `TransactionsView`
+   470→   470→- Built reusable helpers (defined inside file): MiniStatTile, StatusChip, FilterBar, FilterField, FilterSelect, AnalyticsTabs, TransactionDetailDialog, TransactionTable, TransactionCardMobile, TimelineCard, NoTransactionsEmpty, HistoryUnavailableError
+   471→   471→- Built 14 premium sections: ActivityOverview (8 StatCards Grid cols=4), ActivityCategories (10 cards w/ 3D perspective + hover glow + Coming Soon lock), AdvancedFilters (selects/date inputs/coin range/6 status chips/search/reset/export), TransactionHistory (responsive: desktop 10-col table w/ header row + 8 skeleton rows + Details Eye → Dialog + disabled Download; mobile 5 TransactionCardMobile skeletons), TransactionTimeline (gradient vertical line + 7 TimelineCard entries), WalletActivity (6 mini tiles + adjustment skeleton + future Expiration card), RedeemActivity (5 group tiles w/ StatusBadges + 4-row skeleton), ReferralActivity (4 tiles + skeleton + future Sharing Stats), AchievementActivity (3 ProgressRing tiles + 6-badge grid + 5-milestone timeline), NotificationActivityPreview (5 type-icon cards), AnalyticsPreview (Daily/Weekly/Monthly tabs + AreaChart electric gradient + PieChart 6-category + 2 future placeholders), ExportCenter (5 Coming-soon glass tiles: CSV/Excel/PDF/Print/Reports), StatesPreview (collapsible AnimatePresence reveal of NoTransactionsEmpty + HistoryUnavailableError)
+   472→   472→- Wired PageHeader actions: Export (outline → wallet) + Refresh (electric, 1.2s loading)
+   473→   473→- All navigations via useNavigationStore.navigate(): wallet, earn, rewards, redeem, referral, achievements, leaderboard, daily-bonus, missions, notifications
+   474→   474→- Wallet store reads: availableCoins, pendingCoins, lifetimeEarned, lifetimeRedeemed. Activity store: items used in ActivityOverview
+   475→   475→- Used staggerContainer for section orchestration, cardReveal for individual cards, whileInView entrance animations
+   476→   476→- No fake transaction data — SkeletonRow + custom shimmer placeholders throughout
+   477→   477→- Real column header row in transaction table; mobile fallback via TransactionCardMobile
+   478→   478→- StatCards use AnimatedCounter; transactions/dialog uses Radix Dialog primitives
+   479→   479→- Ran eslint: 0 errors in new file (remaining 3 errors are pre-existing in gamification-view.tsx, out of scope)
+   480→   480→- Verified dev.log: transactions-view now resolves cleanly; "✓ Compiled in 3.4s" — remaining module-not-found errors are for system/rewards/pages views (other tasks' scope)
+   481→   481→- Wrote agent work record to /agent-ctx/11-transactions-full-stack-developer.md
+   482→   482→
+   483→   483→Stage Summary:
+   484→   484→- src/features/transactions/transactions-view.tsx created (~1100 lines), named export TransactionsView, "use client" first line
+   485→   485→- 14 premium glass sections + 12 internal helpers ready for backend integration; zero fake transaction data (skeletons only)
+   486→   486→- TransactionDetailDialog (Radix) with placeholder TXN details, Administrator Notes, Verification Chain, Digital Receipt, Download Receipt action
+   487→   487→- Responsive: desktop table ↔ mobile cards; StatCards via AnimatedCounter; recharts AreaChart (electric gradient) + PieChart (6-category distribution)
+   488→   488→- File passes ESLint cleanly; ready to be lazy-loaded by existing AppRouter for both `transactions` and `history` routes
+   489→   489→
+   490→   490→---
+   491→   491→Task ID: 14-gamification
+   492→   492→Agent: full-stack-developer
+   493→   493→Task: Build LootLoom Gamification Center (referral/achievements/leaderboard/XP/badges/streak/challenges)
+   494→   494→
+   495→   495→Work Log:
+   496→   496→- Read worklog.md + existing infrastructure (lootloom components, stores, animations, app-router) to confirm GamificationView contract (named export, "use client" first line, lazy-loaded via `m.GamificationView` for referral/achievements/leaderboard routes)
+   497→   497→- Inspected reusable components (WidgetCard, PageContainer/PageHeader/SectionHeader/Grid, GlassCard, LootButton, IconBadge, AnimatedCounter, ProgressRing, StatCard, StatusBadge, EmptyState, ErrorState, SkeletonRow) and stores (useNavigationStore navigate/current, useUserStore level/xp/xpToNext/rank/dailyStreak/referralCode/username, useWalletStore availableCoins)
+   498→   498→- Created src/features/gamification/gamification-view.tsx (single new file, named export GamificationView, "use client" first line) — no shared files modified
+   499→   499→- Defined strongly-typed placeholder data: ACHIEVEMENTS (10 across 8 categories), ACHIEVEMENT_CATEGORIES chips, BADGES (12 with 9 rarity tiers), LEVEL_MILESTONES (5), LEADERBOARD_USERS (15 rows), REFERRAL_TOP (3), FRIENDS (5), CHALLENGES (6), MILESTONES (8), ACTIVITY_FEED (7), REWARD_SHOWCASE (5), XP_GROWTH_DATA, REFERRAL_GROWTH_DATA, LEVEL_PROGRESS_DATA, LEADERBOARD_HISTORY_DATA, ACHIEVEMENT_DISTRIBUTION, DAILY_STREAK_DAYS (7), MONTH_GRID (28-day July calendar)
+   500→   500→- Built 8 reusable helper components: AchievementCard, BadgeCard, ChallengeCard, MilestoneCard, LeaderboardRow, LeaderboardPodium (top-3 podium with gold/silver/bronze + floating), ReferralCard, ProgressWidget — all with cardReveal + hoverLift
+   501→   501→- Built 3 state components: NoAchievementsEmpty, NoReferralsEmpty, LeaderboardUnavailableError
+   502→   502→- Built all 16 sections inside PageContainer + PageHeader:
+   503→   503→  1. GamificationOverview — hero glass with 6 mini-stat tiles, current/global/friends rank cards, large 160px XP ProgressRing (floating animation), AnimatedCounter for level+XP, streak badge
+   504→   504→  2. XPLevelSystem — 180px electric ProgressRing, level milestones timeline (Bronze→Diamond 5 tiers), future prestige/level rewards dashed placeholders
+   505→   505→  3. AchievementCenter — 8 category filter chips (All/Beginner/Intermediate/Advanced/Expert/Legendary/Seasonal/Special Event/VIP), 10 AchievementCards with ProgressRing + difficulty badge + claim button
+   506→   506→  4. BadgeCollection — 12 BadgeCards grid (responsive 2/3/4/6 cols) with 9 rarity tiers + shimmer on unlocked + lock on locked + rarity glow shadows
+   507→   507→  5. DailyStreakCenter — animated flame icon (scale+rotate loop), longest/today/tomorrow/milestone mini-stats, 7-day weekly tile grid, 28-day monthly calendar with claimed/today/missed/future legend
+   508→   508→  6. ReferralCenter — styled referral code box from useUserStore + copy button (clipboard + copied state), referral link placeholder, 3 locked share options (QR/Contacts/Email), 4 ReferralCards, lifetime referral coins AnimatedCounter
+   509→   509→  7. ReferralLeaderboard — top-3 podium + current position highlight + referral growth AreaChart (cyan gradient)
+   510→   510→  8. GlobalLeaderboard — 7 tab chips (Country/Region locked), top-3 podium, 15 LeaderboardRows with rank/initials avatar/level/coins/XP/trend, current user highlight + fallback "you" row when rank > 15, scrollable list
+   511→   511→  9. FriendsLeaderboard — 5 friend cards with online indicator + weekly progress ring + compare button + invite friends CTA
+   512→   512→  10. ChallengesCenter — 6 ChallengeCards (Daily/Weekly/Monthly/Special/Community/Tournament-locked) with ProgressRing + ends-in timer + join/completed/locked CTA
+   513→   513→  11. MilestoneRewards — two-column timeline (coins / referrals+streaks) with MilestoneCard + vertical connector + reached/unreached + animated progress bar + reward descriptions
+   514→   514→  12. RewardShowcase — 5 premium glass reward cards (Upcoming/Locked/Recommended/Achievement/Referral) with lock icons + redeem/view CTAs
+   515→   515→  13. ProgressDashboard — Grid cols=3 of 6 ProgressWidgets (overall/achievement/referral/leaderboard/level/VIP-locked) each with mini ProgressRing
+   516→   516→  14. ActivityFeed — vertical gradient timeline with 7 typed events + per-type IconBadge + timestamps
+   517→   517→  15. Statistics — 5 recharts visualizations: XP Growth LineChart, Referral Growth AreaChart, Level Progress BarChart (purple gradient), Leaderboard History LineChart (reversed Y-axis emerald), Achievement Distribution PieChart donut with 5 colors + legend
+   518→   518→  16. Status States preview WidgetCard with NoAchievementsEmpty / NoReferralsEmpty / LeaderboardUnavailableError side-by-side
+   519→   519→- Route-aware behavior: PageHeader title/description adapts to current route (Referral Center / Achievements / Leaderboard / Gamification Center fallback); each of the 3 main sections wrapped in `<div data-section="...">` that gets `ring-2 ring-electric/30` highlight when isFocused; useEffect scrollIntoView smooth-scroll to matching section on mount/route change (300ms delay)
+   520→   520→- PageHeader actions: Wallet (glass → navigate wallet), Earn More (electric → navigate earn); footer CTA with Start Earning / Browse Rewards / View Dashboard
+   521→   521→- Defined local `User` interface (UserState isn't exported from stores) to avoid `ReturnType<typeof useUserStore>` unknown errors
+   522→   522→- Removed unused imports (AnimatePresence, useRef, duplicate aliased icons) — cleaned to ~40 lucide icons + 12 recharts primitives + 12 lootloom components
+   523→   523→- Ran eslint: 0 errors, 0 warnings on new file; tsc --noEmit: 0 errors in gamification-view.tsx; dev server compiles successfully ("✓ Compiled in 3.4s")
+   524→   524→- Did NOT modify any shared files; only created the one requested file
+   525→   525→
+   526→   526→Stage Summary:
+   527→   527→- src/features/gamification/gamification-view.tsx (~2150 lines) — named export GamificationView, "use client" first line
+   528→   528→- Serves THREE sidebar routes (referral / achievements / leaderboard) with route-aware header, focused-section highlight ring, and smooth scrollIntoView
+   529→   529→- All 16 required sections built with placeholder data only (no backend, no calculations); uses useUserStore for real level/xp/rank/streak/referralCode/username
+   530→   530→- 8 reusable helper components (AchievementCard, BadgeCard, ChallengeCard, MilestoneCard, LeaderboardRow, LeaderboardPodium, ReferralCard, ProgressWidget) + 3 state components (NoAchievementsEmpty, NoReferralsEmpty, LeaderboardUnavailableError) defined in-file
+   531→   531→- 5 recharts visualizations (LineChart × 2, AreaChart × 2, BarChart, PieChart) with electric/cyan/purple/emerald/gold gradient fills
+   532→   532→- File passes ESLint (0 errors, 0 warnings) and TypeScript (0 errors); matches app-router lazy import contract `m.GamificationView`
+   533→   533→- Premium white glassmorphism with framer-motion staggered reveals, floating animations, hover lifts, and gradient accents (electric/cyan/purple/gold/emerald/rose/navy — no indigo/blue)
+   534→   534→

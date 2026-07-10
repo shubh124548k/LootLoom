@@ -65,6 +65,34 @@ export const PAGE_META: Partial<Record<ViewId, PageMeta>> = {
   "error-500": { title: "500", description: "Server error", group: "system", breadcrumbs: [] },
   offline: { title: "Offline", description: "No connection", group: "system", breadcrumbs: [] },
   "update-required": { title: "Update Required", description: "Please update", group: "system", breadcrumbs: [] },
+  // CEO views
+  "ceo-users": { title: "User Management", description: "Manage platform users", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Users" }] },
+  // Legal / Public Info (Prompt 16)
+  about: { title: "About LootLoom", description: "Our vision & mission", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "About" }] },
+  "features-overview": { title: "Features", description: "Explore LootLoom features", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Features" }] },
+  "how-it-works": { title: "How It Works", description: "The earning journey", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "How It Works" }] },
+  "help-center": { title: "Help Center", description: "Knowledge base", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Help Center" }] },
+  contact: { title: "Contact", description: "Get in touch", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Contact" }] },
+  "faq-public": { title: "FAQ", description: "Frequently asked questions", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "FAQ" }] },
+  privacy: { title: "Privacy Policy", description: "How we handle your data", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Privacy Policy" }] },
+  terms: { title: "Terms & Conditions", description: "Platform terms of use", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Terms" }] },
+  cookies: { title: "Cookie Policy", description: "How we use cookies", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Cookies" }] },
+  "community-guidelines": { title: "Community Guidelines", description: "Platform rules", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Community Guidelines" }] },
+  "security-policy": { title: "Security Policy", description: "Security commitments", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Security" }] },
+  disclaimer: { title: "Disclaimer", description: "Platform disclaimer", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Disclaimer" }] },
+  copyright: { title: "Copyright Notice", description: "Intellectual property", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Copyright" }] },
+  dmca: { title: "DMCA Policy", description: "Digital Millennium Copyright", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "DMCA" }] },
+  refund: { title: "Refund Policy", description: "Refund terms", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Refund" }] },
+  "status-page": { title: "Status", description: "Platform status", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Status" }] },
+  changelog: { title: "Changelog", description: "Release history", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Changelog" }] },
+  "whats-new": { title: "What's New", description: "Latest updates", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "What's New" }] },
+  "platform-updates": { title: "Platform Updates", description: "Platform announcements", group: "public", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Updates" }] },
+  // System Experience Layer (Prompt 17 additional)
+  splash: { title: "Splash", description: "Starting up", group: "system", breadcrumbs: [] },
+  "app-loading": { title: "Loading", description: "Preparing application", group: "system", breadcrumbs: [] },
+  "coming-soon": { title: "Coming Soon", description: "In development", group: "system", breadcrumbs: [] },
+  "feature-not-available": { title: "Not Available", description: "Feature pending", group: "system", breadcrumbs: [] },
+  "service-unavailable": { title: "Service Unavailable", description: "Temporary outage", group: "system", breadcrumbs: [] },
 };
 
 export const PUBLIC_VIEWS: ViewId[] = ["home"];
@@ -106,4 +134,39 @@ export const SYSTEM_VIEWS: ViewId[] = [
   "offline",
   "update-required",
   "auth-loading",
+  "splash",
+  "app-loading",
+  "coming-soon",
+  "feature-not-available",
+  "service-unavailable",
+];
+
+/** Legal / Public Information views (Prompt 16) — full-screen, no app shell. */
+export const LEGAL_VIEWS: ViewId[] = [
+  "about",
+  "features-overview",
+  "how-it-works",
+  "help-center",
+  "contact",
+  "faq-public",
+  "privacy",
+  "terms",
+  "cookies",
+  "community-guidelines",
+  "security-policy",
+  "disclaimer",
+  "copyright",
+  "dmca",
+  "refund",
+  "status-page",
+  "changelog",
+  "whats-new",
+  "platform-updates",
+];
+
+/** CEO administration views (Prompt 18-20) — full-screen CEO layout. */
+export const CEO_VIEWS: ViewId[] = [
+  "ceo-login",
+  "ceo-dashboard",
+  "ceo-users",
 ];

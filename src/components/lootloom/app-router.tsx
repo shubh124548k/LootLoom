@@ -1,8 +1,9 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useNavigationStore } from "@/stores";
-import { BackgroundEngine, AppShell, pageTransition, RestrictedAccess } from "@/components/lootloom";
+import { useNavigationStore, useAuthStore } from "@/stores";
+import { BackgroundEngine, AppShell, pageTransition, RestrictedAccess, CeoLayout } from "@/components/lootloom";
+import { LEGAL_VIEWS, CEO_VIEWS, SYSTEM_VIEWS, AUTH_VIEWS } from "@/config/navigation";
 import { lazy, Suspense, useMemo } from "react";
 import { GlassLoader } from "@/components/lootloom/states";
 
@@ -14,29 +15,21 @@ const WalletView = lazy(() => import("@/features/wallet/wallet-view").then((m) =
 const EarnView = lazy(() => import("@/features/earn/earn-view").then((m) => ({ default: m.EarnView })));
 const RewardsView = lazy(() => import("@/features/rewards/rewards-view").then((m) => ({ default: m.RewardsView })));
 const PagesView = lazy(() => import("@/features/pages/pages-view").then((m) => ({ default: m.PagesView })));
-const SystemView = lazy(() => import("@/features/pages/system-view").then((m) => ({ default: m.SystemView })));
+const SystemView = lazy(() => import("@/features/system/system-view").then((m) => ({ default: m.SystemView })));
+const TransactionsView = lazy(() => import("@/features/transactions/transactions-view").then((m) => ({ default: m.TransactionsView })));
+const NotificationsView = lazy(() => import("@/features/notifications/notifications-view").then((m) => ({ default: m.NotificationsView })));
+const ProfileView = lazy(() => import("@/features/profile/profile-view").then((m) => ({ default: m.ProfileView })));
+const GamificationView = lazy(() => import("@/features/gamification/gamification-view").then((m) => ({ default: m.GamificationView })));
+const SupportView = lazy(() => import("@/features/support/support-view").then((m) => ({ default: m.SupportView })));
+const LegalView = lazy(() => import("@/features/legal/legal-view").then((m) => ({ default: m.LegalView })));
+const CeoAuthView = lazy(() => import("@/features/ceo/ceo-auth-view").then((m) => ({ default: m.CeoAuthView })));
+const CeoDashboardView = lazy(() => import("@/features/ceo/ceo-dashboard-view").then((m) => ({ default: m.CeoDashboardView })));
+const CeoUsersView = lazy(() => import("@/features/ceo/ceo-users-view").then((m) => ({ default: m.CeoUsersView })));
 
-const AUTH_VIEWS = new Set([
-  "login",
-  "register",
-  "forgot-password",
-  "reset-password",
-  "verify-email",
-  "verify-success",
-  "verify-failed",
-]);
-const SYSTEM_VIEWS = new Set([
-  "session-expired",
-  "unauthorized",
-  "maintenance",
-  "error-403",
-  "error-404",
-  "error-500",
-  "offline",
-  "update-required",
-  "auth-loading",
-  "ceo-restricted",
-]);
+const AUTH_SET = new Set(AUTH_VIEWS);
+const SYSTEM_SET = new Set(SYSTEM_VIEWS);
+const LEGAL_SET = new Set(LEGAL_VIEWS);
+const CEO_SET = new Set(CEO_VIEWS);
 
 function ViewSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -54,89 +47,91 @@ function ViewSuspense({ children }: { children: React.ReactNode }) {
 
 /**
  * AppRouter — maps current ViewId to the appropriate feature view.
- * Wraps authenticated app views in the AppShell; public/auth/system views are full-screen.
+ * Layouts: public/auth/system/legal = full-screen; app = AppShell; ceo = CeoLayout.
  */
 export function AppRouter() {
   const current = useNavigationStore((s) => s.current);
+  const role = useAuthStore((s) => s.role);
+  const isCeoAuthenticated = role === "ceo";
 
-  const isAuthView = AUTH_VIEWS.has(current);
-  const isSystemView = SYSTEM_VIEWS.has(current);
+  const isAuthView = AUTH_SET.has(current);
+  const isSystemView = SYSTEM_SET.has(current);
+  const isLegalView = LEGAL_SET.has(current);
+  const isCeoView = CEO_SET.has(current);
   const isPublicView = current === "home";
 
   const view = useMemo(() => {
-    if (isPublicView) {
-      return (
-        <ViewSuspense>
-          <HomeView />
-        </ViewSuspense>
-      );
-    }
-    if (isAuthView) {
-      return (
-        <ViewSuspense>
-          <AuthView />
-        </ViewSuspense>
-      );
-    }
-    if (isSystemView) {
-      return (
-        <ViewSuspense>
-          <SystemView />
-        </ViewSuspense>
-      );
-    }
+    if (isPublicView)
+      return <ViewSuspense><HomeView /></ViewSuspense>;
+    if (isAuthView)
+      return <ViewSuspense><AuthView /></ViewSuspense>;
+    if (isSystemView)
+      return <ViewSuspense><SystemView /></ViewSuspense>;
+    if (isLegalView)
+      return <ViewSuspense><LegalView /></ViewSuspense>;
+    if (current === "ceo-login")
+      return <ViewSuspense><CeoAuthView /></ViewSuspense>;
+
+    // CEO authenticated views — guarded by role check
+    if (current === "ceo-dashboard")
+      return isCeoAuthenticated ? <ViewSuspense><CeoDashboardView /></ViewSuspense> : <RestrictedAccess />;
+    if (current === "ceo-users")
+      return isCeoAuthenticated ? <ViewSuspense><CeoUsersView /></ViewSuspense> : <RestrictedAccess />;
+
     // App views
     switch (current) {
       case "dashboard":
-        return (
-          <ViewSuspense>
-            <DashboardView />
-          </ViewSuspense>
-        );
+        return <ViewSuspense><DashboardView /></ViewSuspense>;
       case "wallet":
-        return (
-          <ViewSuspense>
-            <WalletView />
-          </ViewSuspense>
-        );
+        return <ViewSuspense><WalletView /></ViewSuspense>;
       case "earn":
-        return (
-          <ViewSuspense>
-            <EarnView />
-          </ViewSuspense>
-        );
+        return <ViewSuspense><EarnView /></ViewSuspense>;
       case "rewards":
       case "redeem":
-        return (
-          <ViewSuspense>
-            <RewardsView />
-          </ViewSuspense>
-        );
-      case "ceo-dashboard":
+        return <ViewSuspense><RewardsView /></ViewSuspense>;
+      case "transactions":
+      case "history":
+        return <ViewSuspense><TransactionsView /></ViewSuspense>;
+      case "notifications":
+        return <ViewSuspense><NotificationsView /></ViewSuspense>;
+      case "profile":
+        return <ViewSuspense><ProfileView /></ViewSuspense>;
+      case "referral":
+      case "achievements":
+      case "leaderboard":
+        return <ViewSuspense><GamificationView /></ViewSuspense>;
+      case "support":
+        return <ViewSuspense><SupportView /></ViewSuspense>;
+      case "ceo-restricted":
         return <RestrictedAccess />;
       default:
-        return (
-          <ViewSuspense>
-            <PagesView />
-          </ViewSuspense>
-        );
+        return <ViewSuspense><PagesView /></ViewSuspense>;
     }
-  }, [current, isAuthView, isSystemView, isPublicView]);
+  }, [current, isAuthView, isSystemView, isLegalView, isCeoView, isPublicView, isCeoAuthenticated]);
 
-  // Public, auth, and system views: full-screen (no app shell)
-  if (isPublicView || isAuthView || isSystemView) {
+  // CEO authenticated views use CeoLayout (only when CEO role is set)
+  if (isCeoAuthenticated && (current === "ceo-dashboard" || current === "ceo-users")) {
+    return (
+      <div className="relative min-h-screen">
+        <BackgroundEngine />
+        <CeoLayout>
+          <AnimatePresence mode="wait">
+            <motion.div key={current} variants={pageTransition} initial="initial" animate="animate" exit="exit" className="relative z-10">
+              {view}
+            </motion.div>
+          </AnimatePresence>
+        </CeoLayout>
+      </div>
+    );
+  }
+
+  // Public, auth, system, legal, ceo-login, ceo-restricted, non-CEO ceo views: full-screen (no shell)
+  if (isPublicView || isAuthView || isSystemView || isLegalView || current === "ceo-login" || current === "ceo-restricted" || current === "ceo-dashboard" || current === "ceo-users") {
     return (
       <div className="relative min-h-screen">
         <BackgroundEngine />
         <AnimatePresence mode="wait">
-          <motion.div
-            key={current}
-            variants={pageTransition}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="relative z-10"
-          >
+          <motion.div key={current} variants={pageTransition} initial="initial" animate="animate" exit="exit" className="relative z-10">
             {view}
           </motion.div>
         </AnimatePresence>
@@ -150,14 +145,7 @@ export function AppRouter() {
       <BackgroundEngine />
       <AppShell>
         <AnimatePresence mode="wait">
-          <motion.div
-            key={current}
-            variants={pageTransition}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="relative z-10"
-          >
+          <motion.div key={current} variants={pageTransition} initial="initial" animate="animate" exit="exit" className="relative z-10">
             {view}
           </motion.div>
         </AnimatePresence>

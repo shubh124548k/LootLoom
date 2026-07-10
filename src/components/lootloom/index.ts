@@ -14,6 +14,7 @@ export { RestrictedAccess } from "./restricted-access";
 export { Sidebar } from "./sidebar";
 export { Header } from "./header";
 export { AppShell } from "./app-shell";
+export { CeoLayout } from "./ceo-layout";
 export { AppRouter } from "./app-router";
 export { ThemeProvider } from "./theme-provider";
 export { pageTransition, staggerContainer, cardReveal, fade, slideUp, hoverLift } from "@/lib/animations";

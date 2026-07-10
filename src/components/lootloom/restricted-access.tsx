@@ -80,7 +80,7 @@ export function RestrictedAccess() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.5 }}
-              className="mt-8 flex justify-center"
+              className="mt-8 flex flex-wrap items-center justify-center gap-3"
             >
               <LootButton
                 variant="electric"
@@ -90,6 +90,14 @@ export function RestrictedAccess() {
                 className="group"
               >
                 Return to Dashboard
+              </LootButton>
+              <LootButton
+                variant="glass"
+                size="lg"
+                leftIcon={<Lock size={16} />}
+                onClick={() => navigate("ceo-login")}
+              >
+                Administrator Login
               </LootButton>
             </motion.div>
 

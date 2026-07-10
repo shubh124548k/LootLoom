@@ -1580,7 +1580,13 @@ function Footer() {
     { label: "Rewards", view: "rewards" },
     { label: "Leaderboard", view: "leaderboard" },
   ];
-  const legalLinks = ["Privacy Policy", "Terms of Service", "Cookie Policy", "Community Guidelines", "Security"];
+  const legalLinks: { label: string; view: ViewId }[] = [
+    { label: "Privacy Policy", view: "privacy" },
+    { label: "Terms of Service", view: "terms" },
+    { label: "Cookie Policy", view: "cookies" },
+    { label: "Community Guidelines", view: "community-guidelines" },
+    { label: "Security", view: "security-policy" },
+  ];
   const supportLinks: { label: string; view: ViewId }[] = [
     { label: "Support Center", view: "support" },
     { label: "Help Center", view: "support" },
@@ -1640,11 +1646,12 @@ function Footer() {
               <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">Legal</h4>
               <ul className="space-y-2">
                 {legalLinks.map((l) => (
-                  <li key={l}>
+                  <li key={l.label}>
                     <button
+                      onClick={() => navigate(l.view)}
                       className="text-xs text-muted-foreground hover:text-electric transition-colors text-left"
                     >
-                      {l}
+                      {l.label}
                     </button>
                   </li>
                 ))}

@@ -10,16 +10,18 @@ interface ProgressRingProps {
   className?: string;
   showLabel?: boolean;
   label?: string;
-  gradient?: "electric" | "cyan" | "purple" | "gold" | "emerald";
+  gradient?: "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy";
   trackOpacity?: number;
 }
 
-const gradientStops: Record<NonNullable<ProgressRingProps["gradient"]>, [string, string]> = {
+const gradientStops: Record<string, [string, string]> = {
   electric: ["oklch(0.62 0.22 255)", "oklch(0.72 0.15 200)"],
   cyan: ["oklch(0.72 0.15 200)", "oklch(0.8 0.16 180)"],
   purple: ["oklch(0.6 0.22 295)", "oklch(0.7 0.2 320)"],
   gold: ["oklch(0.8 0.16 85)", "oklch(0.75 0.18 60)"],
   emerald: ["oklch(0.7 0.17 160)", "oklch(0.75 0.16 180)"],
+  rose: ["oklch(0.68 0.2 15)", "oklch(0.72 0.18 350)"],
+  navy: ["oklch(0.4 0.06 260)", "oklch(0.62 0.22 255)"],
 };
 
 /**
@@ -39,7 +41,8 @@ export function ProgressRing({
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (Math.min(100, Math.max(0, value)) / 100) * circumference;
   const id = `ring-${gradient}-${size}`;
-  const [from, to] = gradientStops[gradient];
+  const stops = gradientStops[gradient] ?? gradientStops.electric;
+  const [from, to] = stops;
 
   return (
     <div className={cn("relative inline-flex items-center justify-center", className)} style={{ width: size, height: size }}>
