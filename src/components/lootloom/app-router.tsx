@@ -111,10 +111,9 @@ export function AppRouter() {
         return <ViewSuspense><NotificationsView /></ViewSuspense>;
       case "profile":
         return <ViewSuspense><ProfileView /></ViewSuspense>;
-      case "referral":
-      case "achievements":
       case "leaderboard":
         return <ViewSuspense><GamificationView /></ViewSuspense>;
+      // referral + achievements removed per production requirements
       case "support":
         return <ViewSuspense><SupportView /></ViewSuspense>;
       case "ceo-restricted":

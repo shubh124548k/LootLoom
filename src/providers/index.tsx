@@ -1,22 +1,25 @@
 "use client";
 
+import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/lootloom/theme-provider";
 import { ViewTransitionProvider } from "@/components/lootloom/view-transition";
+import { AuthDataSync } from "@/components/lootloom/auth-data-sync";
 
 /**
  * AppProviders — centralized application provider composition.
- * Wraps the entire app with: Theme → ViewTransition.
+ * SessionProvider (NextAuth) → ThemeProvider → ViewTransitionProvider → AuthDataSync
  *
- * Future providers (Auth, Wallet, Notifications, Reward, Settings,
- * Advertisement, FeatureFlags) will compose here as the backend integrates.
- *
- * Usage in layout:
- *   <AppProviders>{children}</AppProviders>
+ * AuthDataSync connects real Google auth session to Zustand stores
+ * (user data, wallet, notifications) via API calls.
  */
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider>
-      <ViewTransitionProvider>{children}</ViewTransitionProvider>
-    </ThemeProvider>
+    <SessionProvider>
+      <ThemeProvider>
+        <ViewTransitionProvider>
+          <AuthDataSync>{children}</AuthDataSync>
+        </ViewTransitionProvider>
+      </ThemeProvider>
+    </SessionProvider>
   );
 }

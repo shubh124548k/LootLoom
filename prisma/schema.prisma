@@ -1,8 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// LootLoom — Production Prisma Schema
+// Real database models for the production application.
+// No fake data. All data flows: Database → API → Frontend → UI.
 
 generator client {
   provider = "prisma-client-js"
@@ -13,20 +11,220 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================================
+// USER DOMAIN
+// ============================================================
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
+  id          String   @id @default(cuid())
+  googleId    String   @unique
+  name        String
+  email       String   @unique
+  avatar      String?
+  role        String   @default("USER") // USER | CEO | ADMIN
+  status      String   @default("ACTIVE") // ACTIVE | SUSPENDED | BANNED
+  lastLoginAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  profile         UserProfile?
+  wallet          Wallet?
+  transactions    Transaction[]
+  adEvents        AdEvent[]
+  redeemRequests  RedeemRequest[]
+  notifications   Notification[]
+  supportTickets  SupportTicket[]
+  auditLogs       AuditLog[]       @relation("AuditActor")
+}
+
+model UserProfile {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone     String?
+  country   String?
+  timezone  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model Post {
+// ============================================================
+// WALLET DOMAIN — one wallet per user, all changes via ledger
+// ============================================================
+
+model Wallet {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coinBalance  Int      @default(0)
+  totalEarned  Int      @default(0)
+  totalSpent   Int      @default(0)
+  status       String   @default("ACTIVE") // ACTIVE | FROZEN
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  transactions    Transaction[]
+  redeemRequests  RedeemRequest[]
+
+  @@index([userId])
+}
+
+// ============================================================
+// TRANSACTION LEDGER — immutable, every balance change recorded
+// ============================================================
+
+model Transaction {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  walletId       String
+  wallet         Wallet   @relation(fields: [walletId], references: [id])
+  type           String   // AD_REWARD | REWARD_PURCHASE | REDEEM | BONUS | ADMIN_ADJUSTMENT
+  amount         Int      // positive = credit, negative = debit
+  balanceBefore  Int
+  balanceAfter   Int
+  referenceId    String?
+  description    String?
+  status         String   @default("COMPLETED") // COMPLETED | PENDING | FAILED
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([walletId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ============================================================
+// ADVERTISEMENT DOMAIN
+// ============================================================
+
+model AdEvent {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  network         String   // e.g. "admob", "unity", "custom"
+  adType          String   // REWARDED_VIDEO | INTERSTITIAL | BANNER
+  rewardAmount    Int      @default(0)
+  status          String   @default("STARTED") // STARTED | COMPLETED | FAILED | VERIFIED
+  verificationId  String?
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ============================================================
+// REWARD DOMAIN
+// ============================================================
+
+model Reward {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  image       String?
+  coinCost    Int
+  category    String   // UPI | GIFT_CARD | GAMING | VOUCHER | RECHARGE | SHOPPING | MEMBERSHIP
+  stock       Int      @default(-1) // -1 = unlimited
+  status      String   @default("ACTIVE") // ACTIVE | DISABLED | SOLD_OUT
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  redeemRequests RedeemRequest[]
+
+  @@index([category])
+  @@index([status])
+}
+
+// ============================================================
+// REDEEM DOMAIN
+// ============================================================
+
+model RedeemRequest {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rewardId       String
+  reward         Reward   @relation(fields: [rewardId], references: [id])
+  walletId       String
+  wallet         Wallet   @relation(fields: [walletId], references: [id])
+  coinsUsed      Int
+  paymentMethod  String?
+  paymentDetails String?
+  status         String   @default("PENDING") // PENDING | APPROVED | REJECTED | COMPLETED
+  adminNote      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================================
+// NOTIFICATION DOMAIN
+// ============================================================
+
+model Notification {
   id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
+  message   String
+  type      String   // WALLET | REWARD | REDEEM | SUPPORT | SECURITY | SYSTEM
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+// ============================================================
+// SUPPORT DOMAIN
+// ============================================================
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  category  String
+  status    String   @default("OPEN") // OPEN | PENDING | RESOLVED | CLOSED
+  priority  String   @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  messages SupportMessage[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model SupportMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId  String
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+// ============================================================
+// AUDIT LOG — every important action recorded
+// ============================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  actor     User     @relation("AuditActor", fields: [actorId], references: [id])
+  action    String   // USER_REGISTERED | USER_LOGIN | USER_LOGOUT | WALLET_CREDIT | WALLET_DEBIT | REDEEM_APPROVED | etc.
+  targetId  String?
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
 }

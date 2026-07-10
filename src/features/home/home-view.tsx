@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
@@ -349,6 +349,26 @@ function TopBar() {
    ============================================================ */
 function Hero() {
   const navigate = useNavigationStore((s) => s.navigate);
+  const [stats, setStats] = useState([
+    { value: 0, suffix: "+", label: "Active Members" },
+    { value: 0, suffix: "+", label: "Coins Redeemed" },
+    { value: 0, suffix: "+", label: "Rewards Available" },
+  ]);
+
+  useEffect(() => {
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          setStats([
+            { value: json.data.activeMembers, suffix: "+", label: "Active Members" },
+            { value: json.data.coinsRedeemed, suffix: "+", label: "Coins Redeemed" },
+            { value: json.data.rewardsAvailable, suffix: "+", label: "Rewards Available" },
+          ]);
+        }
+      })
+      .catch(() => {});
+  }, []);
   return (
     <section className="relative px-3 sm:px-6 lg:px-8 pt-8 lg:pt-12 pb-10">
       <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
@@ -387,11 +407,7 @@ function Hero() {
             </LootButton>
           </motion.div>
           <motion.div variants={cardReveal} custom={4} className="flex flex-wrap items-center gap-x-8 gap-y-3 pt-2">
-            {[
-              { value: 52000, suffix: "+", label: "Active Members" },
-              { value: 1200000, suffix: "+", label: "Coins Redeemed" },
-              { value: 4.8, decimals: 1, suffix: "/5", label: "Member Rating" },
-            ].map((s) => (
+            {stats.map((s) => (
               <div key={s.label} className="space-y-0.5">
                 <AnimatedCounter
                   value={s.value}
@@ -436,7 +452,7 @@ function Hero() {
                 </div>
                 <div className="flex items-end gap-2">
                   <AnimatedCounter
-                    value={12840}
+                    value={0}
                     className="text-3xl font-bold text-foreground"
                   />
                   <Coins size={18} className="text-gold mb-1.5" />
@@ -789,7 +805,7 @@ function DashboardPreview() {
                 <div>
                   <p className="text-xs text-muted-foreground font-medium">Available Balance</p>
                   <div className="flex items-end gap-2 mt-1">
-                    <AnimatedCounter value={12840} className="text-3xl font-bold text-foreground" />
+                    <AnimatedCounter value={0} className="text-3xl font-bold text-foreground" />
                     <Coins size={18} className="text-gold mb-1.5" />
                   </div>
                 </div>
@@ -818,7 +834,7 @@ function DashboardPreview() {
                   { label: "Today", value: 145, accent: "text-electric", icon: "TrendingUp" },
                   { label: "This Week", value: 980, accent: "text-cyan-brand", icon: "TrendingUp" },
                   { label: "This Month", value: 4280, accent: "text-purple-brand", icon: "TrendingUp" },
-                  { label: "Lifetime", value: 45820, accent: "text-gold", icon: "Award" },
+                  { label: "Lifetime", value: 0, accent: "text-gold", icon: "Award" },
                 ].map((s) => (
                   <div key={s.label} className="rounded-xl bg-accent/40 p-3">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{s.label}</p>

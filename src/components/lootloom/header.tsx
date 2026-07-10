@@ -269,9 +269,14 @@ function NotificationCenter() {
 function ProfileMenu() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigationStore((s) => s.navigate);
-  const logout = useAuthStore((s) => s.logout);
   const user = useUserStore();
   const ref = useRef<HTMLDivElement>(null);
+
+  const handleLogout = async () => {
+    const { signOut } = await import("next-auth/react");
+    await signOut({ redirect: false });
+    navigate("home");
+  };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -336,11 +341,7 @@ function ProfileMenu() {
             </div>
             <div className="p-1.5 border-t border-border">
               <button
-                onClick={() => {
-                  logout();
-                  navigate("home");
-                  setOpen(false);
-                }}
+                onClick={handleLogout}
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-rose-brand/10 transition-colors text-sm text-rose-brand"
               >
                 <Icons.LogOut size={15} />

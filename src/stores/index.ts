@@ -1,17 +1,11 @@
 /**
- * LootLoom — Centralized State Stores (Zustand)
- * All client state lives here: navigation, auth, user, ui, notifications, wallet, theme.
+ * LootLoom — Production State Stores (Zustand)
+ * REAL data flow: Database → API → Store → UI
+ * No fake data. All values default to zero/empty until fetched from backend.
  */
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type {
-  ViewId,
-  AuthStatus,
-  UserRole,
-  NotificationItem,
-  ActivityItem,
-  TransactionItem,
-} from "@/types";
+import type { ViewId, AuthStatus, UserRole, NotificationItem, ActivityItem, TransactionItem } from "@/types";
 
 /* ============================================================
    Navigation Store — current view, history, breadcrumbs
@@ -47,18 +41,17 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
 }));
 
 /* ============================================================
-   Auth Store — session status, role, tokens (future)
+   Auth Store — real session via NextAuth
+   The actual auth state comes from useSession() in components.
+   This store tracks the role (for CEO gate) and auth status.
    ============================================================ */
 interface AuthState {
   status: AuthStatus;
   role: UserRole;
   isAuthenticated: boolean;
-  accessToken: string | null;
-  refreshToken: string | null;
-  login: () => void;
-  logout: () => void;
   setStatus: (status: AuthStatus) => void;
   setRole: (role: UserRole) => void;
+  setAuthenticated: (v: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -67,68 +60,76 @@ export const useAuthStore = create<AuthState>()(
       status: "unauthenticated",
       role: "user",
       isAuthenticated: false,
-      accessToken: null,
-      refreshToken: null,
-      login: () =>
-        set({ status: "authenticated", isAuthenticated: true, role: "user" }),
-      logout: () =>
-        set({
-          status: "unauthenticated",
-          isAuthenticated: false,
-          role: "visitor",
-          accessToken: null,
-          refreshToken: null,
-        }),
       setStatus: (status) => set({ status }),
       setRole: (role) => set({ role }),
+      setAuthenticated: (v) =>
+        set((s) => ({
+          isAuthenticated: v,
+          status: v ? "authenticated" : "unauthenticated",
+        })),
     }),
     {
       name: "lootloom-auth",
       storage: createJSONStorage(() => (typeof window !== "undefined" ? localStorage : (undefined as unknown as Storage))),
-      partialize: (state) => ({
-        status: state.status,
-        role: state.role,
-        isAuthenticated: state.isAuthenticated,
-      }),
+      partialize: (state) => ({ role: state.role }),
     }
   )
 );
 
 /* ============================================================
-   User Store — placeholder profile data
+   User Store — REAL user data from backend
+   Defaults to empty/null. Populated by fetchUserData() after auth.
    ============================================================ */
-interface UserState {
+interface RealUserState {
+  id: string | null;
   fullName: string;
-  username: string;
   email: string;
-  memberSince: string;
+  avatar: string | null;
+  role: string;
+  memberSince: string | null;
+  lastLogin: string | null;
+  // Gamification fields (kept for UI compatibility, default to 0)
   level: number;
   xp: number;
   xpToNext: number;
   rank: number;
   dailyStreak: number;
-  lastLogin: string;
-  referralCode: string;
-  avatarUrl: string | null;
-  setUser: (data: Partial<UserState>) => void;
+  // Removed: referralCode (referral system removed per requirements)
+  setUser: (data: Partial<RealUserState>) => void;
+  resetUser: () => void;
 }
 
-export const useUserStore = create<UserState>()(
+export const useUserStore = create<RealUserState>()(
   persist(
     (set) => ({
-      fullName: "LootLoom Member",
-      username: "@member",
-      email: "member@lootloom.app",
-      memberSince: "2024",
-      level: 7,
-      xp: 2840,
-      xpToNext: 4000,
-      rank: 142,
-      dailyStreak: 12,
-      lastLogin: "Today",
-      referralCode: "LOOT-7K2X",
-      avatarUrl: null,
+      id: null,
+      fullName: "",
+      email: "",
+      avatar: null,
+      role: "USER",
+      memberSince: null,
+      lastLogin: null,
+      level: 1,
+      xp: 0,
+      xpToNext: 1000,
+      rank: 0,
+      dailyStreak: 0,
       setUser: (data) => set((state) => ({ ...state, ...data })),
+      resetUser: () =>
+        set({
+          id: null,
+          fullName: "",
+          email: "",
+          avatar: null,
+          role: "USER",
+          memberSince: null,
+          lastLogin: null,
+          level: 1,
+          xp: 0,
+          xpToNext: 1000,
+          rank: 0,
+          dailyStreak: 0,
+        }),
     }),
     {
       name: "lootloom-user",
@@ -184,7 +185,8 @@ export const useUIStore = create<UIState>()(
 );
 
 /* ============================================================
-   Wallet Store — coin balances (placeholders)
+   Wallet Store — REAL wallet data from backend
+   Defaults to 0. Populated by fetchWalletData() after auth.
    ============================================================ */
 interface WalletState {
   availableCoins: number;
@@ -195,25 +197,41 @@ interface WalletState {
   weeklyEarnings: number;
   monthlyEarnings: number;
   transactions: TransactionItem[];
-  setCoins: (data: Partial<WalletState>) => void;
+  walletId: string | null;
+  setWallet: (data: Partial<WalletState>) => void;
   setTransactions: (t: TransactionItem[]) => void;
+  resetWallet: () => void;
 }
 
 export const useWalletStore = create<WalletState>((set) => ({
-  availableCoins: 12840,
-  pendingCoins: 320,
-  lifetimeEarned: 45820,
-  lifetimeRedeemed: 32660,
-  todayEarnings: 145,
-  weeklyEarnings: 980,
-  monthlyEarnings: 4280,
+  availableCoins: 0,
+  pendingCoins: 0,
+  lifetimeEarned: 0,
+  lifetimeRedeemed: 0,
+  todayEarnings: 0,
+  weeklyEarnings: 0,
+  monthlyEarnings: 0,
   transactions: [],
-  setCoins: (data) => set((s) => ({ ...s, ...data })),
+  walletId: null,
+  setWallet: (data) => set((s) => ({ ...s, ...data })),
   setTransactions: (t) => set({ transactions: t }),
+  resetWallet: () =>
+    set({
+      availableCoins: 0,
+      pendingCoins: 0,
+      lifetimeEarned: 0,
+      lifetimeRedeemed: 0,
+      todayEarnings: 0,
+      weeklyEarnings: 0,
+      monthlyEarnings: 0,
+      transactions: [],
+      walletId: null,
+    }),
 }));
 
 /* ============================================================
-   Notification Store — unread count, items
+   Notification Store — REAL notifications from backend
+   Defaults to empty. Populated by fetchNotifications() after auth.
    ============================================================ */
 interface NotificationState {
   items: NotificationItem[];
@@ -221,19 +239,12 @@ interface NotificationState {
   markAllRead: () => void;
   markRead: (id: string) => void;
   setItems: (items: NotificationItem[]) => void;
+  resetNotifications: () => void;
 }
 
-const SAMPLE_NOTIFICATIONS: NotificationItem[] = [
-  { id: "n1", title: "Daily Bonus Ready", body: "Claim your daily login reward of 50 coins.", time: "2m ago", type: "reward", read: false, icon: "CalendarCheck" },
-  { id: "n2", title: "Mission Completed", body: "You earned 120 coins from 'Watch 5 ads'.", time: "18m ago", type: "reward", read: false, icon: "Target" },
-  { id: "n3", title: "Referral Reward", body: "Your friend joined! You earned 200 coins.", time: "1h ago", type: "social", read: false, icon: "Users" },
-  { id: "n4", title: "Security Notice", body: "New device signed in from Mumbai.", time: "3h ago", type: "security", read: true, icon: "ShieldCheck" },
-  { id: "n5", title: "Weekly Summary", body: "You earned 980 coins this week.", time: "1d ago", type: "wallet", read: true, icon: "Wallet" },
-];
-
 export const useNotificationStore = create<NotificationState>((set) => ({
-  items: SAMPLE_NOTIFICATIONS,
-  unreadCount: SAMPLE_NOTIFICATIONS.filter((n) => !n.read).length,
+  items: [],
+  unreadCount: 0,
   markAllRead: () =>
     set((s) => ({
       items: s.items.map((n) => ({ ...n, read: true })),
@@ -246,23 +257,21 @@ export const useNotificationStore = create<NotificationState>((set) => ({
     }),
   setItems: (items) =>
     set({ items, unreadCount: items.filter((n) => !n.read).length }),
+  resetNotifications: () => set({ items: [], unreadCount: 0 }),
 }));
 
 /* ============================================================
-   Activity Store — recent activity timeline (placeholders)
+   Activity Store — REAL activity from backend (transaction history)
+   Defaults to empty. Populated from transactions API.
    ============================================================ */
 interface ActivityState {
   items: ActivityItem[];
+  setItems: (items: ActivityItem[]) => void;
 }
 
-export const useActivityStore = create<ActivityState>(() => ({
-  items: [
-    { id: "a1", type: "earned", title: "Rewarded Ad", description: "Watched a rewarded advertisement", amount: 25, time: "5 min ago", icon: "PlayCircle" },
-    { id: "a2", type: "mission", title: "Mission Completed", description: "Completed 'Daily Explorer' mission", amount: 120, time: "32 min ago", icon: "Target" },
-    { id: "a3", type: "bonus", title: "Daily Bonus", description: "Claimed daily login bonus", amount: 50, time: "2 hours ago", icon: "CalendarCheck" },
-    { id: "a4", type: "referral", title: "Referral Reward", description: "Friend signed up with your code", amount: 200, time: "5 hours ago", icon: "Users" },
-    { id: "a5", type: "redeemed", title: "Redeem Request", description: "Submitted redeem for ₹100 UPI", amount: -1000, time: "Yesterday", icon: "ShoppingBag" },
-  ],
+export const useActivityStore = create<ActivityState>((set) => ({
+  items: [],
+  setItems: (items) => set({ items }),
 }));
 
 /* ============================================================
