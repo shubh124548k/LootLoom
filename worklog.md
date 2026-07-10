@@ -1188,3 +1188,60 @@ Stage Summary:
 - Real-time: socket.io service for live wallet/transaction/notification updates
 - All fake data removed from dashboard, wallet, earn views
 - UI design 100% preserved — only data layer replaced
+
+---
+Task ID: prompts-7-9-production
+Agent: main
+Task: Production transformation Prompts 7-9 (Rewards/Redeem, CEO Dashboard, Real-time communication)
+
+Work Log:
+- Prompt 7 (Rewards/Redeem):
+  * Seeded 12 real rewards into database (UPI Cash, Mobile Recharge, Amazon/Flipkart Gift Cards, Google Play, Netflix, Premium Membership, Free Fire Diamonds)
+  * GET /api/rewards — real reward catalog from database (12 rewards)
+  * GET /api/rewards/[id] — real reward details
+  * POST /api/redeem — real redeem: validates balance, atomic debit + ledger + request + notification + audit + real-time events
+  * GET /api/redeem/history — user's real redeem history
+  * Payment details masked in CEO view (only last 4 chars visible)
+  * Fraud protection: insufficient balance check, reward availability check, user-scoped queries
+
+- Prompt 8 (CEO Dashboard):
+  * GET /api/ceo/dashboard — real CEO stats: total users, new users today, total coins distributed, total ads watched, total/pending/completed/rejected redeems, recent users, pending redeem requests, recent transactions — CEO-only access
+  * GET /api/ceo/redeem — all redeem requests for CEO (with user+reward details, masked payment info)
+  * PATCH /api/ceo/redeem — CEO approve/reject/complete with refund logic:
+    - REJECT: automatically refunds coins + creates REDEEM_REFUND transaction + notification + audit
+    - APPROVE: updates status + notification + audit
+    - COMPLETE: updates status + notification + audit
+  * POST /api/ceo/broadcast — CEO sends notifications to all users or selected users + real-time events
+  * GET /api/support — users see own tickets, CEO sees all tickets
+  * POST /api/support — create ticket or reply (CEO replies trigger user notification + real-time)
+  * CEO authorization: every CEO endpoint checks user.role === "CEO", returns 403 otherwise
+  * Audit logging for all CEO actions
+
+- Prompt 9 (Real-time Communication):
+  * Real-time emit helper (src/lib/realtime.ts): typed emitters for wallet.updated, transaction.created, notification.created, redeem.updated, support.reply + CEO events (new.user, redeem.created, support.created, security.alert)
+  * Socket.io mini-service running on port 3003 (mini-services/realtime-service)
+  * useRealtimeSync hook connects via io("/?XTransformPort=3003"), updates stores on events
+  * AuthDataSync includes useRealtimeSync for live updates
+  * All API routes emit real-time events after database changes (non-blocking)
+  * Connection management: connect after login, disconnect after logout, auto-reconnect
+  * Event security: events only emitted server-side, users only receive their own events
+
+- Fixed AnimatedCounter to handle value updates after API fetch (rAF-based update to avoid cascading renders)
+- Fixed home page hero stats to use direct span rendering for API-fetched values (reliable state updates)
+
+- Verification:
+  * bun run lint: 0 errors, 0 warnings
+  * Dev server: 200 OK
+  * /api/rewards: returns 12 real rewards from database
+  * /api/stats: returns real platform stats (rewardsAvailable: 12)
+  * /api/ceo/dashboard: 401 for unauthenticated (correct)
+  * /api/ceo/redeem: 401 for non-CEO (correct)
+  * Home page: shows real stats (0+ members, 0+ coins, 12+ rewards)
+  * Zero console errors
+
+Stage Summary:
+- Prompt 7: Real reward marketplace — 12 rewards in DB, real redeem flow with wallet deduction, CEO approval with refund
+- Prompt 8: Real CEO dashboard — live stats from DB, redeem management, broadcast, support, audit logging, CEO-only access
+- Prompt 9: Real-time communication — socket.io service, event emitters from all API routes, live updates for wallet/transactions/notifications/redeems/support
+- All fake data replaced with real database data
+- UI design 100% preserved

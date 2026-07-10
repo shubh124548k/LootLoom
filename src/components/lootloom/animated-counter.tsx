@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, useInView, useMotionValue, useSpring } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface AnimatedCounterProps {
@@ -16,6 +16,8 @@ interface AnimatedCounterProps {
 
 /**
  * AnimatedCounter — animates a number from 0 to value when in view.
+ * If the value changes after initial animation (e.g. from API fetch),
+ * the counter updates to the new value smoothly.
  */
 export function AnimatedCounter({
   value,
@@ -29,9 +31,19 @@ export function AnimatedCounter({
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "-40px" });
   const [display, setDisplay] = useState(0);
+  const hasAnimatedRef = useRef(false);
 
   useEffect(() => {
     if (!inView) return;
+
+    // If already animated once, update value without re-animation (use rAF to avoid cascading renders)
+    if (hasAnimatedRef.current) {
+      const raf = requestAnimationFrame(() => setDisplay(value));
+      return () => cancelAnimationFrame(raf);
+    }
+
+    // First animation: animate from 0 to value
+    hasAnimatedRef.current = true;
     let raf = 0;
     const start = performance.now();
     const tick = (now: number) => {

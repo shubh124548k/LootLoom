@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { emitWalletUpdated, emitTransactionCreated, emitNotificationCreated, emitRedeemCreated } from "@/lib/realtime";
 
 /**
  * POST /api/redeem — submit a redeem request
@@ -90,6 +91,12 @@ export async function POST(req: NextRequest) {
       metadata: JSON.stringify({ rewardId, coinsUsed: reward.coinCost }),
     },
   });
+
+  // Real-time events (non-blocking)
+  void emitWalletUpdated(session.user.id, { coinBalance: updatedWallet.coinBalance, totalEarned: updatedWallet.totalEarned, totalSpent: updatedWallet.totalSpent });
+  void emitTransactionCreated(session.user.id, { id: transaction.id, type: transaction.type, amount: transaction.amount, description: transaction.description || "Redeem", createdAt: transaction.createdAt.toISOString() });
+  void emitNotificationCreated(session.user.id, { id: "temp", title: "Redeem Request Submitted", message: `Your redeem request for ${reward.name} has been submitted and is pending review.`, type: "REDEEM", createdAt: new Date().toISOString() });
+  void emitRedeemCreated({ requestId: redeemRequest.id, userId: session.user.id, rewardName: reward.name, coins: reward.coinCost });
 
   return NextResponse.json({
     success: true,

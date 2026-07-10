@@ -409,12 +409,9 @@ function Hero() {
           <motion.div variants={cardReveal} custom={4} className="flex flex-wrap items-center gap-x-8 gap-y-3 pt-2">
             {stats.map((s) => (
               <div key={s.label} className="space-y-0.5">
-                <AnimatedCounter
-                  value={s.value}
-                  suffix={s.suffix}
-                  decimals={s.decimals ?? 0}
-                  className="text-xl sm:text-2xl font-bold text-foreground"
-                />
+                <span className="text-xl sm:text-2xl font-bold text-foreground tabular-nums tracking-tight">
+                  {s.value.toLocaleString("en-IN")}{s.suffix}
+                </span>
                 <p className="text-xs text-muted-foreground font-medium">{s.label}</p>
               </div>
             ))}
