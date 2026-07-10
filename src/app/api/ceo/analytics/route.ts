@@ -44,18 +44,23 @@ export async function GET(req: NextRequest) {
     db.redeemRequest.aggregate({ where: { createdAt: { gte: since } }, _sum: { coinsUsed: true } }),
   ]);
 
-  // Reward popularity — most redeemed rewards
-  const rewardPopularity = await db.redeemRequest.groupBy({
-    by: ["rewardId"],
+  // Reward popularity — most redeemed rewards (manual count to avoid Prisma groupBy issues)
+  const allRedeems = await db.redeemRequest.findMany({
     where: { createdAt: { gte: since } },
-    _count: true,
-    orderBy: { _count: { rewardId: "desc" } },
-    take: 5,
+    select: { rewardId: true },
+    take: 5000,
   });
+  const redeemCountMap = new Map<string, number>();
+  for (const r of allRedeems) {
+    redeemCountMap.set(r.rewardId, (redeemCountMap.get(r.rewardId) || 0) + 1);
+  }
+  const sortedRewardIds = Array.from(redeemCountMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
   const topRewards = await Promise.all(
-    rewardPopularity.map(async (r) => {
-      const reward = await db.reward.findUnique({ where: { id: r.rewardId } });
-      return { name: reward?.name || "Unknown", count: r._count, coinCost: reward?.coinCost || 0 };
+    sortedRewardIds.map(async ([rewardId, count]) => {
+      const reward = await db.reward.findUnique({ where: { id: rewardId } });
+      return { name: reward?.name || "Unknown", count, coinCost: reward?.coinCost || 0 };
     })
   );
 

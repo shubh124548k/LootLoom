@@ -35,13 +35,19 @@ export async function GET(req: NextRequest) {
 
   // Detect suspicious users: high ad velocity (>50 ads in last hour)
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  const adVelocityUsers = await db.adEvent.groupBy({
-    by: ["userId"],
+  const adVelocityRaw = await db.adEvent.findMany({
     where: { status: "VERIFIED", createdAt: { gte: oneHourAgo } },
-    _count: true,
-    having: { _count: { userId: { gte: 50 } } },
-    take: 10,
+    select: { userId: true },
+    take: 1000,
   });
+  // Count per user manually
+  const adCountMap = new Map<string, number>();
+  for (const a of adVelocityRaw) {
+    adCountMap.set(a.userId, (adCountMap.get(a.userId) || 0) + 1);
+  }
+  const adVelocityUsers = Array.from(adCountMap.entries())
+    .filter(([_, count]) => count >= 50)
+    .map(([userId, count]) => ({ userId, _count: count }));
 
   // Detect duplicate reward attempts: failed ad events (potential fraud)
   const failedAdAttempts = await db.adEvent.count({
@@ -49,23 +55,29 @@ export async function GET(req: NextRequest) {
   });
 
   // Users with multiple pending redeems (potential abuse)
-  const multiPendingUsers = await db.redeemRequest.groupBy({
-    by: ["userId"],
+  const multiPendingRaw = await db.redeemRequest.findMany({
     where: { status: "PENDING" },
-    _count: true,
-    having: { _count: { userId: { gte: 3 } } },
-    take: 10,
+    select: { userId: true },
+    take: 1000,
   });
+  const pendingCountMap = new Map<string, number>();
+  for (const r of multiPendingRaw) {
+    pendingCountMap.set(r.userId, (pendingCountMap.get(r.userId) || 0) + 1);
+  }
+  const multiPendingUsers = Array.from(pendingCountMap.entries())
+    .filter(([_, count]) => count >= 3)
+    .map(([userId, count]) => ({ userId, _count: count }));
 
   // Risk users with details
   const riskUsers = await Promise.all(
     adVelocityUsers.map(async (u) => {
       const user = await db.user.findUnique({ where: { id: u.userId }, select: { id: true, name: true, email: true, createdAt: true } });
+      const count = u._count;
       return {
         user,
-        riskLevel: u._count > 80 ? "CRITICAL" : u._count > 60 ? "HIGH" : "MEDIUM",
-        reason: `Ad velocity: ${u._count} ads in last hour`,
-        adsInHour: u._count,
+        riskLevel: count > 80 ? "CRITICAL" : count > 60 ? "HIGH" : "MEDIUM",
+        reason: `Ad velocity: ${count} ads in last hour`,
+        adsInHour: count,
       };
     })
   );
