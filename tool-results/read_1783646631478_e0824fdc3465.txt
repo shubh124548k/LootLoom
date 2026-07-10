@@ -1,0 +1,643 @@
+     1→                  className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border text-xs text-foreground focus:ring-2 focus:ring-electric/40 focus:outline-none"
+     2→                />
+     3→              </div>
+     4→              <div className="space-y-1">
+     5→                <label className="text-[10px] text-muted-foreground">To</label>
+     6→                <input
+     7→                  type="date"
+     8→                  className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border text-xs text-foreground focus:ring-2 focus:ring-electric/40 focus:outline-none"
+     9→                />
+    10→              </div>
+    11→            </div>
+    12→          </GlassCard>
+    13→
+    14→          <GlassCard level={1} className="p-3.5 space-y-2.5">
+    15→            <div className="flex items-center gap-1.5">
+    16→              <Coins size={12} className="text-gold" />
+    17→              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+    18→                Coin Balance Range
+    19→              </p>
+    20→            </div>
+    21→            <div className="grid grid-cols-2 gap-2">
+    22→              <div className="space-y-1">
+    23→                <label className="text-[10px] text-muted-foreground">Min</label>
+    24→                <input
+    25→                  type="number"
+    26→                  placeholder="0"
+    27→                  className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border text-xs text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-gold/40 focus:outline-none"
+    28→                />
+    29→              </div>
+    30→              <div className="space-y-1">
+    31→                <label className="text-[10px] text-muted-foreground">Max</label>
+    32→                <input
+    33→                  type="number"
+    34→                  placeholder="∞"
+    35→                  className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border text-xs text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-gold/40 focus:outline-none"
+    36→                />
+    37→              </div>
+    38→            </div>
+    39→          </GlassCard>
+    40→        </div>
+    41→
+    42→        {/* Chip groups */}
+    43→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    44→          {renderChipGroup("Account Status", ACCOUNT_STATUS_CHIPS, "emerald")}
+    45→          {renderChipGroup("Verification Status", VERIFICATION_CHIPS, "cyan")}
+    46→          {renderChipGroup("Wallet Status", WALLET_STATUS_CHIPS, "gold")}
+    47→          {renderChipGroup("Referral Status", REFERRAL_CHIPS, "purple")}
+    48→          {renderChipGroup("Achievement Status", ACHIEVEMENT_CHIPS, "rose")}
+    49→          {renderChipGroup("Last Login", LAST_LOGIN_CHIPS, "electric")}
+    50→          {renderChipGroup("Device Type", DEVICE_CHIPS, "navy")}
+    51→          {renderChipGroup("Platform", PLATFORM_CHIPS, "cyan")}
+    52→          {renderChipGroup("Risk Level", RISK_CHIPS, "rose")}
+    53→        </div>
+    54→
+    55→        {/* Country / Language placeholders */}
+    56→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    57→          <GlassCard level={1} className="p-3.5 space-y-2">
+    58→            <div className="flex items-center gap-1.5">
+    59→              <Globe size={12} className="text-electric" />
+    60→              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+    61→                Country <Lock size={9} className="opacity-60 ml-0.5" />
+    62→              </p>
+    63→            </div>
+    64→            <div className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border flex items-center justify-between">
+    65→              <span className="text-xs text-muted-foreground">Select country…</span>
+    66→              <ChevronDown size={12} className="text-muted-foreground" />
+    67→            </div>
+    68→          </GlassCard>
+    69→          <GlassCard level={1} className="p-3.5 space-y-2">
+    70→            <div className="flex items-center gap-1.5">
+    71→              <Languages size={12} className="text-electric" />
+    72→              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+    73→                Language <Lock size={9} className="opacity-60 ml-0.5" />
+    74→              </p>
+    75→            </div>
+    76→            <div className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border flex items-center justify-between">
+    77→              <span className="text-xs text-muted-foreground">Select language…</span>
+    78→              <ChevronDown size={12} className="text-muted-foreground" />
+    79→            </div>
+    80→          </GlassCard>
+    81→        </div>
+    82→
+    83→        {/* Footer actions */}
+    84→        <div className="flex items-center justify-between pt-2 border-t border-border/40">
+    85→          <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-all">
+    86→            <Star size={12} /> Saved Filters
+    87→            <Lock size={9} className="opacity-60" />
+    88→          </button>
+    89→          <div className="flex items-center gap-2">
+    90→            <LootButton variant="ghost" size="sm" leftIcon={<RotateCcw size={13} />} onClick={resetAll}>
+    91→              Reset Filters
+    92→            </LootButton>
+    93→            <LootButton variant="electric" size="sm" leftIcon={<Filter size={13} />}>
+    94→              Apply Filters
+    95→            </LootButton>
+    96→          </div>
+    97→        </div>
+    98→      </div>
+    99→    </WidgetCard>
+   100→  );
+   101→}
+   102→
+   103→/* ============================================================
+   104→   Section: User Table
+   105→   ============================================================ */
+   106→
+   107→function UserTableSection() {
+   108→  const [drawerOpen, setDrawerOpen] = useState(false);
+   109→  const [selected, setSelected] = useState<number[]>([]);
+   110→  const allSelected = selected.length === 10;
+   111→
+   112→  const toggleAll = () => setSelected(allSelected ? [] : Array.from({ length: 10 }, (_, i) => i));
+   113→  const toggleOne = (i: number) =>
+   114→    setSelected((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i]));
+   115→
+   116→  return (
+   117→    <WidgetCard
+   118→      title="User Directory"
+   119→      description="All platform users — live table"
+   120→      icon={<Users size={18} className="text-electric" />}
+   121→      action={
+   122→        <div className="flex items-center gap-2">
+   123→          <StatusBadge variant="info" dot pulse>{selected.length} selected</StatusBadge>
+   124→          <LootButton size="sm" variant="glass" leftIcon={<RefreshCw size={13} />}>
+   125→            Refresh
+   126→          </LootButton>
+   127→        </div>
+   128→      }
+   129→    >
+   130→      <BulkActionBar selectedCount={selected.length} onClear={() => setSelected([])} />
+   131→
+   132→      {/* ===== Desktop table ===== */}
+   133→      <div className="hidden lg:block rounded-xl overflow-hidden ring-1 ring-border/60">
+   134→        {/* Header row */}
+   135→        <div className="bg-muted/40 grid grid-cols-[120px_1fr_100px_110px_90px_130px_110px_120px] items-center gap-3 px-4 py-2.5 border-b border-border">
+   136→          <div className="flex items-center gap-2">
+   137→            <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all" />
+   138→            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">User ID</span>
+   139→          </div>
+   140→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">User</span>
+   141→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Coins</span>
+   142→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Wallet</span>
+   143→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Level</span>
+   144→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Verification</span>
+   145→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status</span>
+   146→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-right">Actions</span>
+   147→        </div>
+   148→        {/* Skeleton rows */}
+   149→        <div>
+   150→          {Array.from({ length: 10 }).map((_, i) => (
+   151→            <div
+   152→              key={i}
+   153→              className="grid grid-cols-[120px_1fr_100px_110px_90px_130px_110px_120px] items-center gap-3 px-4 py-3 border-b border-border/40 last:border-0 hover:bg-accent/30 transition-colors"
+   154→            >
+   155→              <div className="flex items-center gap-2">
+   156→                <Checkbox
+   157→                  checked={selected.includes(i)}
+   158→                  onCheckedChange={() => toggleOne(i)}
+   159→                  aria-label={`Select row ${i + 1}`}
+   160→                />
+   161→                <div className="h-3 w-16 rounded shimmer" />
+   162→              </div>
+   163→              <div className="flex items-center gap-3">
+   164→                <div className="size-9 rounded-full shimmer shrink-0" />
+   165→                <div className="space-y-1.5 min-w-0">
+   166→                  <div className="h-3 w-28 rounded shimmer" />
+   167→                  <div className="h-2.5 w-36 rounded shimmer" />
+   168→                </div>
+   169→              </div>
+   170→              <div className="h-3 w-14 rounded shimmer" />
+   171→              <div className="h-5 w-20 rounded-full shimmer" />
+   172→              <div className="h-3 w-10 rounded shimmer" />
+   173→              <div className="h-5 w-24 rounded-full shimmer" />
+   174→              <div className="h-5 w-20 rounded-full shimmer" />
+   175→              <div className="flex items-center justify-end gap-1.5">
+   176→                <LootButton
+   177→                  size="sm"
+   178→                  variant="outline"
+   179→                  leftIcon={<Eye size={12} />}
+   180→                  onClick={() => setDrawerOpen(true)}
+   181→                >
+   182→                  View
+   183→                </LootButton>
+   184→                <AdminActionMenu compact />
+   185→              </div>
+   186→            </div>
+   187→          ))}
+   188→        </div>
+   189→        {/* Footer */}
+   190→        <div className="bg-muted/30 flex items-center justify-between px-4 py-2.5 border-t border-border">
+   191→          <p className="text-[11px] text-muted-foreground">
+   192→            Showing <span className="font-semibold text-foreground">1–10</span> of{" "}
+   193→            <span className="font-semibold text-foreground">—</span> users
+   194→          </p>
+   195→          <div className="flex items-center gap-1">
+   196→            <button className="size-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent/60 disabled:opacity-40 transition-all" disabled>
+   197→              <ChevronDown size={14} className="rotate-90" />
+   198→            </button>
+   199→            <span className="text-[11px] font-semibold text-foreground px-1.5">1 / —</span>
+   200→            <button className="size-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent/60 disabled:opacity-40 transition-all" disabled>
+   201→              <ChevronDown size={14} className="-rotate-90" />
+   202→            </button>
+   203→          </div>
+   204→        </div>
+   205→      </div>
+   206→
+   207→      {/* ===== Mobile cards ===== */}
+   208→      <div className="lg:hidden space-y-3">
+   209→        {Array.from({ length: 5 }).map((_, i) => (
+   210→          <div key={i} className="space-y-2">
+   211→            <UserCardMobile />
+   212→            <div className="flex items-center justify-end gap-2 -mt-1">
+   213→              <LootButton
+   214→                size="sm"
+   215→                variant="outline"
+   216→                leftIcon={<Eye size={12} />}
+   217→                onClick={() => setDrawerOpen(true)}
+   218→              >
+   219→                View
+   220→              </LootButton>
+   221→              <AdminActionMenu compact />
+   222→            </div>
+   223→          </div>
+   224→        ))}
+   225→      </div>
+   226→
+   227→      <UserProfileDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
+   228→    </WidgetCard>
+   229→  );
+   230→}
+   231→
+   232→/* ============================================================
+   233→   Section: User Analytics
+   234→   ============================================================ */
+   235→
+   236→function AnalyticsChartCard({
+   237→  title,
+   238→  description,
+   239→  icon,
+   240→  type,
+   241→  data,
+   242→  index,
+   243→  accent,
+   244→}: {
+   245→  title: string;
+   246→  description: string;
+   247→  icon: React.ReactNode;
+   248→  type: "line" | "bar" | "area";
+   249→  data: { label: string; value: number }[];
+   250→  index: number;
+   251→  accent: Accent;
+   252→}) {
+   253→  const accentColor: Record<Accent, string> = {
+   254→    electric: "oklch(0.62 0.22 255)",
+   255→    cyan: "oklch(0.72 0.15 200)",
+   256→    purple: "oklch(0.6 0.22 295)",
+   257→    gold: "oklch(0.8 0.16 85)",
+   258→    emerald: "oklch(0.7 0.17 160)",
+   259→    rose: "oklch(0.65 0.21 15)",
+   260→    navy: "oklch(0.3 0.1 260)",
+   261→  };
+   262→  const color = accentColor[accent];
+   263→
+   264→  return (
+   265→    <WidgetCard
+   266→      title={title}
+   267→      description={description}
+   268→      icon={icon}
+   269→      index={index}
+   270→    >
+   271→      <div className="h-[200px] w-full">
+   272→        <ResponsiveContainer width="100%" height="100%">
+   273→          {type === "line" ? (
+   274→            <LineChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+   275→              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.1 260 / 0.08)" />
+   276→              <XAxis dataKey="label" stroke="oklch(0.3 0.1 260 / 0.4)" fontSize={10} tickLine={false} axisLine={false} />
+   277→              <YAxis stroke="oklch(0.3 0.1 260 / 0.4)" fontSize={10} tickLine={false} axisLine={false} />
+   278→              <Tooltip
+   279→                cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: "4 4" }}
+   280→                contentStyle={{
+   281→                  borderRadius: 12,
+   282→                  border: "1px solid oklch(0.3 0.1 260 / 0.12)",
+   283→                  background: "rgba(255,255,255,0.85)",
+   284→                  backdropFilter: "blur(8px)",
+   285→                  fontSize: 11,
+   286→                }}
+   287→              />
+   288→              <Line
+   289→                type="monotone"
+   290→                dataKey="value"
+   291→                stroke={color}
+   292→                strokeWidth={2.5}
+   293→                dot={{ r: 3, fill: color, strokeWidth: 0 }}
+   294→                activeDot={{ r: 5, fill: color }}
+   295→              />
+   296→            </LineChart>
+   297→          ) : type === "bar" ? (
+   298→            <BarChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+   299→              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.1 260 / 0.08)" />
+   300→              <XAxis dataKey="label" stroke="oklch(0.3 0.1 260 / 0.4)" fontSize={10} tickLine={false} axisLine={false} />
+   301→              <YAxis stroke="oklch(0.3 0.1 260 / 0.4)" fontSize={10} tickLine={false} axisLine={false} />
+   302→              <Tooltip
+   303→                cursor={{ fill: "oklch(0.3 0.1 260 / 0.04)" }}
+   304→                contentStyle={{
+   305→                  borderRadius: 12,
+   306→                  border: "1px solid oklch(0.3 0.1 260 / 0.12)",
+   307→                  background: "rgba(255,255,255,0.85)",
+   308→                  backdropFilter: "blur(8px)",
+   309→                  fontSize: 11,
+   310→                }}
+   311→              />
+   312→              <Bar dataKey="value" fill={color} radius={[6, 6, 0, 0]} maxBarSize={28} />
+   313→            </BarChart>
+   314→          ) : (
+   315→            <AreaChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+   316→              <defs>
+   317→                <linearGradient id={`grad-${title}`} x1="0" y1="0" x2="0" y2="1">
+   318→                  <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+   319→                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+   320→                </linearGradient>
+   321→              </defs>
+   322→              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.1 260 / 0.08)" />
+   323→              <XAxis dataKey="label" stroke="oklch(0.3 0.1 260 / 0.4)" fontSize={10} tickLine={false} axisLine={false} />
+   324→              <YAxis stroke="oklch(0.3 0.1 260 / 0.4)" fontSize={10} tickLine={false} axisLine={false} />
+   325→              <Tooltip
+   326→                cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: "4 4" }}
+   327→                contentStyle={{
+   328→                  borderRadius: 12,
+   329→                  border: "1px solid oklch(0.3 0.1 260 / 0.12)",
+   330→                  background: "rgba(255,255,255,0.85)",
+   331→                  backdropFilter: "blur(8px)",
+   332→                  fontSize: 11,
+   333→                }}
+   334→              />
+   335→              <Area
+   336→                type="monotone"
+   337→                dataKey="value"
+   338→                stroke={color}
+   339→                strokeWidth={2.5}
+   340→                fill={`url(#grad-${title})`}
+   341→                dot={{ r: 3, fill: color, strokeWidth: 0 }}
+   342→                activeDot={{ r: 5, fill: color }}
+   343→              />
+   344→            </AreaChart>
+   345→          )}
+   346→        </ResponsiveContainer>
+   347→      </div>
+   348→    </WidgetCard>
+   349→  );
+   350→}
+   351→
+   352→function UserAnalyticsSection() {
+   353→  const [period, setPeriod] = useState<AnalyticsPeriod>("30D");
+   354→
+   355→  return (
+   356→    <WidgetCard
+   357→      title="User Analytics"
+   358→      description="Aggregate platform-wide user trends"
+   359→      icon={<Activity size={18} className="text-electric" />}
+   360→      action={<AnalyticsTabs value={period} onChange={setPeriod} />}
+   361→    >
+   362→      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+   363→        <AnalyticsChartCard
+   364→          title="Registration Trend"
+   365→          description="New sign-ups over time"
+   366→          icon={<UserPlus size={16} className="text-electric" />}
+   367→          type="line"
+   368→          data={REGISTRATION_TREND}
+   369→          index={0}
+   370→          accent="electric"
+   371→        />
+   372→        <AnalyticsChartCard
+   373→          title="Activity Trend"
+   374→          description="Daily active users"
+   375→          icon={<Activity size={16} className="text-cyan-brand" />}
+   376→          type="bar"
+   377→          data={ACTIVITY_TREND}
+   378→          index={1}
+   379→          accent="cyan"
+   380→        />
+   381→        <AnalyticsChartCard
+   382→          title="Coin Trend"
+   383→          description="Aggregate coin balance"
+   384→          icon={<Coins size={16} className="text-gold" />}
+   385→          type="area"
+   386→          data={COIN_TREND}
+   387→          index={2}
+   388→          accent="gold"
+   389→        />
+   390→        <AnalyticsChartCard
+   391→          title="Reward Trend"
+   392→          description="Rewards claimed"
+   393→          icon={<Gift size={16} className="text-purple-brand" />}
+   394→          type="bar"
+   395→          data={REWARD_TREND}
+   396→          index={3}
+   397→          accent="purple"
+   398→        />
+   399→        <AnalyticsChartCard
+   400→          title="Referral Trend"
+   401→          description="Successful referrals"
+   402→          icon={<UserPlus size={16} className="text-emerald-brand" />}
+   403→          type="line"
+   404→          data={REFERRAL_TREND}
+   405→          index={4}
+   406→          accent="emerald"
+   407→        />
+   408→        <AnalyticsChartCard
+   409→          title="Login Trend"
+   410→          description="Total logins"
+   411→          icon={<LogIn size={16} className="text-rose-brand" />}
+   412→          type="area"
+   413→          data={LOGIN_TREND}
+   414→          index={5}
+   415→          accent="rose"
+   416→        />
+   417→      </div>
+   418→    </WidgetCard>
+   419→  );
+   420→}
+   421→
+   422→/* ============================================================
+   423→   Section: Bulk Actions
+   424→   ============================================================ */
+   425→
+   426→function BulkActionsSection() {
+   427→  return (
+   428→    <WidgetCard
+   429→      title="Bulk Operations"
+   430→      description="Mass operations across multiple users"
+   431→      icon={<Briefcase size={18} className="text-electric" />}
+   432→      action={
+   433→        <StatusBadge variant="default" dot>
+   434→          <Lock size={9} className="mr-0.5" /> Pending Backend
+   435→        </StatusBadge>
+   436→      }
+   437→    >
+   438→      <div className="space-y-4">
+   439→        <GlassCard level={1} className="p-3.5 flex items-center gap-3">
+   440→          <Checkbox />
+   441→          <div className="flex-1">
+   442→            <p className="text-xs font-semibold text-foreground">Select All Visible Users</p>
+   443→            <p className="text-[11px] text-muted-foreground">Apply bulk operations to all users currently in the table.</p>
+   444→          </div>
+   445→          <ChevronRight size={14} className="text-muted-foreground" />
+   446→        </GlassCard>
+   447→
+   448→        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
+   449→          {BULK_ACTIONS.map((a) => {
+   450→            const Icon = a.icon;
+   451→            const isWarning = a.variant === "warning";
+   452→            return (
+   453→              <button
+   454→                key={a.id}
+   455→                className={cn(
+   456→                  "flex flex-col items-start gap-2 p-3 rounded-xl ring-1 text-left transition-all",
+   457→                  isWarning
+   458→                    ? "ring-gold/20 bg-gold/5 hover:bg-gold/10"
+   459→                    : "ring-border bg-transparent hover:bg-accent/60"
+   460→                )}
+   461→              >
+   462→                <div className={cn(
+   463→                  "size-8 rounded-lg flex items-center justify-center",
+   464→                  isWarning ? "bg-gold/15 text-gold" : "bg-electric/10 text-electric"
+   465→                )}>
+   466→                  <Icon size={14} />
+   467→                </div>
+   468→                <div className="space-y-0.5">
+   469→                  <p className="text-xs font-semibold text-foreground flex items-center gap-1">
+   470→                    {a.label}
+   471→                    {a.future && <Lock size={9} className="text-muted-foreground/60" />}
+   472→                  </p>
+   473→                  <p className="text-[10px] text-muted-foreground">Placeholder · No backend</p>
+   474→                </div>
+   475→              </button>
+   476→            );
+   477→          })}
+   478→        </div>
+   479→
+   480→        <div className="flex items-center justify-between pt-2 border-t border-border/40">
+   481→          <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+   482→            <ShieldCheck size={11} className="text-electric" />
+   483→            All bulk operations require CEO confirmation.
+   484→          </p>
+   485→          <LootButton size="sm" variant="outline" leftIcon={<RotateCcw size={13} />}>
+   486→            Reset Selection
+   487→          </LootButton>
+   488→        </div>
+   489→      </div>
+   490→    </WidgetCard>
+   491→  );
+   492→}
+   493→
+   494→/* ============================================================
+   495→   Section: Export Center
+   496→   ============================================================ */
+   497→
+   498→function ExportCenterSection() {
+   499→  return (
+   500→    <WidgetCard
+   501→      title="Export Center"
+   502→      description="Download or schedule user data exports"
+   503→      icon={<Download size={18} className="text-electric" />}
+   504→      action={
+   505→        <StatusBadge variant="default" dot>
+   506→          <Lock size={9} className="mr-0.5" /> Coming Soon
+   507→        </StatusBadge>
+   508→      }
+   509→    >
+   510→      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+   511→        {EXPORT_TILES.map((t, i) => {
+   512→          const Icon = t.icon;
+   513→          return (
+   514→            <motion.div
+   515→              key={t.id}
+   516→              variants={cardReveal}
+   517→              custom={i}
+   518→              initial="hidden"
+   519→              whileInView="visible"
+   520→              viewport={{ once: true, margin: "-30px" }}
+   521→              {...hoverLift}
+   522→            >
+   523→              <GlassCard level={2} hover className="p-4 space-y-3 cursor-pointer relative overflow-hidden h-full">
+   524→                <div className="absolute -top-6 -right-6 size-20 rounded-full bg-electric/8 blur-2xl pointer-events-none" />
+   525→                <div className="flex items-start justify-between">
+   526→                  <div className="size-10 rounded-xl bg-[linear-gradient(135deg,var(--electric),var(--cyan-brand))] flex items-center justify-center text-white shadow-sm">
+   527→                    <Icon size={16} />
+   528→                  </div>
+   529→                  {t.future && (
+   530→                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-gold bg-gold/10 ring-1 ring-gold/20 px-1.5 py-0.5 rounded-full">
+   531→                      <Lock size={8} /> Soon
+   532→                    </span>
+   533→                  )}
+   534→                </div>
+   535→                <div className="space-y-1">
+   536→                  <p className="text-sm font-semibold text-foreground">{t.label}</p>
+   537→                  <p className="text-[11px] text-muted-foreground leading-snug">{t.desc}</p>
+   538→                </div>
+   539→                <div className="pt-2 border-t border-border/40 flex items-center justify-between">
+   540→                  <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-bold">
+   541→                    {t.future ? "Scheduled" : "Ready"}
+   542→                  </span>
+   543→                  <ArrowRight size={12} className="text-electric" />
+   544→                </div>
+   545→              </GlassCard>
+   546→            </motion.div>
+   547→          );
+   548→        })}
+   549→      </div>
+   550→    </WidgetCard>
+   551→  );
+   552→}
+   553→
+   554→/* ============================================================
+   555→   Main View: CeoUsersView
+   556→   ============================================================ */
+   557→
+   558→export function CeoUsersView() {
+   559→  const navigate = useNavigationStore((s) => s.navigate);
+   560→
+   561→  return (
+   562→    <PageContainer>
+   563→      <PageHeader
+   564→        title="User Management"
+   565→        description="View, search and manage platform users"
+   566→        actions={
+   567→          <>
+   568→            <LootButton
+   569→              variant="glass"
+   570→              size="sm"
+   571→              leftIcon={<Download size={14} />}
+   572→            >
+   573→              Export
+   574→              <span className="ml-1.5 inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider text-gold bg-gold/10 ring-1 ring-gold/20 px-1 py-0.5 rounded">
+   575→                <Lock size={8} /> Soon
+   576→              </span>
+   577→            </LootButton>
+   578→            <LootButton
+   579→              variant="outline"
+   580→              size="sm"
+   581→              leftIcon={<ArrowRight size={14} className="rotate-180" />}
+   582→              onClick={() => navigate("ceo-dashboard")}
+   583→            >
+   584→              Mission Control
+   585→            </LootButton>
+   586→            <LootButton
+   587→              variant="electric"
+   588→              size="sm"
+   589→              leftIcon={<RefreshCw size={14} />}
+   590→            >
+   591→              Refresh
+   592→            </LootButton>
+   593→          </>
+   594→        }
+   595→      />
+   596→
+   597→      <motion.div
+   598→        variants={staggerContainer}
+   599→        initial="hidden"
+   600→        animate="visible"
+   601→        className="space-y-6"
+   602→      >
+   603→        {/* 1. Overview Stats */}
+   604→        <OverviewStatsSection />
+   605→
+   606→        {/* 2. Global Search */}
+   607→        <GlobalSearchSection />
+   608→
+   609→        {/* 3. Advanced Filters */}
+   610→        <AdvancedFiltersSection />
+   611→
+   612→        {/* 4. User Table (with profile drawer + admin action menu) */}
+   613→        <UserTableSection />
+   614→
+   615→        {/* 10. User Analytics */}
+   616→        <UserAnalyticsSection />
+   617→
+   618→        {/* 11. Bulk Actions */}
+   619→        <BulkActionsSection />
+   620→
+   621→        {/* 12. Export Center */}
+   622→        <ExportCenterSection />
+   623→
+   624→        {/* Footer note */}
+   625→        <GlassCard level={1} className="p-4 flex items-center justify-between flex-wrap gap-2">
+   626→          <div className="flex items-center gap-2.5">
+   627→            <IconBadge name="ShieldCheck" accent="emerald" size="sm" />
+   628→            <div>
+   629→              <p className="text-xs font-semibold text-foreground">CEO Secure Session</p>
+   630→              <p className="text-[11px] text-muted-foreground">
+   631→                All user management actions are audited and recorded.
+   632→              </p>
+   633→            </div>
+   634→          </div>
+   635→          <StatusBadge variant="success" dot pulse>
+   636→            Audit Trail Active
+   637→          </StatusBadge>
+   638→        </GlassCard>
+   639→      </motion.div>
+   640→    </PageContainer>
+   641→  );
+   642→}
+   643→

@@ -66,7 +66,13 @@ export type ViewId =
   | "app-loading"
   | "coming-soon"
   | "feature-not-available"
-  | "service-unavailable";
+  | "service-unavailable"
+  // Prompt 21-25 — CEO administration views
+  | "ceo-wallet"
+  | "ceo-redeem"
+  | "ceo-support"
+  | "ceo-communication"
+  | "ceo-security";
 
 export type RouteGroup =
   | "public"

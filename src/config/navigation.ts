@@ -93,6 +93,12 @@ export const PAGE_META: Partial<Record<ViewId, PageMeta>> = {
   "coming-soon": { title: "Coming Soon", description: "In development", group: "system", breadcrumbs: [] },
   "feature-not-available": { title: "Not Available", description: "Feature pending", group: "system", breadcrumbs: [] },
   "service-unavailable": { title: "Service Unavailable", description: "Temporary outage", group: "system", breadcrumbs: [] },
+  // CEO administration views (Prompts 21-25)
+  "ceo-wallet": { title: "Wallet Management", description: "Platform wallet ecosystem", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Wallet Management" }] },
+  "ceo-redeem": { title: "Redeem Management", description: "Review & approve redemptions", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Redeem Management" }] },
+  "ceo-support": { title: "Support Management", description: "Monitor support tickets", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Support Management" }] },
+  "ceo-communication": { title: "Communication Center", description: "Broadcast & announcements", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Communication" }] },
+  "ceo-security": { title: "Security Operations", description: "Platform security & audit", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Security Operations" }] },
 };
 
 export const PUBLIC_VIEWS: ViewId[] = ["home"];
@@ -169,4 +175,9 @@ export const CEO_VIEWS: ViewId[] = [
   "ceo-login",
   "ceo-dashboard",
   "ceo-users",
+  "ceo-wallet",
+  "ceo-redeem",
+  "ceo-support",
+  "ceo-communication",
+  "ceo-security",
 ];
