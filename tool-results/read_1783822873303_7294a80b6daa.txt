@@ -1,0 +1,1388 @@
+     1→"use client";
+     2→
+     3→import { useMemo, useState, useEffect } from "react";
+     4→import { motion } from "framer-motion";
+     5→import {
+     6→  Area,
+     7→  AreaChart,
+     8→  Bar,
+     9→  BarChart,
+    10→  Cell,
+    11→  Pie,
+    12→  PieChart,
+    13→  ResponsiveContainer,
+    14→  XAxis,
+    15→  YAxis,
+    16→} from "recharts";
+    17→import {
+    18→  ArrowRight,
+    19→  ArrowUpRight,
+    20→  Award,
+    21→  Bell,
+    22→  Calendar,
+    23→  CalendarCheck,
+    24→  Check,
+    25→  Clock,
+    26→  Coins,
+    27→  Copy,
+    28→  Crown,
+    29→  Flame,
+    30→  Gift,
+    31→  Headphones,
+    32→  KeyRound,
+    33→  LifeBuoy,
+    34→  Lock,
+    35→  Medal,
+    36→  MessageCircle,
+    37→  MonitorSmartphone,
+    38→  PlayCircle,
+    39→  RefreshCw,
+    40→  ShieldCheck,
+    41→  ShoppingBag,
+    42→  Sparkles,
+    43→  Star,
+    44→  Target,
+    45→  Ticket,
+    46→  TrendingUp,
+    47→  Trophy,
+    48→  Users,
+    49→  Wallet,
+    50→  Zap,
+    51→} from "lucide-react";
+    52→import {
+    53→  AnimatedCounter,
+    54→  EmptyState,
+    55→  GlassCard,
+    56→  Grid,
+    57→  IconBadge,
+    58→  LootButton,
+    59→  PageContainer,
+    60→  PageHeader,
+    61→  ProgressRing,
+    62→  SkeletonRow,
+    63→  StatCard,
+    64→  StatusBadge,
+    65→  WidgetCard,
+    66→} from "@/components/lootloom";
+    67→import {
+    68→  cardReveal,
+    69→  floating,
+    70→  floatingSmall,
+    71→  hoverLift,
+    72→  staggerContainer,
+    73→} from "@/lib/animations";
+    74→import {
+    75→  useActivityStore,
+    76→  useNavigationStore,
+    77→  useNotificationStore,
+    78→  useUserStore,
+    79→  useWalletStore,
+    80→} from "@/stores";
+    81→import { useDashboardData } from "@/hooks/use-dashboard-data";
+    82→import type { ViewId } from "@/types";
+    83→
+    84→/* ============================================================
+    85→   Helpers
+    86→   ============================================================ */
+    87→
+    88→function useGreeting() {
+    89→  const hour = new Date().getHours();
+    90→  if (hour < 12) return "Good Morning";
+    91→  if (hour < 17) return "Good Afternoon";
+    92→  return "Good Evening";
+    93→}
+    94→
+    95→function getInitials(name: string) {
+    96→  const parts = name.trim().split(/\s+/).filter(Boolean);
+    97→  if (parts.length === 0) return "LL";
+    98→  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+    99→  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+   100→}
+   101→
+   102→/* ============================================================
+   103→   Section 1 — Welcome Hero
+   104→   ============================================================ */
+   105→
+   106→function WelcomeHero() {
+   107→  const { fullName, level, xp, xpToNext, rank, dailyStreak } = useUserStore();
+   108→  const { availableCoins, pendingCoins, todayEarnings } = useWalletStore();
+   109→  const navigate = useNavigationStore((s) => s.navigate);
+   110→  const greeting = useGreeting();
+   111→  const xpPercent = Math.min(100, Math.round((xp / xpToNext) * 100));
+   112→
+   113→  const weeklyData = [
+   114→    { day: "M", value: 120 },
+   115→    { day: "T", value: 180 },
+   116→    { day: "W", value: 95 },
+   117→    { day: "T", value: 220 },
+   118→    { day: "F", value: 145 },
+   119→    { day: "S", value: 280 },
+   120→    { day: "S", value: 165 },
+   121→  ];
+   122→
+   123→  return (
+   124→    <motion.div
+   125→      variants={cardReveal}
+   126→      custom={0}
+   127→      initial="hidden"
+   128→      whileInView="visible"
+   129→      viewport={{ once: true, margin: "-30px" }}
+   130→      className="lg:col-span-2 xl:col-span-4"
+   131→    >
+   132→      <GlassCard
+   133→        level={1}
+   134→        sheen
+   135→        glow="electric"
+   136→        className="relative overflow-hidden p-6 lg:p-8 shadow-[var(--shadow-lg)]"
+   137→      >
+   138→        {/* Animated gradient accents */}
+   139→        <motion.div
+   140→          variants={floating}
+   141→          animate="animate"
+   142→          className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-[radial-gradient(circle,var(--electric),transparent_70%)] opacity-25 blur-2xl"
+   143→        />
+   144→        <motion.div
+   145→          variants={floatingSmall}
+   146→          animate="animate"
+   147→          className="pointer-events-none absolute -bottom-32 -left-16 size-80 rounded-full bg-[radial-gradient(circle,var(--purple-brand),transparent_70%)] opacity-20 blur-2xl"
+   148→        />
+   149→        <motion.div
+   150→          variants={floating}
+   151→          animate="animate"
+   152→          className="pointer-events-none absolute top-1/3 right-1/3 size-40 rounded-full bg-[radial-gradient(circle,var(--cyan-brand),transparent_70%)] opacity-20 blur-2xl"
+   153→        />
+   154→
+   155→        <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+   156→          {/* Left: identity + greeting */}
+   157→          <div className="lg:col-span-2 space-y-5">
+   158→            <div className="flex items-start gap-4">
+   159→              <motion.div
+   160→                whileHover={{ scale: 1.04, rotate: 2 }}
+   161→                transition={{ type: "spring", stiffness: 320, damping: 18 }}
+   162→                className="relative size-16 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-[var(--shadow-glow)] bg-[linear-gradient(135deg,var(--electric),var(--cyan-brand)_55%,var(--purple-brand))]"
+   163→              >
+   164→                {getInitials(fullName)}
+   165→                <span className="absolute -bottom-1 -right-1 size-5 rounded-full bg-emerald-brand ring-2 ring-background flex items-center justify-center">
+   166→                  <Check size={11} className="text-white" strokeWidth={3} />
+   167→                </span>
+   168→              </motion.div>
+   169→              <div className="flex-1 min-w-0">
+   170→                <p className="text-sm text-muted-foreground font-medium">{greeting},</p>
+   171→                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground truncate">
+   172→                  {fullName}
+   173→                </h2>
+   174→                <div className="mt-2 flex flex-wrap items-center gap-2">
+   175→                  <StatusBadge variant="electric" dot pulse>
+   176→                    <Crown size={11} className="mr-1" /> Level {level}
+   177→                  </StatusBadge>
+   178→                  <StatusBadge variant="gold">
+   179→                    <Flame size={11} className="mr-1" /> {dailyStreak} day streak
+   180→                  </StatusBadge>
+   181→                  <StatusBadge variant="purple">
+   182→                    <Trophy size={11} className="mr-1" /> Rank #{rank}
+   183→                  </StatusBadge>
+   184→                </div>
+   185→              </div>
+   186→            </div>
+   187→
+   188→            {/* Coin balance + wallet mini */}
+   189→            <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+   190→              <div>
+   191→                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+   192→                  Available Balance
+   193→                </p>
+   194→                <div className="flex items-center gap-2 mt-1">
+   195→                  <AnimatedCounter
+   196→                    value={availableCoins}
+   197→                    className="text-4xl sm:text-5xl font-bold tracking-tight text-gradient-electric bg-clip-text"
+   198→                  />
+   199→                  <Coins className="size-7 text-gold mb-1" />
+   200→                </div>
+   201→                <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+   202→                  <span className="inline-flex items-center gap-1">
+   203→                    <span className="size-1.5 rounded-full bg-emerald-brand" /> Pending{" "}
+   204→                    <strong className="text-foreground">{pendingCoins.toLocaleString()}</strong>
+   205→                  </span>
+   206→                  <span className="inline-flex items-center gap-1">
+   207→                    <TrendingUp size={12} className="text-emerald-brand" /> +{todayEarnings} today
+   208→                  </span>
+   209→                </div>
+   210→              </div>
+   211→            </div>
+   212→
+   213→            {/* XP progress */}
+   214→            <div className="space-y-2">
+   215→              <div className="flex items-center justify-between text-xs">
+   216→                <span className="font-semibold text-foreground inline-flex items-center gap-1.5">
+   217→                  <Sparkles size={12} className="text-electric" /> Level {level} Progress
+   218→                </span>
+   219→                <span className="text-muted-foreground tabular-nums">
+   220→                  {xp.toLocaleString()} / {xpToNext.toLocaleString()} XP
+   221→                </span>
+   222→              </div>
+   223→              <div className="relative h-2.5 rounded-full bg-muted overflow-hidden ring-1 ring-border">
+   224→                <motion.div
+   225→                  initial={{ width: 0 }}
+   226→                  whileInView={{ width: `${xpPercent}%` }}
+   227→                  viewport={{ once: true }}
+   228→                  transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1], delay: 0.3 }}
+   229→                  className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(90deg,var(--electric),var(--cyan-brand),var(--purple-brand))] shadow-[0_0_12px_var(--electric)]"
+   230→                />
+   231→              </div>
+   232→              <p className="text-[11px] text-muted-foreground">
+   233→                {(xpToNext - xp).toLocaleString()} XP to reach Level {level + 1}
+   234→              </p>
+   235→            </div>
+   236→          </div>
+   237→
+   238→          {/* Right: mini chart + CTA */}
+   239→          <div className="space-y-4">
+   240→            <div className="rounded-xl glass-2 p-4 ring-1 ring-border">
+   241→              <div className="flex items-center justify-between mb-2">
+   242→                <span className="text-xs font-semibold text-foreground">This Week</span>
+   243→                <StatusBadge variant="success">+18%</StatusBadge>
+   244→              </div>
+   245→              <div className="h-24 -mx-1">
+   246→                <ResponsiveContainer width="100%" height="100%">
+   247→                  <BarChart data={weeklyData} barCategoryGap={6}>
+   248→                    <defs>
+   249→                      <linearGradient id="welcomeBar" x1="0" y1="0" x2="0" y2="1">
+   250→                        <stop offset="0%" stopColor="oklch(0.62 0.22 255)" />
+   251→                        <stop offset="100%" stopColor="oklch(0.72 0.15 200)" />
+   252→                      </linearGradient>
+   253→                    </defs>
+   254→                    <XAxis
+   255→                      dataKey="day"
+   256→                      axisLine={false}
+   257→                      tickLine={false}
+   258→                      tick={{ fontSize: 10, fill: "currentColor" }}
+   259→                      className="text-muted-foreground"
+   260→                    />
+   261→                    <Bar dataKey="value" fill="url(#welcomeBar)" radius={[4, 4, 0, 0]} />
+   262→                  </BarChart>
+   263→                </ResponsiveContainer>
+   264→              </div>
+   265→            </div>
+   266→            <div className="grid grid-cols-2 gap-2">
+   267→              <LootButton variant="electric" size="sm" onClick={() => navigate("earn")} rightIcon={<ArrowRight size={14} />}>
+   268→                Start Earning
+   269→              </LootButton>
+   270→              <LootButton variant="glass" size="sm" onClick={() => navigate("wallet")} rightIcon={<ArrowRight size={14} />}>
+   271→                My Wallet
+   272→              </LootButton>
+   273→            </div>
+   274→          </div>
+   275→        </div>
+   276→      </GlassCard>
+   277→    </motion.div>
+   278→  );
+   279→}
+   280→
+   281→/* ============================================================
+   282→   Section 2 — Quick Statistics
+   283→   ============================================================ */
+   284→
+   285→function QuickStatistics() {
+   286→  const { availableCoins, pendingCoins, todayEarnings, lifetimeRedeemed } = useWalletStore();
+   287→  const { level, dailyStreak, xp, xpToNext } = useUserStore();
+   288→  const unread = useNotificationStore((s) => s.unreadCount);
+   289→
+   290→  const stats = [
+   291→    { label: "Current Coins", value: availableCoins, icon: "Coins", accent: "gold" as const, trend: { value: 12, positive: true } },
+   292→    { label: "Today's Earnings", value: todayEarnings, icon: "TrendingUp", accent: "emerald" as const, trend: { value: 8, positive: true } },
+   293→    { label: "Pending Rewards", value: pendingCoins, icon: "Clock", accent: "cyan" as const, trend: { value: 4, positive: false } },
+   294→    { label: "Completed Redeems", value: 32, icon: "ShoppingBag", accent: "purple" as const, trend: { value: 16, positive: true } },
+   295→    { label: "Referral Count", value: 18, icon: "Users", accent: "electric" as const, trend: { value: 22, positive: true } },
+   296→    { label: "Achievement Progress", value: Math.round((xp / xpToNext) * 100), suffix: "%", icon: "Award", accent: "navy" as const, trend: { value: 5, positive: true } },
+   297→    { label: "Unread Notifications", value: unread, icon: "Bell", accent: "rose" as const, trend: { value: 2, positive: false } },
+   298→    { label: "Current Level", value: level, icon: "Crown", accent: "gold" as const, trend: { value: 1, positive: true } },
+   299→  ];
+   300→
+   301→  return (
+   302→    <motion.section
+   303→      variants={staggerContainer}
+   304→      initial="hidden"
+   305→      whileInView="visible"
+   306→      viewport={{ once: true, margin: "-30px" }}
+   307→      className="lg:col-span-2 xl:col-span-4"
+   308→    >
+   309→      <Grid cols={4} className="[&>*]:[animation:none]">
+   310→        {stats.map((s, i) => (
+   311→          <StatCard key={s.label} {...s} index={i} />
+   312→        ))}
+   313→      </Grid>
+   314→    </motion.section>
+   315→  );
+   316→}
+   317→
+   318→/* ============================================================
+   319→   Section 3 — Quick Actions
+   320→   ============================================================ */
+   321→
+   322→const QUICK_ACTIONS: Array<{
+   323→  label: string;
+   324→  desc: string;
+   325→  icon: typeof Zap;
+   326→  accent: "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy";
+   327→  view: ViewId;
+   328→}> = [
+   329→  { label: "Start Earning", desc: "Ads · Surveys", icon: Zap, accent: "electric", view: "earn" },
+   330→  { label: "Wallet", desc: "Coins & history", icon: Wallet, accent: "cyan", view: "wallet" },
+   331→  { label: "Redeem Rewards", desc: "Gift cards · UPI", icon: Gift, accent: "purple", view: "redeem" },
+   332→  { label: "Referral", desc: "Invite & earn", icon: Users, accent: "emerald", view: "referral" },
+   333→  { label: "Daily Bonus", desc: "Claim streak", icon: CalendarCheck, accent: "gold", view: "daily-bonus" },
+   334→  { label: "Missions", desc: "Active challenges", icon: Target, accent: "rose", view: "missions" },
+   335→  { label: "Leaderboard", desc: "Top earners", icon: Trophy, accent: "gold", view: "leaderboard" },
+   336→  { label: "Support", desc: "Help center", icon: LifeBuoy, accent: "cyan", view: "support" },
+   337→  { label: "Profile", desc: "Account settings", icon: ShieldCheck, accent: "navy", view: "profile" },
+   338→];
+   339→
+   340→function QuickActions() {
+   341→  const navigate = useNavigationStore((s) => s.navigate);
+   342→  return (
+   343→    <motion.section
+   344→      variants={staggerContainer}
+   345→      initial="hidden"
+   346→      whileInView="visible"
+   347→      viewport={{ once: true, margin: "-30px" }}
+   348→      className="lg:col-span-2 xl:col-span-4"
+   349→    >
+   350→      <div className="flex items-center justify-between mb-3">
+   351→        <h2 className="text-base sm:text-lg font-semibold text-foreground inline-flex items-center gap-2">
+   352→          <Zap size={16} className="text-electric" /> Quick Actions
+   353→        </h2>
+   354→        <span className="text-xs text-muted-foreground">Tap to jump in</span>
+   355→      </div>
+   356→      <Grid cols="auto">
+   357→        {QUICK_ACTIONS.map((a, i) => (
+   358→          <motion.div key={a.label} variants={cardReveal} custom={i}>
+   359→            <GlassCard
+   360→              hover
+   361→              sheen
+   362→              level={2}
+   363→              onClick={() => navigate(a.view)}
+   364→              className="p-4 h-full flex flex-col gap-3 cursor-pointer"
+   365→            >
+   366→              <div className="flex items-start justify-between">
+   367→                <IconBadge
+   368→                  name={a.icon.name}
+   369→                  accent={a.accent}
+   370→                  size="md"
+   371→                />
+   372→                <ArrowUpRight size={14} className="text-muted-foreground" />
+   373→              </div>
+   374→              <div>
+   375→                <p className="text-sm font-semibold text-foreground">{a.label}</p>
+   376→                <p className="text-[11px] text-muted-foreground">{a.desc}</p>
+   377→              </div>
+   378→            </GlassCard>
+   379→          </motion.div>
+   380→        ))}
+   381→      </Grid>
+   382→    </motion.section>
+   383→  );
+   384→}
+   385→
+   386→/* ============================================================
+   387→   Section 4 — Wallet Preview
+   388→   ============================================================ */
+   389→
+   390→function WalletPreview() {
+   391→  const { availableCoins, pendingCoins, lifetimeEarned } = useWalletStore();
+   392→  const navigate = useNavigationStore((s) => s.navigate);
+   393→
+   394→  const data = [
+   395→    { t: "1", v: 8400 },
+   396→    { t: "2", v: 9100 },
+   397→    { t: "3", v: 8800 },
+   398→    { t: "4", v: 10200 },
+   399→    { t: "5", v: 11400 },
+   400→    { t: "6", v: 12100 },
+   401→    { t: "7", v: availableCoins },
+   402→  ];
+   403→
+   404→  return (
+   405→    <WidgetCard
+   406→      title="Wallet Preview"
+   407→      description="Balance & recent activity"
+   408→      icon={<Wallet size={16} />}
+   409→      index={0}
+   410→      className="xl:col-span-2"
+   411→      action={
+   412→        <LootButton variant="ghost" size="sm" onClick={() => navigate("wallet")} rightIcon={<ArrowRight size={14} />}>
+   413→          View Wallet
+   414→        </LootButton>
+   415→      }
+   416→      footer={
+   417→        <div className="flex items-center justify-between pt-2 border-t border-border">
+   418→          <div className="text-xs text-muted-foreground">
+   419→            Lifetime earned{" "}
+   420→            <strong className="text-foreground">{lifetimeEarned.toLocaleString()}</strong>
+   421→          </div>
+   422→          <LootButton variant="electric" size="sm" onClick={() => navigate("redeem")}>
+   423→            Redeem
+   424→          </LootButton>
+   425→        </div>
+   426→      }
+   427→    >
+   428→      <div className="space-y-4">
+   429→        <div className="grid grid-cols-2 gap-3">
+   430→          <div className="rounded-xl glass-2 p-3 ring-1 ring-border">
+   431→            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Available</p>
+   432→            <AnimatedCounter
+   433→              value={availableCoins}
+   434→              className="text-2xl font-bold text-gradient-electric bg-clip-text"
+   435→            />
+   436→          </div>
+   437→          <div className="rounded-xl glass-2 p-3 ring-1 ring-border">
+   438→            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Pending</p>
+   439→            <AnimatedCounter
+   440→              value={pendingCoins}
+   441→              className="text-2xl font-bold text-gold"
+   442→            />
+   443→          </div>
+   444→        </div>
+   445→
+   446→        <div className="h-28 -mx-1">
+   447→          <ResponsiveContainer width="100%" height="100%">
+   448→            <AreaChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+   449→              <defs>
+   450→                <linearGradient id="walletArea" x1="0" y1="0" x2="0" y2="1">
+   451→                  <stop offset="0%" stopColor="oklch(0.62 0.22 255)" stopOpacity={0.5} />
+   452→                  <stop offset="100%" stopColor="oklch(0.72 0.15 200)" stopOpacity={0.05} />
+   453→                </linearGradient>
+   454→              </defs>
+   455→              <Area
+   456→                type="monotone"
+   457→                dataKey="v"
+   458→                stroke="oklch(0.62 0.22 255)"
+   459→                strokeWidth={2}
+   460→                fill="url(#walletArea)"
+   461→                dot={false}
+   462→              />
+   463→            </AreaChart>
+   464→          </ResponsiveContainer>
+   465→        </div>
+   466→
+   467→        <div>
+   468→          <p className="text-xs font-semibold text-foreground mb-2">Recent Transactions</p>
+   469→          <SkeletonRow count={3} />
+   470→        </div>
+   471→      </div>
+   472→    </WidgetCard>
+   473→  );
+   474→}
+   475→
+   476→/* ============================================================
+   477→   Section 5 — Reward Center Preview
+   478→   ============================================================ */
+   479→
+   480→function RewardCenterPreview() {
+   481→  const navigate = useNavigationStore((s) => s.navigate);
+   482→  const rewards = [
+   483→    { name: "Rewarded Ads", amount: "5–25", icon: PlayCircle, accent: "electric" as const },
+   484→    { name: "Offerwall", amount: "50–500", icon: ShoppingBag, accent: "purple" as const },
+   485→    { name: "Daily Bonus", amount: "50", icon: CalendarCheck, accent: "gold" as const },
+   486→    { name: "Special Events", amount: "200+", icon: Star, accent: "rose" as const },
+   487→  ];
+   488→  return (
+   489→    <WidgetCard
+   490→      title="Reward Center"
+   491→      description="Ways to earn coins"
+   492→      icon={<Gift size={16} />}
+   493→      index={1}
+   494→      className="xl:col-span-2"
+   495→      action={
+   496→        <LootButton variant="ghost" size="sm" onClick={() => navigate("rewards")} rightIcon={<ArrowRight size={14} />}>
+   497→          Explore
+   498→        </LootButton>
+   499→      }
+   500→    >
+   501→      <div className="grid grid-cols-2 gap-3">
+   502→        {rewards.map((r, i) => (
+   503→          <motion.div
+   504→            key={r.name}
+   505→            variants={cardReveal}
+   506→            custom={i}
+   507→            initial="hidden"
+   508→            whileInView="visible"
+   509→            viewport={{ once: true }}
+   510→          >
+   511→            <GlassCard
+   512→              hover
+   513→              sheen
+   514→              level={2}
+   515→              onClick={() => navigate("rewards")}
+   516→              className="p-4 h-full cursor-pointer"
+   517→            >
+   518→              <IconBadge name={r.icon.name} accent={r.accent} size="sm" />
+   519→              <p className="mt-3 text-sm font-semibold text-foreground">{r.name}</p>
+   520→              <p className="text-[11px] text-muted-foreground">
+   521→                Earn <strong className="text-foreground">{r.amount}</strong> coins
+   522→              </p>
+   523→            </GlassCard>
+   524→          </motion.div>
+   525→        ))}
+   526→      </div>
+   527→    </WidgetCard>
+   528→  );
+   529→}
+   530→
+   531→/* ============================================================
+   532→   Section 6 — Mission Center
+   533→   ============================================================ */
+   534→
+   535→function MissionCenter() {
+   536→  const navigate = useNavigationStore((s) => s.navigate);
+   537→  const missions = [
+   538→    { name: "Daily Explorer", reward: 120, progress: 65, difficulty: "Easy" as const, time: "5 min", accent: "emerald" as const },
+   539→    { name: "Ad Master", reward: 250, progress: 40, difficulty: "Medium" as const, time: "12 min", accent: "electric" as const },
+   540→    { name: "Survey Pro", reward: 400, progress: 85, difficulty: "Hard" as const, time: "20 min", accent: "purple" as const },
+   541→  ];
+   542→  return (
+   543→    <WidgetCard
+   544→      title="Mission Center"
+   545→      description="Today's active missions"
+   546→      icon={<Target size={16} />}
+   547→      index={2}
+   548→      className="xl:col-span-2"
+   549→      action={
+   550→        <LootButton variant="ghost" size="sm" onClick={() => navigate("missions")} rightIcon={<ArrowRight size={14} />}>
+   551→          View all
+   552→        </LootButton>
+   553→      }
+   554→    >
+   555→      <div className="space-y-3">
+   556→        {missions.map((m, i) => (
+   557→          <motion.div
+   558→            key={m.name}
+   559→            variants={cardReveal}
+   560→            custom={i}
+   561→            initial="hidden"
+   562→            whileInView="visible"
+   563→            viewport={{ once: true }}
+   564→          >
+   565→            <GlassCard level={2} className="p-4 flex items-center gap-4">
+   566→              <ProgressRing value={m.progress} size={56} strokeWidth={6} gradient={m.accent} label={`${m.progress}%`} />
+   567→              <div className="flex-1 min-w-0">
+   568→                <div className="flex items-center justify-between gap-2">
+   569→                  <p className="text-sm font-semibold text-foreground truncate">{m.name}</p>
+   570→                  <StatusBadge
+   571→                    variant={
+   572→                      m.difficulty === "Easy" ? "success" : m.difficulty === "Medium" ? "warning" : "error"
+   573→                    }
+   574→                  >
+   575→                    {m.difficulty}
+   576→                  </StatusBadge>
+   577→                </div>
+   578→                <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
+   579→                  <span className="inline-flex items-center gap-1">
+   580→                    <Coins size={11} className="text-gold" /> {m.reward}
+   581→                  </span>
+   582→                  <span className="inline-flex items-center gap-1">
+   583→                    <Clock size={11} /> {m.time}
+   584→                  </span>
+   585→                </div>
+   586→              </div>
+   587→              <LootButton size="sm" variant="outline" onClick={() => navigate("missions")}>
+   588→                Continue
+   589→              </LootButton>
+   590→            </GlassCard>
+   591→          </motion.div>
+   592→        ))}
+   593→      </div>
+   594→    </WidgetCard>
+   595→  );
+   596→}
+   597→
+   598→/* ============================================================
+   599→   Section 7 — Daily Bonus
+   600→   ============================================================ */
+   601→
+   602→function DailyBonus() {
+   603→  const navigate = useNavigationStore((s) => s.navigate);
+   604→  const { dailyStreak } = useUserStore();
+   605→  const days = [
+   606→    { day: "Mon", reward: 10, claimed: true },
+   607→    { day: "Tue", reward: 20, claimed: true },
+   608→    { day: "Wed", reward: 30, claimed: true },
+   609→    { day: "Thu", reward: 40, claimed: true },
+   610→    { day: "Fri", reward: 50, claimed: false, today: true },
+   611→    { day: "Sat", reward: 75, claimed: false },
+   612→    { day: "Sun", reward: 120, claimed: false },
+   613→  ];
+   614→  const tomorrow = days.find((d) => !d.claimed && !d.today) ?? days[days.length - 1]!;
+   615→
+   616→  return (
+   617→    <WidgetCard
+   618→      title="Daily Bonus"
+   619→      description="Login streak rewards"
+   620→      icon={<Flame size={16} />}
+   621→      index={3}
+   622→      className="xl:col-span-2"
+   623→      action={
+   624→        <StatusBadge variant="gold" dot pulse>
+   625→          {dailyStreak} day streak
+   626→        </StatusBadge>
+   627→      }
+   628→    >
+   629→      <div className="space-y-4">
+   630→        <div className="grid grid-cols-7 gap-1.5">
+   631→          {days.map((d, i) => (
+   632→            <motion.div
+   633→              key={d.day}
+   634→              initial={{ opacity: 0, y: 8 }}
+   635→              whileInView={{ opacity: 1, y: 0 }}
+   636→              viewport={{ once: true }}
+   637→              transition={{ delay: i * 0.05, duration: 0.4 }}
+   638→              className={`relative rounded-xl p-2 text-center ring-1 transition-all ${
+   639→                d.today
+   640→                  ? "bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))] text-white ring-transparent shadow-[var(--shadow-glow)]"
+   641→                  : d.claimed
+   642→                  ? "glass-1 ring-emerald-brand/30 text-foreground"
+   643→                  : "glass-2 ring-border text-foreground"
+   644→              }`}
+   645→            >
+   646→              <p className="text-[10px] font-medium opacity-80">{d.day}</p>
+   647→              <div className="my-1 flex items-center justify-center">
+   648→                {d.claimed ? (
+   649→                  <Check size={14} className="text-emerald-brand" />
+   650→                ) : (
+   651→                  <Coins size={14} className={d.today ? "text-white" : "text-gold"} />
+   652→                )}
+   653→              </div>
+   654→              <p className="text-[10px] font-bold tabular-nums">{d.reward}</p>
+   655→              {d.today && (
+   656→                <span className="absolute -top-1 -right-1 size-2 rounded-full bg-emerald-brand ring-2 ring-background" />
+   657→              )}
+   658→            </motion.div>
+   659→          ))}
+   660→        </div>
+   661→
+   662→        <div className="rounded-xl glass-2 p-3 ring-1 ring-border flex items-center justify-between">
+   663→          <div className="flex items-center gap-3">
+   664→            <IconBadge name="Gift" accent="gold" size="sm" />
+   665→            <div>
+   666→              <p className="text-xs text-muted-foreground">Tomorrow's reward</p>
+   667→              <p className="text-sm font-bold text-foreground inline-flex items-center gap-1">
+   668→                <Coins size={13} className="text-gold" /> {tomorrow.reward} coins
+   669→              </p>
+   670→            </div>
+   671→          </div>
+   672→          <div className="text-right">
+   673→            <p className="text-xs text-muted-foreground">Streak progress</p>
+   674→            <div className="mt-1 h-1.5 w-24 rounded-full bg-muted overflow-hidden">
+   675→              <motion.div
+   676→                initial={{ width: 0 }}
+   677→                whileInView={{ width: `${(dailyStreak / 30) * 100}%` }}
+   678→                viewport={{ once: true }}
+   679→                transition={{ duration: 1, delay: 0.3 }}
+   680→                className="h-full rounded-full bg-[linear-gradient(90deg,var(--gold),oklch(0.75_0.18_60))]"
+   681→              />
+   682→            </div>
+   683→          </div>
+   684→        </div>
+   685→
+   686→        <LootButton variant="gold" fullWidth onClick={() => navigate("daily-bonus")} leftIcon={<CalendarCheck size={16} />}>
+   687→          Claim Today's Bonus
+   688→        </LootButton>
+   689→      </div>
+   690→    </WidgetCard>
+   691→  );
+   692→}
+   693→
+   694→/* ============================================================
+   695→   Section 8 — Achievement Center
+   696→   ============================================================ */
+   697→
+   698→function AchievementCenter() {
+   699→  const navigate = useNavigationStore((s) => s.navigate);
+   700→  const { xp, xpToNext } = useUserStore();
+   701→  const achievements = [
+   702→    { name: "First Earn", icon: "Sparkles", progress: 100, rarity: "common" as const, accent: "electric" as const },
+   703→    { name: "Streak Keeper", icon: "Flame", progress: 80, rarity: "rare" as const, accent: "gold" as const },
+   704→    { name: "Coin Collector", icon: "Coins", progress: 65, rarity: "rare" as const, accent: "gold" as const },
+   705→    { name: "Mission Master", icon: "Target", progress: 45, rarity: "epic" as const, accent: "purple" as const },
+   706→    { name: "Social Star", icon: "Users", progress: 30, rarity: "epic" as const, accent: "cyan" as const },
+   707→    { name: "Legendary", icon: "Crown", progress: 12, rarity: "legendary" as const, accent: "rose" as const },
+   708→  ];
+   709→  const rarityVariant: Record<string, "default" | "info" | "purple" | "gold" | "error"> = {
+   710→    common: "default",
+   711→    rare: "info",
+   712→    epic: "purple",
+   713→    legendary: "error",
+   714→  };
+   715→
+   716→  return (
+   717→    <WidgetCard
+   718→      title="Achievement Center"
+   719→      description="Unlock badges & rewards"
+   720→      icon={<Award size={16} />}
+   721→      index={4}
+   722→      className="xl:col-span-2"
+   723→      action={
+   724→        <LootButton variant="ghost" size="sm" onClick={() => navigate("achievements")} rightIcon={<ArrowRight size={14} />}>
+   725→          View all
+   726→        </LootButton>
+   727→      }
+   728→    >
+   729→      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+   730→        {achievements.map((a, i) => (
+   731→          <motion.div
+   732→            key={a.name}
+   733→            variants={cardReveal}
+   734→            custom={i}
+   735→            initial="hidden"
+   736→            whileInView="visible"
+   737→            viewport={{ once: true }}
+   738→          >
+   739→            <GlassCard level={2} className="p-3 flex flex-col items-center text-center gap-2 h-full">
+   740→              <div className="relative">
+   741→                <ProgressRing value={a.progress} size={62} strokeWidth={6} gradient={a.accent === "gold" ? "gold" : a.accent === "purple" ? "purple" : a.accent === "cyan" ? "cyan" : a.accent === "rose" ? "electric" : "electric"} />
+   742→                <div className="absolute inset-0 flex items-center justify-center">
+   743→                  <IconBadge name={a.icon} accent={a.accent} size="sm" />
+   744→                </div>
+   745→              </div>
+   746→              <div>
+   747→                <p className="text-xs font-semibold text-foreground">{a.name}</p>
+   748→                <div className="mt-1">
+   749→                  <StatusBadge variant={rarityVariant[a.rarity]}>{a.rarity}</StatusBadge>
+   750→                </div>
+   751→              </div>
+   752→            </GlassCard>
+   753→          </motion.div>
+   754→        ))}
+   755→      </div>
+   756→      <div className="mt-4 rounded-xl glass-2 p-3 ring-1 ring-border">
+   757→        <div className="flex items-center justify-between text-xs mb-2">
+   758→          <span className="font-semibold text-foreground inline-flex items-center gap-1.5">
+   759→            <Sparkles size={12} className="text-electric" /> XP Progress
+   760→          </span>
+   761→          <span className="text-muted-foreground tabular-nums">
+   762→            {xp.toLocaleString()} / {xpToNext.toLocaleString()}
+   763→          </span>
+   764→        </div>
+   765→        <div className="h-2 rounded-full bg-muted overflow-hidden">
+   766→          <motion.div
+   767→            initial={{ width: 0 }}
+   768→            whileInView={{ width: `${(xp / xpToNext) * 100}%` }}
+   769→            viewport={{ once: true }}
+   770→            transition={{ duration: 1.1, delay: 0.3 }}
+   771→            className="h-full rounded-full bg-[linear-gradient(90deg,var(--electric),var(--cyan-brand))]"
+   772→          />
+   773→        </div>
+   774→      </div>
+   775→    </WidgetCard>
+   776→  );
+   777→}
+   778→
+   779→/* ============================================================
+   780→   Section 9 — Leaderboard Preview
+   781→   ============================================================ */
+   782→
+   783→function LeaderboardPreview() {
+   784→  const navigate = useNavigationStore((s) => s.navigate);
+   785→  const { fullName, rank, level } = useUserStore();
+   786→
+   787→  const podium = [
+   788→    { rank: 1, name: "AaravMehta", xp: 18420, accent: "gold" as const, size: "lg" as const },
+   789→    { rank: 2, name: "PriyaK", xp: 16880, accent: "cyan" as const, size: "md" as const },
+   790→    { rank: 3, name: "Rohan99", xp: 15240, accent: "purple" as const, size: "sm" as const },
+   791→  ];
+   792→
+   793→  const medalClass: Record<string, string> = {
+   794→    gold: "from-gold to-[oklch(0.75_0.18_60)]",
+   795→    cyan: "from-cyan-brand to-[oklch(0.78_0.16_180)]",
+   796→    purple: "from-purple-brand to-[oklch(0.7_0.2_320)]",
+   797→  };
+   798→  const sizeClass: Record<string, string> = {
+   799→    lg: "size-14 -mt-6 order-2",
+   800→    md: "size-12 -mt-3 order-1",
+   801→    sm: "size-10 mt-2 order-3",
+   802→  };
+   803→
+   804→  return (
+   805→    <WidgetCard
+   806→      title="Leaderboard"
+   807→      description="Top earners this week"
+   808→      icon={<Trophy size={16} />}
+   809→      index={5}
+   810→      className="xl:col-span-2"
+   811→      action={
+   812→        <LootButton variant="ghost" size="sm" onClick={() => navigate("leaderboard")} rightIcon={<ArrowRight size={14} />}>
+   813→          View all
+   814→        </LootButton>
+   815→      }
+   816→    >
+   817→      <div className="space-y-4">
+   818→        <div className="grid grid-cols-3 gap-2 items-end">
+   819→          {podium.map((p, i) => (
+   820→            <motion.div
+   821→              key={p.rank}
+   822→              initial={{ opacity: 0, y: 20 }}
+   823→              whileInView={{ opacity: 1, y: 0 }}
+   824→              viewport={{ once: true }}
+   825→              transition={{ delay: i * 0.1, duration: 0.5 }}
+   826→              className="flex flex-col items-center"
+   827→            >
+   828→              <div
+   829→                className={`${sizeClass[p.size]} rounded-full flex items-center justify-center text-white font-bold bg-gradient-to-br ${medalClass[p.accent]} shadow-[var(--shadow-glow)] ring-4 ring-background`}
+   830→              >
+   831→                {p.rank === 1 ? <Crown size={22} /> : p.rank}
+   832→              </div>
+   833→              <GlassCard level={2} className="mt-2 p-3 w-full text-center">
+   834→                <p className="text-xs font-semibold text-foreground truncate">{p.name}</p>
+   835→                <p className="text-[11px] text-muted-foreground tabular-nums">
+   836→                  {p.xp.toLocaleString()} XP
+   837→                </p>
+   838→              </GlassCard>
+   839→            </motion.div>
+   840→          ))}
+   841→        </div>
+   842→
+   843→        {/* Current user highlight */}
+   844→        <motion.div
+   845→          initial={{ opacity: 0, scale: 0.97 }}
+   846→          whileInView={{ opacity: 1, scale: 1 }}
+   847→          viewport={{ once: true }}
+   848→          transition={{ delay: 0.3, duration: 0.4 }}
+   849→        >
+   850→          <GlassCard
+   851→            level={1}
+   852→            glow="electric"
+   853→            className="p-3 flex items-center gap-3 ring-1 ring-electric/30"
+   854→          >
+   855→            <div className="size-10 rounded-xl flex items-center justify-center text-white font-bold bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))]">
+   856→              #{rank}
+   857→            </div>
+   858→            <div className="flex-1 min-w-0">
+   859→              <p className="text-sm font-semibold text-foreground truncate">{fullName} (You)</p>
+   860→              <p className="text-[11px] text-muted-foreground">Level {level} · climbing fast</p>
+   861→            </div>
+   862→            <LootButton size="sm" variant="outline" onClick={() => navigate("leaderboard")}>
+   863→              Climb
+   864→            </LootButton>
+   865→          </GlassCard>
+   866→        </motion.div>
+   867→      </div>
+   868→    </WidgetCard>
+   869→  );
+   870→}
+   871→
+   872→/* ============================================================
+   873→   Section 10 — Referral Center Preview
+   874→   ============================================================ */
+   875→
+   876→function ReferralCenter() {
+   877→  const navigate = useNavigationStore((s) => s.navigate);
+   878→  const { referralCode } = useUserStore();
+   879→  const [copied, setCopied] = useState(false);
+   880→
+   881→  const handleCopy = async () => {
+   882→    try {
+   883→      if (navigator?.clipboard?.writeText) {
+   884→        await navigator.clipboard.writeText(referralCode);
+   885→      }
+   886→    } catch {
+   887→      /* no-op */
+   888→    }
+   889→    setCopied(true);
+   890→    window.setTimeout(() => setCopied(false), 1800);
+   891→  };
+   892→
+   893→  const friends = 18;
+   894→  const friendsGoal = 25;
+   895→  const earnings = 3600;
+   896→
+   897→  const data = [
+   898→    { name: "Invited", value: friends, color: "oklch(0.62 0.22 255)" },
+   899→    { name: "Remaining", value: friendsGoal - friends, color: "oklch(0.7 0.02 240)" },
+   900→  ];
+   901→
+   902→  return (
+   903→    <WidgetCard
+   904→      title="Referral Center"
+   905→      description="Invite friends, earn coins"
+   906→      icon={<Users size={16} />}
+   907→      index={6}
+   908→      className="xl:col-span-2"
+   909→      action={
+   910→        <LootButton variant="ghost" size="sm" onClick={() => navigate("referral")} rightIcon={<ArrowRight size={14} />}>
+   911→          Share
+   912→        </LootButton>
+   913→      }
+   914→    >
+   915→      <div className="space-y-4">
+   916→        <div className="rounded-xl p-4 ring-1 ring-electric/20 bg-[linear-gradient(135deg,var(--electric)/10,var(--purple-brand)/10)]">
+   917→          <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Your referral code</p>
+   918→          <div className="mt-2 flex items-center justify-between gap-2">
+   919→            <code className="text-lg font-bold tracking-[0.2em] text-gradient-electric bg-clip-text">
+   920→              {referralCode}
+   921→            </code>
+   922→            <LootButton
+   923→              size="sm"
+   924→              variant={copied ? "emerald" : "outline"}
+   925→              onClick={handleCopy}
+   926→              leftIcon={copied ? <Check size={14} /> : <Copy size={14} />}
+   927→            >
+   928→              {copied ? "Copied" : "Copy"}
+   929→            </LootButton>
+   930→          </div>
+   931→        </div>
+   932→
+   933→        <div className="grid grid-cols-2 gap-3">
+   934→          <div className="rounded-xl glass-2 p-3 ring-1 ring-border flex items-center gap-3">
+   935→            <div className="size-12 relative">
+   936→              <ResponsiveContainer width="100%" height="100%">
+   937→                <PieChart>
+   938→                  <Pie
+   939→                    data={data}
+   940→                    dataKey="value"
+   941→                    innerRadius={14}
+   942→                    outerRadius={22}
+   943→                    startAngle={90}
+   944→                    endAngle={-270}
+   945→                    paddingAngle={1}
+   946→                  >
+   947→                    {data.map((d) => (
+   948→                      <Cell key={d.name} fill={d.color} />
+   949→                    ))}
+   950→                  </Pie>
+   951→                </PieChart>
+   952→              </ResponsiveContainer>
+   953→            </div>
+   954→            <div>
+   955→              <p className="text-[11px] text-muted-foreground">Friends invited</p>
+   956→              <p className="text-lg font-bold text-foreground">
+   957→                {friends}
+   958→                <span className="text-xs text-muted-foreground">/{friendsGoal}</span>
+   959→              </p>
+   960→            </div>
+   961→          </div>
+   962→          <div className="rounded-xl glass-2 p-3 ring-1 ring-border">
+   963→            <p className="text-[11px] text-muted-foreground">Referral earnings</p>
+   964→            <p className="text-lg font-bold text-gold inline-flex items-center gap-1">
+   965→              <Coins size={14} /> {earnings.toLocaleString()}
+   966→            </p>
+   967→          </div>
+   968→        </div>
+   969→
+   970→        <LootButton variant="purple" fullWidth onClick={() => navigate("referral")} leftIcon={<Users size={16} />}>
+   971→          Invite More Friends
+   972→        </LootButton>
+   973→      </div>
+   974→    </WidgetCard>
+   975→  );
+   976→}
+   977→
+   978→/* ============================================================
+   979→   Section 11 — Recent Activity Timeline
+   980→   ============================================================ */
+   981→
+   982→function RecentActivityTimeline() {
+   983→  const navigate = useNavigationStore((s) => s.navigate);
+   984→  const items = useActivityStore((s) => s.items);
+   985→
+   986→  const typeIcon: Record<string, { icon: typeof Coins; accent: "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy" }> = {
+   987→    earned: { icon: PlayCircle, accent: "electric" },
+   988→    mission: { icon: Target, accent: "purple" },
+   989→    bonus: { icon: CalendarCheck, accent: "gold" },
+   990→    referral: { icon: Users, accent: "emerald" },
+   991→    redeemed: { icon: ShoppingBag, accent: "rose" },
+   992→    system: { icon: Bell, accent: "navy" },
+   993→  };
+   994→
+   995→  if (items.length === 0) {
+   996→    return (
+   997→      <WidgetCard
+   998→        title="Recent Activity"
+   999→        description="Your latest actions"
+  1000→        icon={<Clock size={16} />}
+  1001→        index={7}
+  1002→        className="xl:col-span-2"
+  1003→        action={
+  1004→          <LootButton variant="ghost" size="sm" onClick={() => navigate("history")}>
+  1005→            View history
+  1006→          </LootButton>
+  1007→        }
+  1008→      >
+  1009→        <EmptyState
+  1010→          icon="Inbox"
+  1011→          title="No activity yet"
+  1012→          description="Start earning to see your activity timeline here."
+  1013→        />
+  1014→      </WidgetCard>
+  1015→    );
+  1016→  }
+  1017→
+  1018→  return (
+  1019→    <WidgetCard
+  1020→      title="Recent Activity"
+  1021→      description="Your latest actions"
+  1022→      icon={<Clock size={16} />}
+  1023→      index={7}
+  1024→      className="xl:col-span-2"
+  1025→      action={
+  1026→        <LootButton variant="ghost" size="sm" onClick={() => navigate("history")} rightIcon={<ArrowRight size={14} />}>
+  1027→          View history
+  1028→        </LootButton>
+  1029→      }
+  1030→    >
+  1031→      <div className="relative pl-4">
+  1032→        {/* Gradient timeline line */}
+  1033→        <div className="absolute left-[7px] top-2 bottom-2 w-[2px] rounded-full bg-[linear-gradient(180deg,var(--electric),var(--cyan-brand),var(--purple-brand))]" />
+  1034→
+  1035→        <motion.ul
+  1036→          variants={staggerContainer}
+  1037→          initial="hidden"
+  1038→          whileInView="visible"
+  1039→          viewport={{ once: true }}
+  1040→          className="space-y-3"
+  1041→        >
+  1042→          {items.map((item) => {
+  1043→            const cfg = typeIcon[item.type] ?? typeIcon.system!;
+  1044→            const Icon = cfg.icon;
+  1045→            const positive = (item.amount ?? 0) >= 0;
+  1046→            return (
+  1047→              <motion.li
+  1048→                key={item.id}
+  1049→                variants={cardReveal}
+  1050→                className="relative"
+  1051→              >
+  1052→                <span
+  1053→                  className={`absolute -left-4 top-3 size-3.5 rounded-full ring-2 ring-background bg-gradient-to-br ${
+  1054→                    cfg.accent === "electric"
+  1055→                      ? "from-electric to-cyan-brand"
+  1056→                      : cfg.accent === "purple"
+  1057→                      ? "from-purple-brand to-[oklch(0.7_0.2_320)]"
+  1058→                      : cfg.accent === "gold"
+  1059→                      ? "from-gold to-[oklch(0.75_0.18_60)]"
+  1060→                      : cfg.accent === "emerald"
+  1061→                      ? "from-emerald-brand to-[oklch(0.75_0.16_180)]"
+  1062→                      : cfg.accent === "rose"
+  1063→                      ? "from-rose-brand to-[oklch(0.65_0.22_15)]"
+  1064→                      : "from-navy to-[oklch(0.4_0.04_250)]"
+  1065→                  }`}
+  1066→                />
+  1067→                <GlassCard level={2} className="p-3 flex items-center gap-3">
+  1068→                  <IconBadge name={Icon.name} accent={cfg.accent} size="sm" />
+  1069→                  <div className="flex-1 min-w-0">
+  1070→                    <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
+  1071→                    <p className="text-[11px] text-muted-foreground truncate">{item.description}</p>
+  1072→                    <p className="text-[10px] text-muted-foreground mt-0.5">{item.time}</p>
+  1073→                  </div>
+  1074→                  {item.amount !== undefined && (
+  1075→                    <span
+  1076→                      className={`text-sm font-bold tabular-nums ${
+  1077→                        positive ? "text-emerald-brand" : "text-rose-brand"
+  1078→                      }`}
+  1079→                    >
+  1080→                      {positive ? "+" : ""}
+  1081→                      {item.amount.toLocaleString()}
+  1082→                    </span>
+  1083→                  )}
+  1084→                </GlassCard>
+  1085→              </motion.li>
+  1086→            );
+  1087→          })}
+  1088→        </motion.ul>
+  1089→      </div>
+  1090→    </WidgetCard>
+  1091→  );
+  1092→}
+  1093→
+  1094→/* ============================================================
+  1095→   Section 12 — Notification Preview
+  1096→   ============================================================ */
+  1097→
+  1098→function NotificationPreview() {
+  1099→  const navigate = useNavigationStore((s) => s.navigate);
+  1100→  const items = useNotificationStore((s) => s.items);
+  1101→  const unread = items.filter((n) => !n.read).slice(0, 3);
+  1102→
+  1103→  const typeAccent: Record<string, "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy"> = {
+  1104→    reward: "gold",
+  1105→    wallet: "cyan",
+  1106→    system: "navy",
+  1107→    security: "rose",
+  1108→    social: "emerald",
+  1109→    announcement: "electric",
+  1110→  };
+  1111→
+  1112→  return (
+  1113→    <WidgetCard
+  1114→      title="Notifications"
+  1115→      description="Latest unread alerts"
+  1116→      icon={<Bell size={16} />}
+  1117→      index={8}
+  1118→      className="xl:col-span-2"
+  1119→      action={
+  1120→        <LootButton variant="ghost" size="sm" onClick={() => navigate("notifications")} rightIcon={<ArrowRight size={14} />}>
+  1121→          View all
+  1122→        </LootButton>
+  1123→      }
+  1124→    >
+  1125→      <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1 lootloom-scroll">
+  1126→        {unread.length === 0 ? (
+  1127→          <EmptyState
+  1128→            icon="Bell"
+  1129→            title="You're all caught up"
+  1130→            description="No unread notifications right now."
+  1131→          />
+  1132→        ) : (
+  1133→          unread.map((n, i) => {
+  1134→            const accent = typeAccent[n.type] ?? "electric";
+  1135→            return (
+  1136→              <motion.div
+  1137→                key={n.id}
+  1138→                variants={cardReveal}
+  1139→                custom={i}
+  1140→                initial="hidden"
+  1141→                whileInView="visible"
+  1142→                viewport={{ once: true }}
+  1143→              >
+  1144→                <GlassCard
+  1145→                  hover
+  1146→                  level={2}
+  1147→                  onClick={() => navigate("notifications")}
+  1148→                  className="p-3 flex items-start gap-3 cursor-pointer"
+  1149→                >
+  1150→                  <IconBadge name={n.icon ?? "Bell"} accent={accent} size="sm" />
+  1151→                  <div className="flex-1 min-w-0">
+  1152→                    <div className="flex items-center justify-between gap-2">
+  1153→                      <p className="text-sm font-semibold text-foreground truncate">{n.title}</p>
+  1154→                      <span className="text-[10px] text-muted-foreground shrink-0">{n.time}</span>
+  1155→                    </div>
+  1156→                    <p className="text-[11px] text-muted-foreground line-clamp-2">{n.body}</p>
+  1157→                  </div>
+  1158→                  <span className="mt-1 size-2 rounded-full bg-electric shrink-0 animate-pulse" />
+  1159→                </GlassCard>
+  1160→              </motion.div>
+  1161→            );
+  1162→          })
+  1163→        )}
+  1164→      </div>
+  1165→    </WidgetCard>
+  1166→  );
+  1167→}
+  1168→
+  1169→/* ============================================================
+  1170→   Section 13 — Security Status
+  1171→   ============================================================ */
+  1172→
+  1173→function SecurityStatus() {
+  1174→  const navigate = useNavigationStore((s) => s.navigate);
+  1175→  const items = [
+  1176→    { label: "Account Status", value: "Active", variant: "success" as const, icon: ShieldCheck, desc: "Verified member" },
+  1177→    { label: "Email Verification", value: "Pending", variant: "warning" as const, icon: MessageCircle, desc: "Verify to unlock features" },
+  1178→    { label: "Password Strength", value: "Strong", variant: "success" as const, icon: KeyRound, desc: "Last changed 12 days ago" },
+  1179→    { label: "Session Security", value: "Protected", variant: "info" as const, icon: Lock, desc: "2 active sessions" },
+  1180→    { label: "Device Verification", value: "Coming soon", variant: "default" as const, icon: MonitorSmartphone, desc: "Trusted device list" },
+  1181→  ];
+  1182→
+  1183→  return (
+  1184→    <WidgetCard
+  1185→      title="Security Status"
+  1186→      description="Account protection overview"
+  1187→      icon={<ShieldCheck size={16} />}
+  1188→      index={9}
+  1189→      className="xl:col-span-2"
+  1190→      action={
+  1191→        <LootButton variant="ghost" size="sm" onClick={() => navigate("profile")} rightIcon={<ArrowRight size={14} />}>
+  1192→          Manage
+  1193→        </LootButton>
+  1194→      }
+  1195→    >
+  1196→      <div className="space-y-2.5">
+  1197→        {items.map((it, i) => (
+  1198→          <motion.div
+  1199→            key={it.label}
+  1200→            variants={cardReveal}
+  1201→            custom={i}
+  1202→            initial="hidden"
+  1203→            whileInView="visible"
+  1204→            viewport={{ once: true }}
+  1205→          >
+  1206→            <GlassCard level={2} className="p-3 flex items-center gap-3">
+  1207→              <div className="size-9 rounded-lg flex items-center justify-center bg-emerald-brand/10 text-emerald-brand ring-1 ring-emerald-brand/20">
+  1208→                <it.icon size={16} />
+  1209→              </div>
+  1210→              <div className="flex-1 min-w-0">
+  1211→                <p className="text-sm font-semibold text-foreground">{it.label}</p>
+  1212→                <p className="text-[11px] text-muted-foreground truncate">{it.desc}</p>
+  1213→              </div>
+  1214→              <StatusBadge variant={it.variant} dot={it.variant !== "default"}>
+  1215→                {it.value}
+  1216→              </StatusBadge>
+  1217→            </GlassCard>
+  1218→          </motion.div>
+  1219→        ))}
+  1220→      </div>
+  1221→    </WidgetCard>
+  1222→  );
+  1223→}
+  1224→
+  1225→/* ============================================================
+  1226→   Section 14 — Support Center Preview
+  1227→   ============================================================ */
+  1228→
+  1229→function SupportCenter() {
+  1230→  const navigate = useNavigationStore((s) => s.navigate);
+  1231→  return (
+  1232→    <WidgetCard
+  1233→      title="Support Center"
+  1234→      description="We're here to help"
+  1235→      icon={<LifeBuoy size={16} />}
+  1236→      index={10}
+  1237→      className="xl:col-span-2"
+  1238→      action={
+  1239→        <LootButton variant="electric" size="sm" onClick={() => navigate("support")} leftIcon={<Ticket size={14} />}>
+  1240→          New Ticket
+  1241→        </LootButton>
+  1242→      }
+  1243→    >
+  1244→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  1245→        <motion.div variants={cardReveal} custom={0} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+  1246→          <GlassCard hover level={2} onClick={() => navigate("support")} className="p-4 cursor-pointer">
+  1247→            <div className="flex items-center justify-between">
+  1248→              <IconBadge name="Ticket" accent="electric" size="sm" />
+  1249→              <StatusBadge variant="info">1 open</StatusBadge>
+  1250→            </div>
+  1251→            <p className="mt-3 text-sm font-semibold text-foreground">Open Ticket</p>
+  1252→            <p className="text-[11px] text-muted-foreground">Track your active conversations</p>
+  1253→          </GlassCard>
+  1254→        </motion.div>
+  1255→
+  1256→        <motion.div variants={cardReveal} custom={1} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+  1257→          <GlassCard hover level={2} onClick={() => navigate("support")} className="p-4 cursor-pointer">
+  1258→            <div className="flex items-center justify-between">
+  1259→              <IconBadge name="Clock" accent="cyan" size="sm" />
+  1260→              <StatusBadge variant="success">Resolved</StatusBadge>
+  1261→            </div>
+  1262→            <p className="mt-3 text-sm font-semibold text-foreground">Recent Ticket</p>
+  1263→            <p className="text-[11px] text-muted-foreground">"How to redeem UPI?" · 2d ago</p>
+  1264→          </GlassCard>
+  1265→        </motion.div>
+  1266→
+  1267→        <motion.div variants={cardReveal} custom={2} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+  1268→          <GlassCard hover level={2} onClick={() => navigate("support")} className="p-4 cursor-pointer">
+  1269→            <IconBadge name="LifeBuoy" accent="purple" size="sm" />
+  1270→            <p className="mt-3 text-sm font-semibold text-foreground">Help Center</p>
+  1271→            <p className="text-[11px] text-muted-foreground">Guides, FAQs & tutorials</p>
+  1272→          </GlassCard>
+  1273→        </motion.div>
+  1274→
+  1275→        <motion.div variants={cardReveal} custom={3} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+  1276→          <GlassCard hover level={2} onClick={() => navigate("support")} className="p-4 cursor-pointer">
+  1277→            <IconBadge name="MessageCircle" accent="emerald" size="sm" />
+  1278→            <p className="mt-3 text-sm font-semibold text-foreground">FAQ</p>
+  1279→            <p className="text-[11px] text-muted-foreground">Quick answers to common questions</p>
+  1280→          </GlassCard>
+  1281→        </motion.div>
+  1282→      </div>
+  1283→    </WidgetCard>
+  1284→  );
+  1285→}
+  1286→
+  1287→/* ============================================================
+  1288→   Dashboard View
+  1289→   ============================================================ */
+  1290→
+  1291→export function DashboardView() {
+  1292→  const navigate = useNavigationStore((s) => s.navigate);
+  1293→  const { data, loading, refetch } = useDashboardData();
+  1294→  const { setWallet } = useWalletStore();
+  1295→  const { setItems: setActivities } = useActivityStore();
+  1296→
+  1297→  // Sync dashboard API data into stores so all sub-components show real values
+  1298→  useEffect(() => {
+  1299→    if (data) {
+  1300→      setWallet({
+  1301→        availableCoins: data.wallet.coinBalance,
+  1302→        lifetimeEarned: data.wallet.totalEarned,
+  1303→        lifetimeRedeemed: data.wallet.totalSpent,
+  1304→        todayEarnings: data.stats.todayEarnings,
+  1305→        weeklyEarnings: data.stats.weeklyEarnings,
+  1306→        monthlyEarnings: data.stats.monthlyEarnings,
+  1307→      });
+  1308→      // Map transactions → activity items for the timeline
+  1309→      setActivities(
+  1310→        data.recentTransactions.map((t) => ({
+  1311→          id: t.id,
+  1312→          type: t.type.toLowerCase().includes("redeem") ? "redeemed" : "earned",
+  1313→          title: t.description || "Transaction",
+  1314→          description: t.description || "",
+  1315→          amount: t.amount,
+  1316→          time: new Date(t.createdAt).toLocaleString(),
+  1317→        }))
+  1318→      );
+  1319→    }
+  1320→  }, [data, setWallet, setActivities]);
+  1321→
+  1322→  const today = useMemo(
+  1323→    () =>
+  1324→      new Date().toLocaleDateString("en-US", {
+  1325→        weekday: "short",
+  1326→        month: "short",
+  1327→        day: "numeric",
+  1328→        year: "numeric",
+  1329→      }),
+  1330→    []
+  1331→  );
+  1332→
+  1333→  return (
+  1334→    <PageContainer>
+  1335→      <PageHeader
+  1336→        title="Dashboard"
+  1337→        description="Your account overview & activity"
+  1338→        actions={
+  1339→          <>
+  1340→            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground rounded-full glass-2 px-3 py-1.5 ring-1 ring-border">
+  1341→              <Calendar size={13} /> {today}
+  1342→            </span>
+  1343→            <LootButton
+  1344→              variant="ghost"
+  1345→              size="sm"
+  1346→              leftIcon={<RefreshCw size={14} className={loading ? "animate-spin" : ""} />}
+  1347→              onClick={refetch}
+  1348→            >
+  1349→              Refresh
+  1350→            </LootButton>
+  1351→          </>
+  1352→        }
+  1353→      />
+  1354→
+  1355→      {loading && !data ? (
+  1356→        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5">
+  1357→          {Array.from({ length: 6 }).map((_, i) => (
+  1358→            <div key={i} className="h-48 rounded-2xl glass-2 shimmer" />
+  1359→          ))}
+  1360→        </div>
+  1361→      ) : (
+  1362→        <motion.div
+  1363→          variants={staggerContainer}
+  1364→          initial="hidden"
+  1365→          whileInView="visible"
+  1366→          viewport={{ once: true, margin: "-30px" }}
+  1367→          className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5"
+  1368→        >
+  1369→          <WelcomeHero />
+  1370→          <QuickStatistics />
+  1371→          <QuickActions />
+  1372→          <WalletPreview />
+  1373→          <RewardCenterPreview />
+  1374→          <MissionCenter />
+  1375→          <DailyBonus />
+  1376→          <AchievementCenter />
+  1377→          <LeaderboardPreview />
+  1378→          <ReferralCenter />
+  1379→          <RecentActivityTimeline />
+  1380→          <NotificationPreview />
+  1381→          <SecurityStatus />
+  1382→          <SupportCenter />
+  1383→        </motion.div>
+  1384→      )}
+  1385→    </PageContainer>
+  1386→  );
+  1387→}
+  1388→
