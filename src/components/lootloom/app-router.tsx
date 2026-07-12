@@ -6,6 +6,7 @@ import { BackgroundEngine, AppShell, pageTransition, RestrictedAccess, CeoLayout
 import { LEGAL_VIEWS, CEO_VIEWS, SYSTEM_VIEWS, AUTH_VIEWS } from "@/config/navigation";
 import { lazy, Suspense, useMemo } from "react";
 import { GlassLoader } from "@/components/lootloom/states";
+import type { ViewId } from "@/types";
 
 // Lazy-load all feature views for code splitting
 const HomeView = lazy(() => import("@/features/home/home-view").then((m) => ({ default: m.HomeView })));
@@ -22,11 +23,16 @@ const ProfileView = lazy(() => import("@/features/profile/profile-view").then((m
 const GamificationView = lazy(() => import("@/features/gamification/gamification-view").then((m) => ({ default: m.GamificationView })));
 const SupportView = lazy(() => import("@/features/support/support-view").then((m) => ({ default: m.SupportView })));
 const LegalView = lazy(() => import("@/features/legal/legal-view").then((m) => ({ default: m.LegalView })));
+
+// CEO views
 const CeoAuthView = lazy(() => import("@/features/ceo/ceo-auth-view").then((m) => ({ default: m.CeoAuthView })));
 const CeoDashboardView = lazy(() => import("@/features/ceo/ceo-dashboard-view").then((m) => ({ default: m.CeoDashboardView })));
 const CeoUsersView = lazy(() => import("@/features/ceo/ceo-users-view").then((m) => ({ default: m.CeoUsersView })));
 const CeoRedeemView = lazy(() => import("@/features/ceo/ceo-redeem-view").then((m) => ({ default: m.CeoRedeemView })));
 const CeoSupportView = lazy(() => import("@/features/ceo/ceo-support-view").then((m) => ({ default: m.CeoSupportView })));
+const CeoNotificationsView = lazy(() => import("@/features/ceo/ceo-notifications-view").then((m) => ({ default: m.CeoNotificationsView })));
+const CeoHistoryView = lazy(() => import("@/features/ceo/ceo-history-view").then((m) => ({ default: m.CeoHistoryView })));
+const CeoSettingsView = lazy(() => import("@/features/ceo/ceo-settings-view").then((m) => ({ default: m.CeoSettingsView })));
 
 const AUTH_SET = new Set(AUTH_VIEWS);
 const SYSTEM_SET = new Set(SYSTEM_VIEWS);
@@ -46,6 +52,17 @@ function ViewSuspense({ children }: { children: React.ReactNode }) {
     </Suspense>
   );
 }
+
+/** All CEO authenticated workspace views (rendered inside CeoLayout). */
+const CEO_APP_VIEWS: ViewId[] = [
+  "ceo-dashboard",
+  "ceo-redeem",
+  "ceo-users",
+  "ceo-notifications",
+  "ceo-support",
+  "ceo-history",
+  "ceo-settings",
+];
 
 /**
  * AppRouter — maps current ViewId to the appropriate feature view.
@@ -77,12 +94,18 @@ export function AppRouter() {
     // CEO authenticated views — guarded by role check
     if (current === "ceo-dashboard")
       return isCeoAuthenticated ? <ViewSuspense><CeoDashboardView /></ViewSuspense> : <RestrictedAccess />;
-    if (current === "ceo-users")
-      return isCeoAuthenticated ? <ViewSuspense><CeoUsersView /></ViewSuspense> : <RestrictedAccess />;
     if (current === "ceo-redeem")
       return isCeoAuthenticated ? <ViewSuspense><CeoRedeemView /></ViewSuspense> : <RestrictedAccess />;
+    if (current === "ceo-users")
+      return isCeoAuthenticated ? <ViewSuspense><CeoUsersView /></ViewSuspense> : <RestrictedAccess />;
+    if (current === "ceo-notifications")
+      return isCeoAuthenticated ? <ViewSuspense><CeoNotificationsView /></ViewSuspense> : <RestrictedAccess />;
     if (current === "ceo-support")
       return isCeoAuthenticated ? <ViewSuspense><CeoSupportView /></ViewSuspense> : <RestrictedAccess />;
+    if (current === "ceo-history")
+      return isCeoAuthenticated ? <ViewSuspense><CeoHistoryView /></ViewSuspense> : <RestrictedAccess />;
+    if (current === "ceo-settings")
+      return isCeoAuthenticated ? <ViewSuspense><CeoSettingsView /></ViewSuspense> : <RestrictedAccess />;
 
     // App views
     switch (current) {
@@ -112,7 +135,6 @@ export function AppRouter() {
   }, [current, isAuthView, isSystemView, isLegalView, isCeoView, isPublicView, isCeoAuthenticated]);
 
   // CEO authenticated views use CeoLayout (only when CEO role is set)
-  const CEO_APP_VIEWS = ["ceo-dashboard", "ceo-users", "ceo-redeem", "ceo-support"];
   if (isCeoAuthenticated && CEO_APP_VIEWS.includes(current)) {
     return (
       <div className="relative min-h-screen">
@@ -129,7 +151,7 @@ export function AppRouter() {
   }
 
   // Public, auth, system, legal, ceo-login, ceo-restricted, non-CEO ceo views: full-screen (no shell)
-  const CEO_GUARDED = ["ceo-dashboard", "ceo-users", "ceo-redeem", "ceo-support"];
+  const CEO_GUARDED: ViewId[] = ["ceo-dashboard", "ceo-redeem", "ceo-users", "ceo-notifications", "ceo-support", "ceo-history", "ceo-settings"];
   if (isPublicView || isAuthView || isSystemView || isLegalView || current === "ceo-login" || current === "ceo-restricted" || CEO_GUARDED.includes(current)) {
     return (
       <div className="relative min-h-screen">

@@ -1,0 +1,301 @@
+1699 /home/z/my-project/worklog.md
+Task: Simplify Dashboard - remove referral/achievement/mission/daily-bonus/leaderboard sections
+
+Work Log:
+- Read worklog.md and analyzed existing src/features/dashboard/dashboard-view.tsx (1388 lines, 14 sections)
+- Reviewed useDashboardData hook: provides stats.todayAdsWatched, stats.weeklyEarnings, chart array, wallet, transactions, notifications
+- Reviewed useWalletStore/useUserStore/useNotificationStore/useActivityStore for available real fields
+- Reviewed rewards-view.tsx to confirm COIN_TO_INR = 0.1 conversion convention (1 coin ≈ ₹0.10)
+- Verified StatCard/AnimatedCounter/WidgetCard/IconBadge component APIs (prefix/suffix/index/icon-as-string supported)
+- Verified ViewId union includes "earn", "wallet", "redeem", "history", "settings", "notifications", "support"
+- Verified lucide-react exports: IndianRupee, History, Settings, PlayCircle all present
+- Rewrote dashboard-view.tsx keeping only 8 sections + helpers + DashboardView:
+  * WelcomeHero — removed Level/Streak/Rank StatusBadges, XP progress section, fake "This Week" BarChart with +18% badge; kept greeting + username + coin balance + avatar; added notification bell button (top-right) with unread count badge, plus Start Earning / My Wallet CTAs
+  * QuickStatistics — simplified from 8 cards to 4 wallet-focused stats: Current Coins, Cash Value (₹ via COIN_TO_INR), Today's Earnings, Ads Watched Today (prop from dashboard API); removed fake trend percentages
+  * QuickActions — reduced from 9 to 5 actions: Watch Ads, Wallet, Redeem, History, Settings (removed referral/daily-bonus/missions/leaderboard/support/profile)
+  * WalletPreview — simplified: 2x2 stat grid (current coins / cash value / today's earnings / ads watched) + weekly earnings AreaChart driven by data.chart prop; removed Available/Pending split, fake hardcoded chart data, and SkeletonRow "Recent Transactions" placeholder
+  * RewardCenterPreview — replaced fake reward categories (Rewarded Ads/Offerwall/Daily Bonus/Special Events) with backend-ready REWARD_TIERS constant (₹10/20/30/40/50/100/200/500/1000 with matching coin costs); no fake eligibility badges; scrollable grid
+  * RecentActivityTimeline — kept verbatim with real store data; added max-h-96 overflow + lootloom-scroll
+  * NotificationPreview — kept verbatim with real store data
+  * SupportCenter — simplified from 4 cards to 2: Create Ticket, View Tickets (removed Help Center & FAQ cards)
+  * DashboardView — kept useDashboardData hook, useEffect store-sync, loading skeleton; passes adsWatchedToday + weeklyChart as props to QuickStatistics & WalletPreview
+- Removed entire component definitions: MissionCenter, DailyBonus, AchievementCenter, LeaderboardPreview, ReferralCenter, SecurityStatus
+- Removed render calls for all removed sections
+- Cleaned unused imports: useState, hoverLift, Bar, BarChart, Cell, Pie, PieChart, XAxis, YAxis; removed lucide icons no longer used (Award, Calendar, Copy, Crown, Flame, KeyRound, Lock, Medal, MessageCircle, MonitorSmartphone, ShieldCheck, Sparkles, Star, Target, Trophy, Users where unused) — kept Target/Users/ShoppingBag/CalendarCheck/Bell for RecentActivityTimeline type-icon mapping
+- Removed unused lootloom imports: ProgressRing, SkeletonRow, StatusBadge
+- Ran `bun run lint` — passed with zero errors
+- Verified dev.log: compilation successful (`✓ Compiled in 0ms`); pre-existing 401 on /api/dashboard is a NextAuth JWT decryption issue from a stale session cookie, unrelated to dashboard UI changes
+
+Stage Summary:
+- Dashboard reduced from 14 sections to 8 clean sections per spec (WelcomeHero, QuickStatistics, QuickActions, WalletPreview, RewardCenterPreview, RecentActivityTimeline, NotificationPreview, SupportCenter)
+- All premium glass cards, gradients, framer-motion animations, and styling preserved exactly as before
+- All values now sourced from: Zustand stores (user/wallet/notification/activity) OR useDashboardData API hook (todayAdsWatched, chart) OR explicit placeholder constants clearly marked backend-ready (COIN_TO_INR rate, REWARD_TIERS denominations)
+- No fake eligibility badges, no fake trend percentages, no fake analytics, no hardcoded stat numbers
+- File reduced from 1388 to ~620 lines of clean, dead-code-free code
+- ESLint passes; dev server compiles successfully
+
+---
+Task ID: prompt-2-simplify-views
+Agent: main
+Task: Simplify Dashboard, Earn, and Wallet pages (Prompt 2 of 10)
+
+Work Log:
+- Dashboard: reduced from 14 sections to 8 (Welcome, QuickStats, QuickActions, WalletPreview, RewardsPreview, RecentActivity, Notifications, Support). Removed MissionCenter, DailyBonus, AchievementCenter, LeaderboardPreview, ReferralCenter, SecurityStatus. Removed XP/level/badge/streak content from WelcomeHero.
+- Earn: reduced from 15 sections to 5 (Hero with Watch Ad button, Offerwall, Reward History, Analytics, Tips). Removed all missions, daily bonus, referral, achievements, events, promotions, scratch cards, lucky spin. Removed hardcoded reward amounts.
+- Wallet: reduced from 12 sections to 4 (WalletOverview, WalletStatistics, RecentTransactions, QuickActions). Removed all charts, analytics, timeline, insights, security, payment info, settings, referral earnings. Removed hardcoded chart data arrays.
+
+- Verification:
+  * bun run lint: 0 errors
+  * Dev server: 200 OK
+  * Dashboard: shows 8 correct sections (Welcome, Quick Actions, Wallet Overview, Available Rewards, Recent Activity, Notifications, Support)
+  * Earn: shows 5 correct sections (Watch Rewarded Ads, Offerwall, Reward History, Earn Analytics, Tips)
+  * Wallet: shows 4 correct sections (Wallet Statistics, Recent Transactions, Quick Actions + Overview hero)
+  * Responsive: all pages render at 320px, 375px, 390px, 414px, 768px, 1024px, 1440px
+  * Zero console errors across all pages
+
+Stage Summary:
+- Dashboard: 8 sections (was 14) — removed 6 sections + dead code
+- Earn: 5 sections (was 15) — removed 10 sections + hardcoded data
+- Wallet: 4 sections (was 12) — removed 8 sections + chart data arrays
+- All premium UI preserved (glass cards, animations, gradients, colors)
+- All values backend-ready (from stores or API placeholder)
+- No fake data, no hardcoded statistics
+
+---
+Task ID: p4-history-notif-leaderboard
+Agent: full-stack-developer
+Task: Rewrite History, Notifications, Leaderboard pages
+
+Work Log:
+- Read worklog.md and analyzed existing source files: transactions-view.tsx (2291 lines), notifications-view.tsx, gamification-view.tsx
+- Reviewed lootloom component APIs: PageContainer, PageHeader, GlassCard, LootButton, IconBadge, StatusBadge, EmptyState, SkeletonRow, AnimatedCounter, WidgetCard
+- Reviewed lib/animations presets: cardReveal, staggerContainer, hoverLift, floating
+- Reviewed stores: useNavigationStore, useNotificationStore, useUserStore, useWalletStore
+- Reviewed types: NotificationItem, TransactionItem, LeaderboardUser, ViewId
+
+- FILE 1: transactions-view.tsx → TransactionsView (History)
+  * Replaced 2291-line mega-view with focused single-purpose History view (~334 lines)
+  * PageHeader: "History" / "Your redeem and account activity" + Wallet nav + Refresh button
+  * Defined local HistoryItem type with: id, type (redeem/credit/debit/bonus/referral/system), amountInr (₹), coins, status (Pending/Approved/Rejected/Cancelled/Completed), date, description, ceoMessage
+  * HISTORY_ITEMS placeholder array initialized to [] — backend will populate via /api/transactions
+  * HistoryItemCard: type icon (IconBadge), label, StatusBadge with status-specific icon (Hourglass/CheckCircle2/XCircle/Ban), color-coded amount (+green/−red/neutral), gold coins counter, formatted date, CEO Message callout (purple-themed, dynamic label: "Rejection Reason" / "Approval Message" / "CEO Message")
+  * Loading state: SkeletonRow count=5; Empty state: "No history yet" / "Start earning coins to see your activity" with "Start Earning" CTA
+  * Status → variant mapping: Pending=warning, Approved=success, Rejected=error, Cancelled=default, Completed=success
+  * Removed ALL: fake analytics (ANALYTICS_DAILY/WEEKLY/MONTHLY, CATEGORY_DISTRIBUTION pie), charts (Area/Pie charts, recharts), statistics tiles with fake trends, progress rings, timeline section, wallet+redeem activity split, referral+achievement activity split, analytics preview, notification activity preview, export center, states preview, transaction detail dialog, advanced filters (StatusChip/FilterBar/FilterField/FilterSelect/AnalyticsTabs helpers), MiniStatTile with trend, all hardcoded demo transaction cards
+  * Removed unused recharts, dialog imports, and 40+ unused lucide icons
+
+- FILE 2: notifications-view.tsx → NotificationsView
+  * Replaced long notifications-view with focused single-purpose Notifications view (~297 lines)
+  * PageHeader: "Notifications" / "Your recent updates" + Earn Coins nav + Mark All Read button (disabled when 0 unread)
+  * Defined local NotificationEvent union: redeem_submitted, redeem_approved, redeem_rejected, coins_added, coins_deducted, ceo_message, support_reply, profile_updated, security_alert
+  * EVENT_META: each event → { label, icon (string for IconBadge), accent }
+  * deriveEvent(item): infers event from NotificationItem.type + title/body keywords (security/ceo/support/profile/approved/rejected/submitted/deduct/added) — backend can later send richer discriminator
+  * NotificationCard: IconBadge icon, title (or event label), Read/Unread StatusBadge, event label caption, body message, relative time (Just now / Xm/Xh/Xd ago / date), per-item "Mark as Read" LootButton when unread
+  * Unread items get electric ring + subtle bg tint + dot indicator on icon
+  * Uses useNotificationStore for items, markRead, markAllRead, unreadCount
+  * Loading state: SkeletonRow count=5; Empty state: "No notifications" / "You're all caught up"
+  * Removed ALL: notification statistics/analytics, AreaChart/BarChart/PieChart charts, fake counters, fake categories, fake marketing notifications, dummy alerts, notification preferences tabs, notification timeline, notification detail dialog, archive/pin/delete actions
+
+- FILE 3: gamification-view.tsx → GamificationView (Leaderboard)
+  * Replaced long gamification-view with focused single-purpose Leaderboard view (~493 lines)
+  * PageHeader: "Leaderboard" / "Top earners on LootLoom" + History nav + Refresh button
+  * Current user "Your Standing" banner at top (uses useUserStore.fullName, IconBadge Trophy gold, electric glow)
+  * Defined local LeaderboardEntry type: id, rank, username, avatar?, totalRedeemedInr (₹), coinsRedeemed, isCurrentUser?
+  * LEADERBOARD_ENTRIES placeholder array initialized to [] — backend will populate via /api/leaderboard
+  * Podium component: top 3 ranked entries with gold (rank 1, center, Crown icon), silver (rank 2, left, Medal icon), bronze (rank 3, right, Medal icon); staggered heights (mt-0/6/12) for visual podium effect; gradient backgrounds, glow shadows, ring accents; shows large Avatar, username, rank, Total Redeemed (₹ via AnimatedCounter) + Coins counters; current user gets electric outline + "You" badge
+  * LeaderboardRow (rank 4+): compact row with rank chip, Avatar, username (with "You" indicator if current user), coins counter (hidden on mobile), redeemed ₹ counter; current user highlighted with electric ring + bg
+  * Avatar helper: uses <img> when avatar URL present, otherwise initials fallback with gradient bg
+  * Loading state: SkeletonRow count=6; Empty state: "No rankings yet" / "Be the first to redeem!" with "Redeem Now" CTA
+  * Removed ALL: XP, levels, achievements, badges, streaks, referral ranking, daily/weekly/monthly tabs, fake users/demo profiles, fake scores, challenges, missions, milestone rewards, reward showcase, progress dashboard, activity feed, AreaChart/BarChart/LineChart/RadialBarChart charts, recharts, all hardcoded fake leaderboard data
+
+- Cleanup: Each file starts with "use client"; only imports actually used; no void placeholder refs; no unused state/effects
+- Reused lootloom components: PageContainer, PageHeader, GlassCard, LootButton, IconBadge, StatusBadge, EmptyState, SkeletonRow, AnimatedCounter
+- Reused framer-motion presets: cardReveal, staggerContainer
+- All values placeholder-ready (0 items in HISTORY_ITEMS / LEADERBOARD_ENTRIES, store-driven notifications) — zero hardcoded fake numbers
+- Premium design language fully preserved: glass cards (levels 1-2), sheen/hover/glow effects, gradient text, IndianRupee + Coins accent icons, color-coded credit/debit amounts, podium gradients with gold/silver/bronze theming, framer-motion staggered reveals
+
+Verification:
+- bun run lint: 0 errors, 0 warnings (exit code 0)
+- Dev server: hot-reloaded successfully ("✓ Compiled" entries in dev.log)
+- All three named exports verified: TransactionsView, NotificationsView, GamificationView
+
+Stage Summary:
+- History view: 2291 lines → ~334 lines (single focused list with CEO message integration)
+- Notifications view: long multi-section view → ~297 lines (simple list with mark-read actions, store-driven)
+- Leaderboard view: long multi-section view → ~493 lines (podium + ranked list, no XP/achievements/streaks)
+- All premium UI preserved (glass cards, gradients, animations)
+- All values backend-ready (empty placeholder arrays + store data)
+- No fake data, no hardcoded statistics, no analytics/charts/timelines/preferences dialogs
+- ESLint passes; dev server compiles successfully
+
+---
+Task ID: p5-support-settings-profile
+Agent: full-stack-developer
+Task: Rewrite Support, Settings, Profile pages
+
+Work Log:
+- Read worklog.md and reviewed prior agent patterns (p4-history-notif-leaderboard) for conventions
+- Reviewed lootloom component APIs: PageContainer, PageHeader, SectionHeader, Grid, GlassCard, LootButton, IconBadge, StatusBadge, AnimatedCounter, EmptyState, SkeletonCard
+- Reviewed lib/animations presets: cardReveal, staggerContainer
+- Reviewed stores: useNavigationStore, useUserStore (fullName, email, avatar, memberSince), useWalletStore (availableCoins, lifetimeEarned, lifetimeRedeemed)
+- Reviewed AppRouter routing: support → SupportView, profile → ProfileView, settings → PagesView (default case)
+
+- FILE 1: support-view.tsx → SupportView (named export, ~420 lines, down from ~2786)
+  * PageHeader: "Support" / "Get help from LootLoom support team" + Dashboard nav button
+  * Two-column layout: Create Ticket form (left) + My Tickets list (right)
+  * CreateTicketForm: Subject (Input), Message (Textarea with 2000 char counter), disabled "Attachment (coming soon)" button, Submit button with loading state (simulated, no actual submission per spec)
+  * Ticket type: { id, subject, status, createdAt, updatedAt, lastReply, messages[] }; ChatMessage type: { id, role: "user"|"admin", content, timestamp }
+  * TICKETS placeholder array initialized to [] — backend will populate via /api/support
+  * STATUS_META map: Open (info/electric), Pending (warning/gold), Answered (cyan/cyan), Resolved (success/emerald), Closed (default/navy) — with icon names + accent colors
+  * TicketRow: Ticket ID (#id), Subject, StatusBadge (with pulsing dot for Open), Created/Updated/Last Reply dates, chevron arrow
+  * TicketChat view (AnimatePresence transition): back button + ticket header + conversation with MessageBubble (user=right gradient bubble, admin=left glass bubble); empty state inside chat when no messages
+  * MyTickets: loading (SkeletonRow count=4), empty (EmptyState "No tickets yet" / "Create your first support ticket"), list (staggered TicketRow cards)
+  * Removed ALL: fake ticket statistics, fake response times, fake support analytics, FAQ cards/accordion, help widgets, categories, priority badges, dummy conversations, placeholder tickets, community guidelines, security help, contact center, report center, feedback center, broadcast preview, recharts, dialogs, selects
+
+- FILE 2: pages-view.tsx → PagesView (named export, ~960 lines, down from ~1992)
+  * Dispatcher handles ONLY settings + profile (removed daily-bonus, missions, notifications, achievements, leaderboard, referral, transactions, history, support page handlers)
+  * SettingsView:
+    - PageHeader: "Settings" / "Manage your account preferences" + View Profile nav button
+    - Profile Section (read-only GlassCard with electric glow): ProfileAvatar, FieldRows for Full Name, Username, Email, Phone Number, Bio, Member Since (all from useUserStore; username/phone/bio show "—" placeholder until backend populates)
+    - EditProfileForm: Full Name (Input), Username (Input + live availability badge), Bio (Textarea with 200 char counter), Phone Number (Input tel); Save + Cancel buttons; loading state when saving
+    - useUsernameCheck hook: frontend-only availability check — idle/invalid (synchronous derivation: min 3 chars, [a-z0-9_]+), checking (600ms debounce), available/taken (checked against RESERVED_USERNAMES set); UsernameCheckBadge renders loading/success/error states. Refactored to avoid synchronous setState in effect (only async setState inside setTimeout)
+    - Security Section: ChangePasswordForm (Current/New/Confirm password inputs with match validation, loading state) + 5 ComingSoonCards (Email Verification, Phone Verification, 2FA, Active Sessions, Login History) shown as disabled with "Coming soon" badge
+    - Privacy Section: 4 PrivacyToggle rows with Switch component — Account Visibility, Data Preferences, Notification Preferences, Privacy Controls (local state, placeholder-ready)
+  * ProfilePage (fallback): PageHeader + ProfileCard (avatar, name, username, email, member since, Active badge) + Quick Stats (Current Coins/lifetimeEarned/lifetimeRedeemed via AnimatedCounter) + Edit Profile button (navigates to settings) + empty/loading states
+  * Removed ALL: fake security score, fake devices, fake sessions, fake verification badges, fake account statistics, fake achievements, fake leaderboard, fake daily bonus, fake missions, fake referral tiers, fake FAQs, fake notifications page handler, fake transactions/history/support page handlers
+
+- FILE 3: profile-view.tsx → ProfileView (named export, ~290 lines, down from ~2000+)
+  * PageHeader: "Profile" / "Your account overview" + Edit Profile button (navigates to settings)
+  * ProfileCard: ProfileAvatar (initials in gradient circle or image), Full Name, Username (placeholder "—"), Email, Member Since, Active StatusBadge (success, pulsing dot), Edit Profile button
+  * Quick Stats: 3 QuickStat cards — Current Coins (gold/availableCoins), Total Earned (emerald/lifetimeEarned), Total Spent (purple/lifetimeRedeemed) with AnimatedCounter
+  * Loading state: SkeletonCard grid; Empty state: "No profile data" when no fullName/email
+  * Removed ALL: fake badges, fake achievements, fake activity timeline, fake devices, fake connected accounts, fake danger zone, fake download data, fake security info, fake privacy center, fake appearance settings, fake notification preferences, dialogs, accordions, tabs
+
+- Cleanup across all 3 files:
+  * Each file starts with "use client";
+  * Removed unused lucide imports (only string-based IconBadge names kept as strings, not imports)
+  * Removed unused eslint-disable directives (@next/next/no-img-element not triggering)
+  * Removed synchronous setState-in-effect violations (username check refactored to derive idle/invalid/checking synchronously, only async available/taken uses setState in setTimeout)
+  * Reused lootloom components: PageContainer, PageHeader, SectionHeader, Grid, GlassCard, LootButton, IconBadge, StatusBadge, AnimatedCounter, EmptyState, SkeletonCard, SkeletonRow
+  * Reused framer-motion presets: cardReveal, staggerContainer
+  * Used @/components/ui Input, Textarea, Switch
+  * All values placeholder-ready (empty TICKETS array, store-driven user/wallet data, "—" for store fields not yet present)
+
+Verification:
+- bun run lint: 0 errors, 0 warnings (exit code 0)
+- Dev server: hot-reloaded successfully ("✓ Compiled" entries in dev.log)
+- All three named exports verified: SupportView, PagesView, ProfileView
+
+Stage Summary:
+- Support view: ~2786 lines → ~420 lines (create ticket + ticket list + chat view, no analytics/FAQ/help widgets)
+- Pages view: ~1992 lines → ~960 lines (settings + profile fallback only; removed 9 other page handlers)
+- Profile view: ~2000+ lines → ~290 lines (profile card + quick stats + edit CTA, no badges/devices/danger zone)
+- All premium UI preserved (glass cards, gradients, animations, sheen/glow/hover effects)
+- All values backend-ready (empty placeholder arrays + store-driven data, "—" for not-yet-populated store fields)
+- No fake data, no hardcoded statistics, no analytics/charts/timelines/dialogs
+- ESLint passes (0 errors, 0 warnings); dev server compiles successfully
+
+---
+Task ID: p6-foundation
+Agent: main
+Task: Prompt 6 — CEO Admin Panel foundation (types, navigation, admin components, ceo-layout, app-router, delete old views)
+
+Work Log:
+- Updated src/types/index.ts: removed ceo-wallet, ceo-communication, ceo-security ViewIds; added ceo-notifications, ceo-history, ceo-settings
+- Updated src/config/navigation.ts: removed PAGE_META entries for ceo-wallet/ceo-communication/ceo-security; added entries for ceo-notifications, ceo-history, ceo-settings; updated CEO_VIEWS list to clean production set: ceo-login, ceo-dashboard, ceo-redeem, ceo-users, ceo-notifications, ceo-support, ceo-history, ceo-settings
+- Created src/components/admin/ folder with reusable admin components:
+  * data-table.tsx — DataTable<T> with AdminColumn<T> type; desktop table + automatic mobile card transformation (mobileTitle/mobileSubtitle/hideOnMobile column flags); loading + emptyState slots
+  * search.tsx — AdminSearch controlled input with icon + clear button
+  * filter.tsx — AdminFilter single-select dropdown built on shadcn Select
+  * pagination.tsx — AdminPagination with numbered pages + ellipsis + prev/next + summary
+  * action-button.tsx — ActionButton dropdown menu with tone-aware items (default/success/warning/danger/info)
+  * confirm-modal.tsx — ConfirmModal built on shadcn AlertDialog with tone variants + loading + optional children
+  * stat-card.tsx — AdminStatCard with IconBadge + AnimatedCounter (backend-ready, no fake numbers)
+  * toolbar.tsx — AdminToolbar responsive wrapper for search/filter/actions
+  * index.ts — barrel export
+- Rewrote src/components/lootloom/ceo-layout.tsx: new 8-item sidebar (Dashboard, Redeem Requests, Users, Notifications, Support, History, Settings, Logout) + mobile Sheet drawer; Logout clears authStore (role=user, authenticated=false) and navigates to ceo-login; removed "Mission Control" label (now shows current view label); notification bell + profile button in header
+- Rewrote src/components/lootloom/app-router.tsx: added lazy imports for CeoNotificationsView, CeoHistoryView, CeoSettingsView; removed references to deleted CeoWalletView/CeoCommunicationView/CeoSecurityView; CEO_APP_VIEWS list = ceo-dashboard, ceo-redeem, ceo-users, ceo-notifications, ceo-support, ceo-history, ceo-settings
+- Deleted src/features/ceo/ceo-wallet-view.tsx, ceo-communication-view.tsx, ceo-security-view.tsx
+- Created stub files for new views (ceo-notifications-view.tsx, ceo-history-view.tsx, ceo-settings-view.tsx) so dev server doesn't crash before subagents write real content
+- Ran bun run lint: 0 errors
+
+Stage Summary:
+- Foundation ready for parallel subagent view creation
+- Admin components available at @/components/admin (DataTable, AdminSearch, AdminFilter, AdminPagination, ActionButton, ConfirmModal, AdminStatCard, AdminToolbar)
+- CEO navigation simplified to 8 essential items + Logout
+- ceo-wallet, ceo-communication, ceo-security views deleted
+- 3 new view IDs added (ceo-notifications, ceo-history, ceo-settings)
+- ESLint passes; dev server stable
+
+---
+Task ID: 6a
+Agent: full-stack-developer
+Task: Write ceo-auth-view.tsx + ceo-dashboard-view.tsx
+
+Work Log:
+- Read worklog.md to understand prior work (p6-foundation: admin components, CeoLayout, navigation)
+- Reviewed existing files: ceo-auth-view.tsx (1818 lines), ceo-dashboard-view.tsx (1647 lines)
+- Reviewed reusable components: GlassCard, LootButton, Logo, IconBadge, StatusBadge, PageContainer, PageHeader, Grid, SkeletonCard from @/components/lootloom
+- Reviewed AdminStatCard from @/components/admin (props: label, value, prefix, suffix, decimals, icon, accent, hint, index, className)
+- Reviewed stores: useAuthStore.setState pattern, useNavigationStore.navigate
+- Reviewed lib/animations presets: pageTransition, scaleIn, cardReveal, staggerContainer
+- Reviewed app-router.tsx: confirmed ceo-login renders full-screen (no shell), ceo-dashboard renders inside CeoLayout
+
+- FILE 1: ceo-auth-view.tsx → CeoAuthView (named export, 443 lines, down from 1818)
+  * Full-screen split layout: left = BrandPanel (Logo + "LootLoom CEO Platform" + 3 security badges: Encrypted at rest, TLS 1.3 transport, Zero-trust design, with glow accents and footer meta). Right = login form + Future Security section
+  * Mobile: BrandPanel rendered on top, form below (stacked single column via grid-cols-1 lg:grid-cols-2)
+  * LoginField helper component: label, input with left icon, optional right slot, error message with AlertTriangle icon
+  * Input styling per spec: "h-12 rounded-xl glass-2 ring-1 ring-border px-4 text-sm focus:ring-electric/40 focus:ring-2 outline-none transition-all w-full"
+  * Login form fields: Email/Username (with Mail icon, validates empty + email format), Password (with Lock icon + show/hide Eye/EyeOff toggle, validates empty + min 6 chars)
+  * Login button: LootButton variant="electric" size="lg" fullWidth, loading state shows "Authenticating…" with spinner (simulated 1.2s delay via setTimeout)
+  * Error states: inline error per-field (below input) + top-level error card (rose bg, AlertTriangle icon)
+  * Success flow: validates → simulates 1.2s auth → calls useAuthStore.setState({ role: "ceo", isAuthenticated: true, status: "authenticated" }) → useNavigationStore.navigate("ceo-dashboard")
+  * "Back to home" link at bottom of form: navigates to "home" view
+  * FutureSecurityList section: 6 disabled glass cards with IconBadge + label + description + "Coming soon" StatusBadge (variant=default). Items: Two-Factor Authentication (electric/Smartphone), OTP Verification (cyan/KeyRound), Session Verification (purple/Fingerprint), Device Verification (gold/Monitor), Recovery Codes (emerald/RefreshCw), Login History (navy/History). Each card has opacity-70 + cursor-not-allowed to signal disabled state
+  * Used GlassCard, LootButton, Logo, IconBadge, StatusBadge from @/components/lootloom
+  * Used framer-motion: pageTransition (main wrapper), scaleIn (right column), staggerContainer + cardReveal (Future Security list)
+  * Used useAuthStore (setState) and useNavigationStore (navigate) from @/stores
+  * NO backend, NO fake users, NO hardcoded credentials — UI-only gate with comment noting real auth will be wired later
+  * Removed ALL prior content: gateway/timeline multi-step flow, dialogs, server/network/CCTV panels, fake session history, fake device list, 60+ unused lucide imports, recharts, ProgressRing
+
+- FILE 2: ceo-dashboard-view.tsx → CeoDashboardView (named export, 217 lines, down from 1647)
+  * Wrapped in <PageContainer> from @/components/lootloom
+  * PageHeader: title="Dashboard", description="Platform overview at a glance", with Refresh LootButton (glass variant) in actions slot
+  * STATS placeholder object initialized to 0 (all 8 values): totalUsers, activeUsers, pendingRedeems, completedRedeems, totalCoinsDistributed, totalPayoutInr, supportTickets, securityAlerts. Comment: "// TODO: replace with fetch from /api/ceo/dashboard"
+  * KPI_GRID config array: 8 KPI cards with label, icon (lucide string), accent, optional prefix/hint:
+    1. Total Users (Users/electric) — "All registered accounts"
+    2. Active Users (UserCheck/cyan) — "Active in last 30 days"
+    3. Pending Redeems (Clock/gold) — "Awaiting review"
+    4. Completed Redeems (CheckCircle2/emerald) — "Fulfilled all-time"
+    5. Coins Distributed (Coins/purple) — "Lifetime credits"
+    6. Total Payout (IndianRupee/emerald, prefix="₹") — "Lifetime INR disbursed"
+    7. Support Tickets (LifeBuoy/rose) — "Open + in progress"
+    8. Security Alerts (ShieldAlert/navy) — "Unresolved alerts"
+  * Stats grid: Grid cols={4} (2 cols mobile, 4 cols desktop), each card wrapped in motion.div with cardReveal + staggerContainer
+  * AdminStatCard from @/components/admin used for each KPI (passes label, value, prefix, icon, accent, hint, index, className="h-full")
+  * Loading state: shows 8 SkeletonCard in Grid cols={4} while loading=true (simulated 600ms setTimeout in useEffect). Refresh button also triggers loading state
+  * BackendHintCard below stats grid: GlassCard with Info IconBadge (electric), text "Live data will appear once backend is connected", inline code reference to /api/ceo/dashboard, "Awaiting backend" StatusBadge (warning, pulsing dot)
+  * NO charts, NO graphs, NO recharts, NO monitoring widgets, NO system health, NO server status, NO performance cards, NO fake numbers, NO hardcoded analytics
+  * Used PageContainer, PageHeader, Grid, SkeletonCard, GlassCard, LootButton, IconBadge, StatusBadge from @/components/lootloom
+  * Used AdminStatCard from @/components/admin
+  * Used framer-motion: cardReveal, staggerContainer from @/lib/animations
+
+- Cleanup across both files:
+  * Each file starts with "use client"
+  * Removed all unused lucide imports (only kept what's directly used as JSX components; string-name icons for IconBadge are resolved via lucide namespace lookup, no JS import needed)
+  * No unused state, no unused effects, no dead code
+  * Premium UI fully preserved: glass cards (levels 1-2), sheen effect on login card, gradient text, electric glow accents, framer-motion entrance animations, hover lift on glass cards, pulsing badges
+
+Verification:
+- bun run lint: 0 errors, 0 warnings (exit code 0)
+- Dev server: ✓ Compiled successfully (3s + 3.4s in dev.log, no errors)
+- File line counts: ceo-auth-view.tsx = 443 lines (under 500), ceo-dashboard-view.tsx = 217 lines (under 300)
+- Both named exports verified: CeoAuthView, CeoDashboardView
+
+Stage Summary:
+- ceo-auth-view.tsx: 1818 lines → 443 lines (clean split-screen CEO login with simulated auth, future-security roadmap visible-but-disabled)
+- ceo-dashboard-view.tsx: 1647 lines → 217 lines (clean 8-KPI overview with backend-ready placeholder object, no fake data, no charts)
+- All premium UI preserved (glass cards, gradients, animations, glow accents)
+- All values backend-ready (placeholder object initialized to 0, simulated loading only)
+- No fake data, no hardcoded statistics, no charts/graphs/monitoring widgets
+- ESLint passes (0 errors, 0 warnings); dev server compiles successfully

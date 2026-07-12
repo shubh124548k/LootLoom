@@ -1,14 +1,31 @@
 "use client";
 
+/**
+ * CeoLayout — dedicated private administration layout.
+ *
+ * Sidebar contains ONLY: Dashboard, Redeem Requests, Users, Notifications,
+ * Support, History, Settings, Logout.
+ *
+ * Desktop: fixed left sidebar (280px) + sticky admin header.
+ * Mobile: hamburger opens a drawer (Sheet) with the same nav.
+ *
+ * Completely isolated from the normal user AppShell.
+ */
+import { useState } from "react";
 import { motion } from "framer-motion";
 import * as Icons from "lucide-react";
 import { Logo } from "@/components/lootloom/logo";
-import { useNavigationStore, useUIStore } from "@/stores";
-import { sidebarItem, drawerLeft, overlayFade } from "@/lib/animations";
-import { AnimatedCounter } from "@/components/lootloom/animated-counter";
-import { AnimatePresence } from "framer-motion";
+import { useNavigationStore, useAuthStore } from "@/stores";
+import { sidebarItem } from "@/lib/animations";
 import { cn } from "@/lib/utils";
 import type { ViewId } from "@/types";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 interface CeoNavItem {
   id: ViewId;
@@ -20,19 +37,33 @@ const CEO_NAV: CeoNavItem[] = [
   { id: "ceo-dashboard", label: "Dashboard", icon: "LayoutDashboard" },
   { id: "ceo-redeem", label: "Redeem Requests", icon: "ShoppingBag" },
   { id: "ceo-users", label: "Users", icon: "Users" },
+  { id: "ceo-notifications", label: "Notifications", icon: "Bell" },
   { id: "ceo-support", label: "Support", icon: "LifeBuoy" },
+  { id: "ceo-history", label: "History", icon: "History" },
+  { id: "ceo-settings", label: "Settings", icon: "Settings" },
 ];
 
-function CeoNav() {
+function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const { current, navigate } = useNavigationStore();
+  const setRole = useAuthStore((s) => s.setRole);
+  const setAuthenticated = useAuthStore((s) => s.setAuthenticated);
+
+  const handleLogout = () => {
+    setAuthenticated(false);
+    setRole("user");
+    navigate("ceo-login");
+    onNavigate?.();
+  };
+
   return (
-    <nav className="flex-1 overflow-y-auto no-scrollbar px-3 py-4" aria-label="CEO navigation">
+    <nav className="flex-1 overflow-y-auto lootloom-scroll px-3 py-4" aria-label="CEO navigation">
       <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 mb-2">
         Administration
       </p>
       <div className="space-y-1">
         {CEO_NAV.map((item, i) => {
-          const Lucide = (Icons as unknown as Record<string, Icons.LucideIcon>)[item.icon] ?? Icons.Circle;
+          const Lucide =
+            (Icons as unknown as Record<string, Icons.LucideIcon>)[item.icon] ?? Icons.Circle;
           const active = current === item.id;
           return (
             <motion.button
@@ -43,7 +74,11 @@ function CeoNav() {
               animate="animate"
               whileHover={{ x: 2 }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => navigate(item.id)}
+              onClick={() => {
+                navigate(item.id);
+                onNavigate?.();
+              }}
+              aria-current={active ? "page" : undefined}
               className={cn(
                 "group relative w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                 active
@@ -54,11 +89,30 @@ function CeoNav() {
               {active && <span className="nav-active-indicator" />}
               <Lucide size={18} className={cn(active && "text-electric")} />
               <span className="flex-1 text-left">{item.label}</span>
-              <Icons.Lock size={12} className="text-muted-foreground/60" />
             </motion.button>
           );
         })}
       </div>
+
+      <p className="px-3 mt-6 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 mb-2">
+        Session
+      </p>
+      <motion.button
+        variants={sidebarItem}
+        custom={CEO_NAV.length}
+        initial="initial"
+        animate="animate"
+        whileHover={{ x: 2 }}
+        whileTap={{ scale: 0.97 }}
+        onClick={handleLogout}
+        className={cn(
+          "group relative w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+          "text-rose-brand hover:bg-rose-brand/10 hover:ring-1 hover:ring-rose-brand/20"
+        )}
+      >
+        <Icons.LogOut size={18} />
+        <span className="flex-1 text-left">Logout</span>
+      </motion.button>
 
       <div className="mt-6 rounded-2xl glass-2 p-4 ring-1 ring-border/60 relative overflow-hidden">
         <div className="absolute -top-6 -right-6 size-20 rounded-full bg-emerald-brand/15 blur-2xl" />
@@ -76,6 +130,12 @@ function CeoNav() {
 
 function CeoHeader() {
   const navigate = useNavigationStore((s) => s.navigate);
+  const current = useNavigationStore((s) => s.current);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const currentLabel =
+    CEO_NAV.find((n) => n.id === current)?.label ?? "Dashboard";
+
   return (
     <motion.header
       initial={{ opacity: 0, y: -12 }}
@@ -84,36 +144,67 @@ function CeoHeader() {
       className="sticky top-3 z-40 mx-3 lg:ml-[calc(280px+1.5rem)] lg:mr-3 transition-[margin] duration-[400ms] ease-out"
     >
       <div className="flex items-center gap-3 h-16 px-4 rounded-2xl glass-nav shadow-[var(--shadow-md)] ring-1 ring-border/50">
+        {/* Mobile menu trigger */}
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetTrigger
+            aria-label="Open CEO menu"
+            className="lg:hidden inline-flex items-center justify-center size-10 rounded-xl glass-2 ring-1 ring-border text-foreground hover:bg-accent/60 transition-all"
+          >
+            <Icons.Menu size={18} />
+          </SheetTrigger>
+          <SheetContent
+            side="left"
+            className="w-[280px] p-0 glass-nav border-0 ring-1 ring-border/40"
+          >
+            <SheetHeader className="px-4 h-16 flex flex-row items-center gap-2 border-b border-sidebar-border space-y-0">
+              <Logo />
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-navy/10 text-navy ring-1 ring-navy/20 px-2 py-0.5 text-[10px] font-bold">
+                <Icons.Lock size={9} /> CEO
+              </span>
+              <SheetTitle className="sr-only">CEO Navigation</SheetTitle>
+            </SheetHeader>
+            <div className="h-[calc(100%-4rem)] flex flex-col">
+              <NavList onNavigate={() => setMobileOpen(false)} />
+            </div>
+          </SheetContent>
+        </Sheet>
+
         <div className="flex items-center gap-2">
           <span className="size-2 rounded-full bg-emerald-brand animate-pulse" />
-          <span className="text-xs font-semibold text-emerald-brand hidden sm:inline">CEO MODE</span>
+          <span className="text-xs font-semibold text-emerald-brand hidden sm:inline">
+            CEO MODE
+          </span>
         </div>
         <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
         <button
           onClick={() => navigate("ceo-dashboard")}
-          className="text-sm font-semibold text-foreground hover:text-electric transition-colors"
+          className="text-sm font-semibold text-foreground hover:text-electric transition-colors truncate"
         >
-          Mission Control
+          {currentLabel}
         </button>
 
         <div className="flex-1" />
 
-        <button className="hidden md:inline-flex items-center gap-2 h-10 px-3 rounded-xl glass-2 ring-1 ring-border text-muted-foreground hover:text-foreground transition-all min-w-[220px]">
-          <Icons.Search size={16} />
-          <span className="text-sm flex-1 text-left">Search…</span>
-          <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Ctrl K</kbd>
-        </button>
-
-        <button className="relative size-10 inline-flex items-center justify-center rounded-xl glass-2 ring-1 ring-border text-foreground hover:glass-3 transition-all">
+        <button
+          onClick={() => navigate("ceo-notifications")}
+          aria-label="Notifications"
+          className="relative size-10 inline-flex items-center justify-center rounded-xl glass-2 ring-1 ring-border text-foreground hover:glass-3 transition-all"
+        >
           <Icons.Bell size={18} />
-          <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-rose-brand text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-background">3</span>
+          <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-rose-brand text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-background">
+            0
+          </span>
         </button>
 
-        <button className="inline-flex items-center gap-2 h-10 pl-1.5 pr-2 rounded-xl glass-2 ring-1 ring-border hover:glass-3 transition-all">
+        <button
+          onClick={() => navigate("ceo-settings")}
+          aria-label="CEO profile"
+          className="inline-flex items-center gap-2 h-10 pl-1.5 pr-2 rounded-xl glass-2 ring-1 ring-border hover:glass-3 transition-all"
+        >
           <span className="size-7 rounded-full bg-[linear-gradient(135deg,var(--navy),var(--electric))] flex items-center justify-center text-white text-xs font-bold">
             CEO
           </span>
-          <Icons.ChevronDown size={14} className="text-muted-foreground" />
+          <Icons.ChevronDown size={14} className="text-muted-foreground hidden sm:block" />
         </button>
       </div>
     </motion.header>
@@ -127,7 +218,10 @@ function CeoHeader() {
  */
 export function CeoLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative min-h-screen" style={{ "--sidebar-w": "280px" } as React.CSSProperties}>
+    <div
+      className="relative min-h-screen"
+      style={{ "--sidebar-w": "280px" } as React.CSSProperties}
+    >
       {/* CEO Sidebar (desktop) */}
       <aside className="hidden lg:block fixed left-3 top-3 bottom-3 z-30 w-[280px]">
         <div className="h-full w-full rounded-3xl glass-nav shadow-[var(--shadow-lg)] flex flex-col overflow-hidden ring-1 ring-border/40">
@@ -137,17 +231,19 @@ export function CeoLayout({ children }: { children: React.ReactNode }) {
               <Icons.Lock size={9} /> CEO
             </span>
           </div>
-          <CeoNav />
+          <NavList />
           <div className="px-3 py-3 border-t border-sidebar-border">
-            <button className="w-full flex items-center gap-3 rounded-xl p-2 hover:bg-accent/60 transition-colors">
+            <div className="flex items-center gap-3 rounded-xl p-2">
               <div className="size-8 rounded-full bg-[linear-gradient(135deg,var(--navy),var(--electric))] flex items-center justify-center text-white text-xs font-bold shrink-0">
                 CE
               </div>
               <div className="text-left min-w-0">
-                <p className="text-xs font-semibold text-foreground truncate">Chief Executive</p>
+                <p className="text-xs font-semibold text-foreground truncate">
+                  Chief Executive
+                </p>
                 <p className="text-[10px] text-emerald-brand truncate">● Active Session</p>
               </div>
-            </button>
+            </div>
           </div>
         </div>
       </aside>

@@ -1,0 +1,2002 @@
+     1→"use client";
+     2→
+     3→/* ============================================================
+     4→   LootLoom — CEO Redeem Management & Approval Center
+     5→   View renders INSIDE the CeoLayout. No sidebar/header/background.
+     6→   Skeleton-first: no backend, no approval logic, no wallet deduction.
+     7→   Inherits premium WHITE executive design language (navy + electric).
+     8→   ============================================================ */
+     9→
+    10→import { useMemo, useState } from "react";
+    11→import { motion, AnimatePresence } from "framer-motion";
+    12→import {
+    13→  Area,
+    14→  AreaChart,
+    15→  Bar,
+    16→  BarChart,
+    17→  CartesianGrid,
+    18→  Cell,
+    19→  Line,
+    20→  LineChart,
+    21→  Pie,
+    22→  PieChart,
+    23→  ResponsiveContainer,
+    24→  Tooltip,
+    25→  XAxis,
+    26→  YAxis,
+    27→} from "recharts";
+    28→import {
+    29→  AlertTriangle,
+    30→  ArrowRight,
+    31→  Award,
+    32→  Ban,
+    33→  BarChart3,
+    34→  Bell,
+    35→  Briefcase,
+    36→  Calendar,
+    37→  CheckCircle2,
+    38→  ChevronDown,
+    39→  ChevronRight,
+    40→  Clock,
+    41→  Coins,
+    42→  Crown,
+    43→  Download,
+    44→  Eye,
+    45→  FileText,
+    46→  Filter,
+    47→  Fingerprint,
+    48→  Flame,
+    49→  Gift,
+    50→  Globe,
+    51→  History,
+    52→  Lock,
+    53→  Mail,
+    54→  MapPin,
+    55→  Monitor,
+    56→  MoreVertical,
+    57→  Pause,
+    58→  Phone,
+    59→  Printer,
+    60→  RefreshCw,
+    61→  RotateCcw,
+    62→  ScanLine,
+    63→  Search,
+    64→  Send,
+    65→  ShieldAlert,
+    66→  ShieldCheck,
+    67→  ShoppingBag,
+    68→  Smartphone,
+    69→  SlidersHorizontal,
+    70→  Sparkles,
+    71→  Star,
+    72→  Tag,
+    73→  Timer,
+    74→  TrendingDown,
+    75→  TrendingUp,
+    76→  Trophy,
+    77→  UserCheck,
+    78→  UserPlus,
+    79→  Wallet,
+    80→  X,
+    81→  XCircle,
+    82→  Zap,
+    83→} from "lucide-react";
+    84→import {
+    85→  AnimatedCounter,
+    86→  EmptyState,
+    87→  ErrorState,
+    88→  GlassCard,
+    89→  Grid,
+    90→  IconBadge,
+    91→  LootButton,
+    92→  PageContainer,
+    93→  PageHeader,
+    94→  SkeletonRow,
+    95→  StatCard,
+    96→  StatusBadge,
+    97→  WidgetCard,
+    98→} from "@/components/lootloom";
+    99→import { cardReveal, floating, hoverLift, staggerContainer } from "@/lib/animations";
+   100→import { useNavigationStore } from "@/stores";
+   101→import { cn } from "@/lib/utils";
+   102→import { Checkbox } from "@/components/ui/checkbox";
+   103→import {
+   104→  Dialog,
+   105→  DialogContent,
+   106→  DialogDescription,
+   107→  DialogFooter,
+   108→  DialogHeader,
+   109→  DialogTitle,
+   110→} from "@/components/ui/dialog";
+   111→import {
+   112→  DropdownMenu,
+   113→  DropdownMenuContent,
+   114→  DropdownMenuItem,
+   115→  DropdownMenuLabel,
+   116→  DropdownMenuSeparator,
+   117→  DropdownMenuTrigger,
+   118→} from "@/components/ui/dropdown-menu";
+   119→import {
+   120→  Sheet,
+   121→  SheetContent,
+   122→  SheetDescription,
+   123→  SheetHeader,
+   124→  SheetTitle,
+   125→} from "@/components/ui/sheet";
+   126→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+   127→import { Textarea } from "@/components/ui/textarea";
+   128→
+   129→/* ============================================================
+   130→   Types & static data
+   131→   ============================================================ */
+   132→
+   133→type Accent = "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy";
+   134→
+   135→interface ChipDef {
+   136→  id: string;
+   137→  label: string;
+   138→  future?: boolean;
+   139→}
+   140→
+   141→const SEARCH_BY_CHIPS: ChipDef[] = [
+   142→  { id: "redeem-id", label: "Redeem ID" },
+   143→  { id: "user-id", label: "User ID" },
+   144→  { id: "username", label: "Username" },
+   145→  { id: "email", label: "Email" },
+   146→  { id: "reward-name", label: "Reward Name" },
+   147→  { id: "reward-category", label: "Reward Category" },
+   148→  { id: "transaction-id", label: "Transaction ID" },
+   149→  { id: "reference-id", label: "Reference ID", future: true },
+   150→  { id: "upi-ref", label: "UPI Reference", future: true },
+   151→  { id: "payment-ref", label: "Payment Reference", future: true },
+   152→];
+   153→
+   154→const REDEEM_STATUS_CHIPS: ChipDef[] = [
+   155→  { id: "pending", label: "Pending" },
+   156→  { id: "approved", label: "Approved" },
+   157→  { id: "rejected", label: "Rejected" },
+   158→  { id: "processing", label: "Processing" },
+   159→  { id: "completed", label: "Completed" },
+   160→];
+   161→
+   162→const REWARD_CATEGORY_CHIPS: ChipDef[] = [
+   163→  { id: "gift-cards", label: "Gift Cards" },
+   164→  { id: "gaming", label: "Gaming Rewards" },
+   165→  { id: "vouchers", label: "Digital Vouchers" },
+   166→  { id: "recharge", label: "Recharge Rewards" },
+   167→  { id: "shopping", label: "Shopping Rewards" },
+   168→  { id: "membership", label: "Premium Membership" },
+   169→  { id: "upi", label: "UPI Rewards", future: true },
+   170→  { id: "custom", label: "Custom Rewards", future: true },
+   171→];
+   172→
+   173→const VERIFICATION_CHIPS: ChipDef[] = [
+   174→  { id: "verified", label: "Verified" },
+   175→  { id: "unverified", label: "Unverified" },
+   176→  { id: "pending", label: "Pending Review" },
+   177→  { id: "flagged", label: "Flagged" },
+   178→];
+   179→
+   180→const PRIORITY_CHIPS: ChipDef[] = [
+   181→  { id: "low", label: "Low Priority" },
+   182→  { id: "normal", label: "Normal" },
+   183→  { id: "high", label: "High Priority" },
+   184→  { id: "urgent", label: "Urgent" },
+   185→];
+   186→
+   187→const PAYMENT_METHOD_CHIPS: ChipDef[] = [
+   188→  { id: "upi", label: "UPI", future: true },
+   189→  { id: "bank", label: "Bank Transfer", future: true },
+   190→  { id: "wallet", label: "Wallet Credit", future: true },
+   191→  { id: "voucher", label: "Voucher Code", future: true },
+   192→  { id: "gift-card", label: "Gift Card", future: true },
+   193→];
+   194→
+   195→const COUNTRY_CHIPS: ChipDef[] = [
+   196→  { id: "in", label: "India", future: true },
+   197→  { id: "us", label: "United States", future: true },
+   198→  { id: "uk", label: "United Kingdom", future: true },
+   199→  { id: "ca", label: "Canada", future: true },
+   200→  { id: "au", label: "Australia", future: true },
+   201→];
+   202→
+   203→const RISK_LEVEL_CHIPS: ChipDef[] = [
+   204→  { id: "low", label: "Low Risk", future: true },
+   205→  { id: "medium", label: "Medium Risk", future: true },
+   206→  { id: "high", label: "High Risk", future: true },
+   207→  { id: "critical", label: "Critical", future: true },
+   208→];
+   209→
+   210→const SORT_OPTIONS = [
+   211→  "Newest Request",
+   212→  "Oldest Request",
+   213→  "Highest Coin Value",
+   214→  "Lowest Coin Value",
+   215→  "Longest Processing Time",
+   216→  "Highest Priority",
+   217→  "Most Recent Status Change",
+   218→  "Approver (A–Z)",
+   219→] as const;
+   220→
+   221→const OVERVIEW_STATS: {
+   222→  label: string;
+   223→  value: number;
+   224→  icon: string;
+   225→  accent: Accent;
+   226→  prefix?: string;
+   227→  suffix?: string;
+   228→  decimals?: number;
+   229→  trend?: { value: number; positive: boolean };
+   230→  future?: boolean;
+   231→}[] = [
+   232→  { label: "Total Redeem Requests", value: 0, icon: "ShoppingBag", accent: "electric" as Accent },
+   233→  { label: "Pending Approval", value: 0, icon: "Clock", accent: "gold" as Accent, trend: { value: 0, positive: true } },
+   234→  { label: "Approved Requests", value: 0, icon: "CheckCircle2", accent: "emerald" as Accent },
+   235→  { label: "Rejected Requests", value: 0, icon: "XCircle", accent: "rose" as Accent },
+   236→  { label: "Processing Requests", value: 0, icon: "RefreshCw", accent: "cyan" as Accent },
+   237→  { label: "Completed Rewards", value: 0, icon: "Gift", accent: "purple" as Accent },
+   238→  { label: "Average Processing Time", value: 0, icon: "Timer", accent: "navy" as Accent, suffix: "h" },
+   239→  { label: "Today's Requests", value: 0, icon: "Calendar", accent: "electric" as Accent, trend: { value: 0, positive: true } },
+   240→  { label: "Weekly Requests", value: 0, icon: "BarChart3", accent: "cyan" as Accent },
+   241→  { label: "Monthly Requests", value: 0, icon: "TrendingUp", accent: "purple" as Accent },
+   242→  { label: "Future Success Rate", value: 0, icon: "Award", accent: "emerald" as Accent, suffix: "%", future: true },
+   243→  { label: "Future Reward Value", value: 0, icon: "Coins", accent: "gold" as Accent, prefix: "$", future: true },
+   244→];
+   245→
+   246→const TABLE_COLUMNS = [
+   247→  { key: "redeem-id", label: "Redeem ID", className: "w-[120px]" },
+   248→  { key: "user", label: "User", className: "min-w-[200px]" },
+   249→  { key: "reward", label: "Reward", className: "min-w-[180px] hidden xl:table-cell" },
+   250→  { key: "coins", label: "Required Coins", className: "w-[110px] hidden lg:table-cell" },
+   251→  { key: "status", label: "Current Status", className: "w-[120px]" },
+   252→  { key: "requested", label: "Requested Date", className: "w-[130px] hidden xl:table-cell" },
+   253→  { key: "processing", label: "Processing Time", className: "w-[120px] hidden 2xl:table-cell" },
+   254→  { key: "priority", label: "Priority", className: "w-[110px] hidden lg:table-cell" },
+   255→  { key: "view", label: "View Details", className: "w-[110px] text-right" },
+   256→  { key: "actions", label: "Actions", className: "w-[60px] text-right" },
+   257→] as const;
+   258→
+   259→const ANALYTICS_PERIODS = ["7D", "30D", "90D", "1Y"] as const;
+   260→type AnalyticsPeriod = (typeof ANALYTICS_PERIODS)[number];
+   261→
+   262→const EMPTY_BAR_WEEK = [
+   263→  { label: "Mon", value: 0 },
+   264→  { label: "Tue", value: 0 },
+   265→  { label: "Wed", value: 0 },
+   266→  { label: "Thu", value: 0 },
+   267→  { label: "Fri", value: 0 },
+   268→  { label: "Sat", value: 0 },
+   269→  { label: "Sun", value: 0 },
+   270→];
+   271→
+   272→const EMPTY_TREND_6W = [
+   273→  { label: "W1", value: 0 },
+   274→  { label: "W2", value: 0 },
+   275→  { label: "W3", value: 0 },
+   276→  { label: "W4", value: 0 },
+   277→  { label: "W5", value: 0 },
+   278→  { label: "W6", value: 0 },
+   279→];
+   280→
+   281→const REWARD_DISTRIBUTION_DATA = [
+   282→  { label: "Gift Cards", value: 0 },
+   283→  { label: "Gaming", value: 0 },
+   284→  { label: "Vouchers", value: 0 },
+   285→  { label: "Recharge", value: 0 },
+   286→  { label: "Shopping", value: 0 },
+   287→  { label: "Membership", value: 0 },
+   288→];
+   289→
+   290→const CATEGORY_DISTRIBUTION_DATA = [
+   291→  { label: "Digital", value: 0 },
+   292→  { label: "Physical", value: 0 },
+   293→  { label: "Service", value: 0 },
+   294→  { label: "Subscription", value: 0 },
+   295→];
+   296→
+   297→const APPROVAL_WORKFLOW_STEPS: {
+   298→  id: string;
+   299→  label: string;
+   300→  description: string;
+   301→  icon: typeof Eye;
+   302→  accent: Accent;
+   303→  state: "completed" | "active" | "pending" | "future";
+   304→}[] = [
+   305→  { id: "received", label: "Request Received", description: "User submitted redemption request", icon: ShoppingBag, accent: "electric", state: "completed" },
+   306→  { id: "eligibility", label: "Eligibility Review", description: "Wallet balance & reward availability", icon: ShieldCheck, accent: "cyan", state: "completed" },
+   307→  { id: "admin", label: "Administrator Review", description: "Manual verification queue", icon: Eye, accent: "purple", state: "active" },
+   308→  { id: "decision", label: "Approval Decision", description: "Approve, reject, or hold", icon: CheckCircle2, accent: "gold", state: "pending" },
+   309→  { id: "processing", label: "Reward Processing", description: "Fulfillment & delivery", icon: Gift, accent: "emerald", state: "future" },
+   310→  { id: "completed", label: "Completed", description: "Reward delivered to user", icon: Trophy, accent: "rose", state: "future" },
+   311→];
+   312→
+   313→const ADMIN_REDEEM_ACTIONS: {
+   314→  id: string;
+   315→  label: string;
+   316→  icon: typeof Eye;
+   317→  variant?: "default" | "warning" | "destructive";
+   318→  future?: boolean;
+   319→}[] = [
+   320→  { id: "view-request", label: "View Request", icon: Eye },
+   321→  { id: "view-user", label: "View User", icon: UserCheck },
+   322→  { id: "view-wallet", label: "View Wallet", icon: Wallet },
+   323→  { id: "view-reward", label: "View Reward", icon: Gift },
+   324→  { id: "approve", label: "Approve", icon: CheckCircle2, variant: "default", future: true },
+   325→  { id: "reject", label: "Reject", icon: XCircle, variant: "destructive", future: true },
+   326→  { id: "hold", label: "Hold", icon: Pause, variant: "warning", future: true },
+   327→  { id: "request-info", label: "Request Information", icon: Mail, future: true },
+   328→  { id: "add-note", label: "Add Internal Note", icon: FileText, future: true },
+   329→  { id: "assign-reviewer", label: "Assign Reviewer", icon: UserPlus, future: true },
+   330→  { id: "escalate", label: "Escalate", icon: ShieldAlert, variant: "warning", future: true },
+   331→  { id: "export", label: "Export", icon: Download, future: true },
+   332→];
+   333→
+   334→const VERIFICATION_CARDS: {
+   335→  id: string;
+   336→  label: string;
+   337→  icon: typeof Eye;
+   338→  accent: Accent;
+   339→  status: "verified" | "off" | "neutral";
+   340→  future?: boolean;
+   341→}[] = [
+   342→  { id: "wallet", label: "Wallet Status", icon: Wallet, accent: "emerald", status: "verified" },
+   343→  { id: "account", label: "Account Verification", icon: ShieldCheck, accent: "electric", status: "verified" },
+   344→  { id: "email", label: "Email Verification", icon: Mail, accent: "cyan", status: "verified" },
+   345→  { id: "phone", label: "Phone Verification", icon: Phone, accent: "purple", status: "verified" },
+   346→  { id: "identity", label: "Identity Verification", icon: Fingerprint, accent: "gold", status: "neutral", future: true },
+   347→  { id: "device", label: "Device Verification", icon: Smartphone, accent: "navy", status: "neutral", future: true },
+   348→  { id: "fraud", label: "Fraud Score", icon: ShieldAlert, accent: "rose", status: "neutral", future: true },
+   349→  { id: "duplicate", label: "Duplicate Check", icon: ScanLine, accent: "cyan", status: "neutral", future: true },
+   350→  { id: "manual", label: "Manual Review", icon: Eye, accent: "purple", status: "neutral", future: true },
+   351→];
+   352→
+   353→const REWARD_CATEGORIES: {
+   354→  id: string;
+   355→  label: string;
+   356→  icon: typeof Eye;
+   357→  accent: Accent;
+   358→  future?: boolean;
+   359→}[] = [
+   360→  { id: "upi", label: "UPI Rewards", icon: Smartphone, accent: "cyan", future: true },
+   361→  { id: "gift-cards", label: "Gift Cards", icon: Gift, accent: "purple" },
+   362→  { id: "gaming", label: "Gaming Rewards", icon: Trophy, accent: "emerald" },
+   363→  { id: "vouchers", label: "Digital Vouchers", icon: Tag, accent: "gold" },
+   364→  { id: "recharge", label: "Recharge Rewards", icon: Smartphone, accent: "electric" },
+   365→  { id: "shopping", label: "Shopping Rewards", icon: ShoppingBag, accent: "rose" },
+   366→  { id: "membership", label: "Premium Membership", icon: Crown, accent: "purple" },
+   367→  { id: "custom", label: "Custom Rewards", icon: Sparkles, accent: "navy", future: true },
+   368→];
+   369→
+   370→const AUDIT_EVENTS: {
+   371→  id: string;
+   372→  label: string;
+   373→  icon: typeof Eye;
+   374→  accent: Accent;
+   375→  state: "completed" | "pending" | "future";
+   376→}[] = [
+   377→  { id: "created", label: "Request Created", icon: ShoppingBag, accent: "electric", state: "completed" },
+   378→  { id: "viewed", label: "Administrator Viewed", icon: Eye, accent: "cyan", state: "future" },
+   379→  { id: "note-added", label: "Note Added", icon: FileText, accent: "purple", state: "future" },
+   380→  { id: "approved", label: "Approved", icon: CheckCircle2, accent: "emerald", state: "future" },
+   381→  { id: "rejected", label: "Rejected", icon: XCircle, accent: "rose", state: "future" },
+   382→  { id: "completed", label: "Completed", icon: Trophy, accent: "gold", state: "future" },
+   383→  { id: "notification", label: "Notification Sent", icon: Bell, accent: "navy", state: "future" },
+   384→];
+   385→
+   386→const NOTE_PANELS: {
+   387→  id: string;
+   388→  label: string;
+   389→  icon: typeof Eye;
+   390→  accent: Accent;
+   391→  future?: boolean;
+   392→}[] = [
+   393→  { id: "internal", label: "Internal Notes", icon: FileText, accent: "electric" },
+   394→  { id: "review", label: "Review Notes", icon: Eye, accent: "cyan", future: true },
+   395→  { id: "processing", label: "Processing Notes", icon: Gift, accent: "purple", future: true },
+   396→  { id: "fraud", label: "Fraud Notes", icon: ShieldAlert, accent: "rose", future: true },
+   397→  { id: "attachments", label: "Attachments", icon: Briefcase, accent: "gold", future: true },
+   398→  { id: "history", label: "Note History", icon: History, accent: "navy", future: true },
+   399→];
+   400→
+   401→const REPORT_TILES: {
+   402→  id: string;
+   403→  label: string;
+   404→  desc: string;
+   405→  icon: typeof Eye;
+   406→  accent: Accent;
+   407→  future?: boolean;
+   408→}[] = [
+   409→  { id: "daily", label: "Daily Redeems", desc: "24-hour rolling summary", icon: Calendar, accent: "electric" },
+   410→  { id: "weekly", label: "Weekly Redeems", desc: "7-day breakdown", icon: BarChart3, accent: "cyan" },
+   411→  { id: "monthly", label: "Monthly Redeems", desc: "30-day aggregate", icon: TrendingUp, accent: "purple" },
+   412→  { id: "reward", label: "Reward Reports", desc: "Per-reward analytics", icon: Gift, accent: "gold" },
+   413→  { id: "status", label: "Status Reports", desc: "Status pipeline view", icon: Clock, accent: "emerald" },
+   414→  { id: "revenue", label: "Revenue Reports", desc: "Coin value summary", icon: Coins, accent: "rose", future: true },
+   415→  { id: "performance", label: "Performance Reports", desc: "Approver KPI metrics", icon: Award, accent: "navy", future: true },
+   416→];
+   417→
+   418→const EXPORT_TILES: {
+   419→  id: string;
+   420→  label: string;
+   421→  desc: string;
+   422→  icon: typeof Eye;
+   423→  future?: boolean;
+   424→}[] = [
+   425→  { id: "csv", label: "CSV Export", desc: "Comma-separated values", icon: Download },
+   426→  { id: "excel", label: "Excel Workbook", desc: "Microsoft .xlsx", icon: Briefcase },
+   427→  { id: "pdf", label: "PDF Report", desc: "Formatted PDF document", icon: Printer },
+   428→  { id: "print", label: "Print Preview", desc: "Print-ready layout", icon: Printer },
+   429→  { id: "scheduled", label: "Scheduled Export", desc: "Daily / weekly / monthly", icon: Calendar, future: true },
+   430→  { id: "cloud", label: "Cloud Export", desc: "Direct to S3 / GCS", icon: Globe, future: true },
+   431→];
+   432→
+   433→const PIE_COLORS: Accent[] = ["electric", "cyan", "purple", "gold", "emerald", "rose", "navy"];
+   434→
+   435→/* ============================================================
+   436→   Reusable Helper: FilterChip
+   437→   Pill toggle for filter categories. UI-only.
+   438→   ============================================================ */
+   439→
+   440→interface FilterChipProps {
+   441→  label: string;
+   442→  active?: boolean;
+   443→  future?: boolean;
+   444→  onClick?: () => void;
+   445→  accent?: Accent;
+   446→}
+   447→
+   448→export function FilterChip({ label, active, future, onClick, accent = "electric" }: FilterChipProps) {
+   449→  const accentActive: Record<Accent, string> = {
+   450→    electric: "bg-electric/15 text-electric ring-electric/30",
+   451→    cyan: "bg-cyan/15 text-cyan-brand ring-cyan-brand/30",
+   452→    purple: "bg-purple/15 text-purple-brand ring-purple-brand/30",
+   453→    gold: "bg-gold/15 text-gold ring-gold/30",
+   454→    emerald: "bg-emerald-brand/15 text-emerald-brand ring-emerald-brand/30",
+   455→    rose: "bg-rose-brand/15 text-rose-brand ring-rose-brand/30",
+   456→    navy: "bg-navy/15 text-navy ring-navy/30",
+   457→  };
+   458→  return (
+   459→    <motion.button
+   460→      type="button"
+   461→      onClick={onClick}
+   462→      whileHover={{ y: -1 }}
+   463→      whileTap={{ scale: 0.96 }}
+   464→      className={cn(
+   465→        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition-all whitespace-nowrap",
+   466→        active
+   467→          ? accentActive[accent]
+   468→          : "bg-transparent text-muted-foreground ring-border hover:bg-accent/60 hover:text-foreground"
+   469→      )}
+   470→    >
+   471→      {future && <Lock size={10} className="opacity-60" />}
+   472→      {label}
+   473→      {active && !future && <CheckCircle2 size={12} />}
+   474→    </motion.button>
+   475→  );
+   476→}
+   477→
+   478→/* ============================================================
+   479→   Reusable Helper: ConfirmActionDialog
+   480→   Confirmation modal for admin redeem actions. No backend.
+   481→   ============================================================ */
+   482→
+   483→interface ConfirmActionDialogProps {
+   484→  open: boolean;
+   485→  onOpenChange: (open: boolean) => void;
+   486→  title: string;
+   487→  description: string;
+   488→  variant?: "default" | "warning" | "destructive";
+   489→  confirmLabel?: string;
+   490→  cancelLabel?: string;
+   491→  icon?: React.ReactNode;
+   492→}
+   493→
+   494→export function ConfirmActionDialog({
+   495→  open,
+   496→  onOpenChange,
+   497→  title,
+   498→  description,
+   499→  variant = "default",
+   500→  confirmLabel = "Confirm",
+   501→  cancelLabel = "Cancel",
+   502→  icon,
+   503→}: ConfirmActionDialogProps) {
+   504→  const btnVariant =
+   505→    variant === "destructive"
+   506→      ? "destructive"
+   507→      : variant === "warning"
+   508→      ? "gold"
+   509→      : "electric";
+   510→
+   511→  const accent =
+   512→    variant === "destructive"
+   513→      ? "rose"
+   514→      : variant === "warning"
+   515→      ? "gold"
+   516→      : "electric";
+   517→
+   518→  return (
+   519→    <Dialog open={open} onOpenChange={onOpenChange}>
+   520→      <DialogContent className="sm:max-w-md">
+   521→        <DialogHeader>
+   522→          <div className="flex items-center gap-3 mb-1">
+   523→            <IconBadge
+   524→              name={variant === "destructive" ? "AlertTriangle" : variant === "warning" ? "ShieldAlert" : "ShieldCheck"}
+   525→              accent={accent}
+   526→            />
+   527→            <DialogTitle className="text-lg">{title}</DialogTitle>
+   528→          </div>
+   529→          <DialogDescription className="text-sm leading-relaxed">
+   530→            {description}
+   531→          </DialogDescription>
+   532→        </DialogHeader>
+   533→        {icon && <div className="rounded-xl glass-2 p-3 text-xs text-muted-foreground">{icon}</div>}
+   534→        <DialogFooter className="gap-2">
+   535→          <LootButton variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+   536→            {cancelLabel}
+   537→          </LootButton>
+   538→          <LootButton
+   539→            variant={btnVariant as "electric" | "gold" | "destructive"}
+   540→            size="sm"
+   541→            leftIcon={<ShieldCheck size={14} />}
+   542→            onClick={() => onOpenChange(false)}
+   543→          >
+   544→            {confirmLabel}
+   545→          </LootButton>
+   546→        </DialogFooter>
+   547→      </DialogContent>
+   548→    </Dialog>
+   549→  );
+   550→}
+   551→
+   552→/* ============================================================
+   553→   Reusable Helper: AdminRedeemActionMenu
+   554→   Dropdown with all admin redeem actions. Triggers confirm dialog
+   555→   for destructive/warning operations.
+   556→   ============================================================ */
+   557→
+   558→export function AdminRedeemActionMenu({ compact = false }: { compact?: boolean }) {
+   559→  const [confirm, setConfirm] = useState<{ open: boolean; actionId: string | null }>({
+   560→    open: false,
+   561→    actionId: null,
+   562→  });
+   563→
+   564→  const triggerAction = (action: (typeof ADMIN_REDEEM_ACTIONS)[number]) => {
+   565→    if (action.variant === "warning" || action.variant === "destructive") {
+   566→      setConfirm({ open: true, actionId: action.id });
+   567→    }
+   568→  };
+   569→
+   570→  const currentAction = ADMIN_REDEEM_ACTIONS.find((a) => a.id === confirm.actionId);
+   571→
+   572→  return (
+   573→    <>
+   574→      <DropdownMenu>
+   575→        <DropdownMenuTrigger asChild>
+   576→          <motion.button
+   577→            whileTap={{ scale: 0.94 }}
+   578→            className={cn(
+   579→              "inline-flex items-center justify-center rounded-lg glass-2 ring-1 ring-border text-foreground hover:glass-3 transition-all",
+   580→              compact ? "size-8" : "size-9"
+   581→            )}
+   582→            aria-label="Administrator actions"
+   583→          >
+   584→            <MoreVertical size={compact ? 14 : 16} />
+   585→          </motion.button>
+   586→        </DropdownMenuTrigger>
+   587→        <DropdownMenuContent align="end" className="w-60 glass-2 ring-1 ring-border">
+   588→          <DropdownMenuLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+   589→            Administrator Actions
+   590→          </DropdownMenuLabel>
+   591→          <DropdownMenuSeparator />
+   592→          {ADMIN_REDEEM_ACTIONS.map((action, i) => {
+   593→            const Icon = action.icon;
+   594→            const isDestructive = action.variant === "destructive";
+   595→            const isWarning = action.variant === "warning";
+   596→            const needsSepBefore = i > 0 && ADMIN_REDEEM_ACTIONS[i - 1]?.variant !== action.variant && action.variant !== "default";
+   597→            return (
+   598→              <div key={action.id}>
+   599→                {needsSepBefore && <DropdownMenuSeparator />}
+   600→                <DropdownMenuItem
+   601→                  onSelect={() => triggerAction(action)}
+   602→                  className={cn(
+   603→                    "gap-2.5 cursor-pointer text-sm",
+   604→                    isDestructive && "text-rose-brand focus:text-rose-brand",
+   605→                    isWarning && "text-gold focus:text-gold"
+   606→                  )}
+   607→                >
+   608→                  <Icon size={15} className="opacity-80" />
+   609→                  <span className="flex-1">{action.label}</span>
+   610→                  {action.future && (
+   611→                    <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70 px-1.5 py-0.5 rounded bg-muted">
+   612→                      Soon
+   613→                    </span>
+   614→                  )}
+   615→                </DropdownMenuItem>
+   616→              </div>
+   617→            );
+   618→          })}
+   619→        </DropdownMenuContent>
+   620→      </DropdownMenu>
+   621→
+   622→      <ConfirmActionDialog
+   623→        open={confirm.open}
+   624→        onOpenChange={(o) => setConfirm({ open: o, actionId: confirm.actionId })}
+   625→        title={currentAction?.label ?? "Confirm Action"}
+   626→        description={
+   627→          currentAction?.variant === "destructive"
+   628→            ? "This is a destructive placeholder action. No redeem state will be modified. Backend integration is pending."
+   629→            : "This is a placeholder administrative action. No state will change. Backend integration is pending."
+   630→        }
+   631→        variant={currentAction?.variant === "destructive" ? "destructive" : "warning"}
+   632→        confirmLabel={currentAction?.variant === "destructive" ? "Confirm Reject" : "Confirm"}
+   633→      />
+   634→    </>
+   635→  );
+   636→}
+   637→
+   638→/* ============================================================
+   639→   Reusable Helper: RedeemTableRow
+   640→   Skeleton table row matching the redeem column header layout.
+   641→   ============================================================ */
+   642→
+   643→export function RedeemTableRow() {
+   644→  return (
+   645→    <div className="grid grid-cols-[120px_1fr_110px_120px_130px_120px_110px_110px_60px] items-center gap-3 px-4 py-3 border-b border-border/40 last:border-0 hover:bg-accent/30 transition-colors">
+   646→      <div className="h-3 w-16 rounded shimmer" />
+   647→      <div className="flex items-center gap-3 min-w-0">
+   648→        <div className="size-9 rounded-full shimmer shrink-0" />
+   649→        <div className="space-y-1.5 min-w-0">
+   650→          <div className="h-3 w-28 rounded shimmer" />
+   651→          <div className="h-2.5 w-36 rounded shimmer" />
+   652→        </div>
+   653→      </div>
+   654→      <div className="h-3 w-16 rounded shimmer" />
+   655→      <div className="h-5 w-20 rounded-full shimmer" />
+   656→      <div className="h-3 w-20 rounded shimmer" />
+   657→      <div className="h-3 w-12 rounded shimmer" />
+   658→      <div className="h-5 w-20 rounded-full shimmer" />
+   659→      <div className="flex items-center justify-end gap-1.5">
+   660→        <div className="h-7 w-12 rounded-md shimmer" />
+   661→        <div className="size-7 rounded-md shimmer" />
+   662→      </div>
+   663→    </div>
+   664→  );
+   665→}
+   666→
+   667→/* ============================================================
+   668→   Reusable Helper: RedeemCardMobile
+   669→   Skeleton mobile card for redeem requests list.
+   670→   ============================================================ */
+   671→
+   672→export function RedeemCardMobile() {
+   673→  return (
+   674→    <GlassCard level={1} className="p-4 space-y-3">
+   675→      <div className="flex items-start gap-3">
+   676→        <Checkbox />
+   677→        <div className="size-11 rounded-xl shimmer" />
+   678→        <div className="flex-1 space-y-2 min-w-0">
+   679→          <div className="h-3 w-24 rounded shimmer" />
+   680→          <div className="h-2.5 w-32 rounded shimmer" />
+   681→        </div>
+   682→        <div className="h-5 w-16 rounded-full shimmer" />
+   683→      </div>
+   684→      <div className="flex items-center gap-2 flex-wrap">
+   685→        <div className="h-5 w-20 rounded-full shimmer" />
+   686→        <div className="h-5 w-24 rounded-full shimmer" />
+   687→        <div className="h-5 w-16 rounded-full shimmer" />
+   688→      </div>
+   689→      <div className="flex items-center justify-between pt-2 border-t border-border/40">
+   690→        <div className="h-3 w-24 rounded shimmer" />
+   691→        <div className="flex items-center gap-1.5">
+   692→          <div className="h-7 w-12 rounded-md shimmer" />
+   693→          <div className="size-7 rounded-md shimmer" />
+   694→        </div>
+   695→      </div>
+   696→    </GlassCard>
+   697→  );
+   698→}
+   699→
+   700→/* ============================================================
+   701→   Reusable Helper: AnalyticsTabs
+   702→   Period selector for redeem analytics chart widgets.
+   703→   ============================================================ */
+   704→
+   705→export function AnalyticsTabs({
+   706→  value,
+   707→  onChange,
+   708→}: {
+   709→  value: AnalyticsPeriod;
+   710→  onChange: (v: AnalyticsPeriod) => void;
+   711→}) {
+   712→  return (
+   713→    <div className="inline-flex items-center gap-1 p-1 rounded-xl glass-2 ring-1 ring-border">
+   714→      {ANALYTICS_PERIODS.map((p) => (
+   715→        <button
+   716→          key={p}
+   717→          onClick={() => onChange(p)}
+   718→          className={cn(
+   719→            "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
+   720→            value === p
+   721→              ? "bg-[linear-gradient(120deg,var(--electric),var(--cyan-brand))] text-white shadow-sm"
+   722→              : "text-muted-foreground hover:text-foreground"
+   723→          )}
+   724→        >
+   725→          {p}
+   726→        </button>
+   727→      ))}
+   728→    </div>
+   729→  );
+   730→}
+   731→
+   732→/* ============================================================
+   733→   Reusable Helper: ApprovalTimeline
+   734→   Premium animated 6-step approval workflow timeline.
+   735→   ============================================================ */
+   736→
+   737→export function ApprovalTimeline() {
+   738→  return (
+   739→    <div className="relative">
+   740→      {/* Connector line */}
+   741→      <div className="absolute left-[19px] sm:left-1/2 top-4 bottom-4 w-px sm:-translate-x-1/2 bg-gradient-to-b from-electric/40 via-border to-transparent" />
+   742→      <div className="space-y-4">
+   743→        {APPROVAL_WORKFLOW_STEPS.map((step, i) => {
+   744→          const Icon = step.icon;
+   745→          const accentBg: Record<Accent, string> = {
+   746→            electric: "bg-electric/15 text-electric ring-electric/25",
+   747→            cyan: "bg-cyan/15 text-cyan-brand ring-cyan-brand/25",
+   748→            purple: "bg-purple/15 text-purple-brand ring-purple-brand/25",
+   749→            gold: "bg-gold/15 text-gold ring-gold/25",
+   750→            emerald: "bg-emerald-brand/15 text-emerald-brand ring-emerald-brand/25",
+   751→            rose: "bg-rose-brand/15 text-rose-brand ring-rose-brand/25",
+   752→            navy: "bg-navy/15 text-navy ring-navy/25",
+   753→          };
+   754→          const stateRing: Record<string, string> = {
+   755→            completed: "ring-2 ring-offset-2 ring-offset-background ring-emerald-brand/40",
+   756→            active: "ring-2 ring-offset-2 ring-offset-background ring-electric/60 animate-pulse",
+   757→            pending: "opacity-70",
+   758→            future: "opacity-50",
+   759→          };
+   760→          const stateLabel: Record<string, { variant: "success" | "info" | "warning" | "default"; label: string }> = {
+   761→            completed: { variant: "success", label: "Completed" },
+   762→            active: { variant: "info", label: "In Review" },
+   763→            pending: { variant: "warning", label: "Pending" },
+   764→            future: { variant: "default", label: "Future" },
+   765→          };
+   766→          const meta = stateLabel[step.state];
+   767→          return (
+   768→            <motion.div
+   769→              key={step.id}
+   770→              initial={{ opacity: 0, x: -8 }}
+   771→              whileInView={{ opacity: 1, x: 0 }}
+   772→              viewport={{ once: true }}
+   773→              transition={{ delay: i * 0.06 }}
+   774→              className={cn(
+   775→                "relative flex items-start gap-4 sm:justify-center",
+   776→                i % 2 === 1 && "sm:flex-row-reverse"
+   777→              )}
+   778→            >
+   779→              <div className={cn(
+   780→                "relative z-10 size-10 rounded-xl ring-1 flex items-center justify-center shrink-0 bg-background",
+   781→                accentBg[step.accent],
+   782→                stateRing[step.state]
+   783→              )}>
+   784→                <Icon size={16} />
+   785→              </div>
+   786→              <div className={cn("flex-1 sm:flex-none sm:w-[42%]", i % 2 === 1 && "sm:text-right")}>
+   787→                <GlassCard level={2} className="p-3.5 space-y-2">
+   788→                  <div className={cn("flex items-center gap-2", i % 2 === 1 && "sm:flex-row-reverse")}>
+   789→                    <span className="text-xs font-bold text-foreground">{step.label}</span>
+   790→                    {step.state === "future" && <Lock size={9} className="text-muted-foreground/60" />}
+   791→                    <div className={cn("ml-auto sm:ml-0", i % 2 === 1 && "sm:mr-auto sm:ml-0")}>
+   792→                      <StatusBadge variant={meta.variant} dot pulse={step.state === "active"}>
+   793→                        {meta.label}
+   794→                      </StatusBadge>
+   795→                    </div>
+   796→                  </div>
+   797→                  <p className="text-[11px] text-muted-foreground leading-snug">{step.description}</p>
+   798→                  <div className="h-2 w-2/3 rounded shimmer" />
+   799→                </GlassCard>
+   800→              </div>
+   801→            </motion.div>
+   802→          );
+   803→        })}
+   804→      </div>
+   805→    </div>
+   806→  );
+   807→}
+   808→
+   809→/* ============================================================
+   810→   Reusable Helper: RedeemDetailsDrawer
+   811→   Right-side Sheet drawer with full redeem request details.
+   812→   All skeleton/placeholder content. No backend.
+   813→   ============================================================ */
+   814→
+   815→export function RedeemDetailsDrawer({
+   816→  open,
+   817→  onOpenChange,
+   818→}: {
+   819→  open: boolean;
+   820→  onOpenChange: (open: boolean) => void;
+   821→}) {
+   822→  return (
+   823→    <Sheet open={open} onOpenChange={onOpenChange}>
+   824→      <SheetContent
+   825→        side="right"
+   826→        className="w-full sm:max-w-xl lg:max-w-2xl p-0 overflow-y-auto glass-nav ring-1 ring-border/50"
+   827→      >
+   828→        {/* Banner */}
+   829→        <div className="relative h-32 sm:h-36 bg-[linear-gradient(120deg,var(--navy),var(--electric)_55%,var(--purple-brand))] overflow-hidden">
+   830→          <div className="absolute inset-0 opacity-30 mix-blend-overlay">
+   831→            <div className="absolute -top-8 -right-8 size-40 rounded-full bg-white/20 blur-2xl" />
+   832→            <div className="absolute -bottom-12 left-10 size-32 rounded-full bg-cyan-brand/30 blur-2xl" />
+   833→          </div>
+   834→          <SheetHeader className="absolute inset-x-0 top-0 p-4">
+   835→            <SheetTitle className="sr-only">Redeem Request Details</SheetTitle>
+   836→            <SheetDescription className="sr-only">
+   837→              Detailed administrator view of a single reward redemption request.
+   838→            </SheetDescription>
+   839→          </SheetHeader>
+   840→          <div className="absolute bottom-3 right-4 inline-flex items-center gap-1.5 rounded-full bg-black/30 backdrop-blur px-2.5 py-1 text-[10px] font-bold text-white ring-1 ring-white/20">
+   841→            <Lock size={10} /> ADMIN VIEW
+   842→          </div>
+   843→        </div>
+   844→
+   845→        {/* Header */}
+   846→        <div className="px-5 -mt-10 relative">
+   847→          <div className="flex items-end gap-4">
+   848→            <div className="size-20 rounded-2xl glass-2 ring-4 ring-background shimmer shrink-0 flex items-center justify-center">
+   849→              <Gift size={28} className="text-muted-foreground/40" />
+   850→            </div>
+   851→            <div className="flex-1 space-y-2 pb-2">
+   852→              <div className="h-5 w-32 rounded shimmer" />
+   853→              <div className="h-3 w-48 rounded shimmer" />
+   854→            </div>
+   855→          </div>
+   856→
+   857→          <div className="mt-4 grid grid-cols-3 gap-2">
+   858→            {[
+   859→              { label: "Required Coins", icon: Coins, accent: "gold" as Accent },
+   860→              { label: "Priority", icon: Flame, accent: "rose" as Accent },
+   861→              { label: "Status", icon: Clock, accent: "electric" as Accent },
+   862→            ].map((m) => {
+   863→              const Icon = m.icon;
+   864→              return (
+   865→                <GlassCard key={m.label} level={2} className="p-3 space-y-2">
+   866→                  <Icon size={14} className="opacity-60" />
+   867→                  <div className="space-y-1">
+   868→                    <div className="h-4 w-12 rounded shimmer" />
+   869→                    <p className="text-[10px] text-muted-foreground font-medium">{m.label}</p>
+   870→                  </div>
+   871→                </GlassCard>
+   872→              );
+   873→            })}
+   874→          </div>
+   875→
+   876→          <Tabs defaultValue="overview" className="mt-5">
+   877→            <TabsList className="bg-muted/60 w-full justify-start overflow-x-auto h-auto p-1">
+   878→              <TabsTrigger value="overview" className="gap-1.5">
+   879→                <Eye size={13} /> Overview
+   880→              </TabsTrigger>
+   881→              <TabsTrigger value="timeline" className="gap-1.5">
+   882→                <History size={13} /> Workflow
+   883→              </TabsTrigger>
+   884→              <TabsTrigger value="verification" className="gap-1.5">
+   885→                <ShieldCheck size={13} /> Verification
+   886→              </TabsTrigger>
+   887→              <TabsTrigger value="audit" className="gap-1.5">
+   888→                <FileText size={13} /> Audit
+   889→              </TabsTrigger>
+   890→            </TabsList>
+   891→
+   892→            {/* ===== Overview Tab ===== */}
+   893→            <TabsContent value="overview" className="mt-4 space-y-4">
+   894→              <RedeemDetailsInfoGrid />
+   895→              <RedeemDetailsRewardInfo />
+   896→            </TabsContent>
+   897→
+   898→            {/* ===== Workflow Tab ===== */}
+   899→            <TabsContent value="timeline" className="mt-4 space-y-3">
+   900→              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
+   901→                Approval Workflow
+   902→              </p>
+   903→              <ApprovalTimeline />
+   904→            </TabsContent>
+   905→
+   906→            {/* ===== Verification Tab ===== */}
+   907→            <TabsContent value="verification" className="mt-4 space-y-4">
+   908→              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
+   909→                Verification Status
+   910→              </p>
+   911→              <RedeemDetailsVerification />
+   912→            </TabsContent>
+   913→
+   914→            {/* ===== Audit Tab ===== */}
+   915→            <TabsContent value="audit" className="mt-4 space-y-3">
+   916→              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
+   917→                Audit History
+   918→              </p>
+   919→              <RedeemDetailsAuditTimeline />
+   920→            </TabsContent>
+   921→          </Tabs>
+   922→        </div>
+   923→
+   924→        <div className="h-8" />
+   925→      </SheetContent>
+   926→    </Sheet>
+   927→  );
+   928→}
+   929→
+   930→/* ===== Redeem Details Info Grid (inside drawer Overview tab) ===== */
+   931→
+   932→function RedeemDetailsInfoGrid() {
+   933→  const info: { label: string; icon: string; future?: boolean }[] = [
+   934→    { label: "Redeem ID", icon: "ShoppingBag" },
+   935→    { label: "User Information", icon: "UserCheck" },
+   936→    { label: "Reward Information", icon: "Gift" },
+   937→    { label: "Required Coins", icon: "Coins" },
+   938→    { label: "Current Wallet", icon: "Wallet", future: true },
+   939→    { label: "Reward Category", icon: "Tag" },
+   940→    { label: "Request Time", icon: "Clock" },
+   941→    { label: "Status", icon: "CheckCircle2" },
+   942→    { label: "Priority", icon: "Flame" },
+   943→    { label: "Future Administrator", icon: "ShieldCheck", future: true },
+   944→    { label: "Future Processing Timeline", icon: "Timer", future: true },
+   945→    { label: "Future Attachments", icon: "Briefcase", future: true },
+   946→    { label: "Future Verification Notes", icon: "FileText", future: true },
+   947→  ];
+   948→  return (
+   949→    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+   950→      {info.map((item) => (
+   951→        <GlassCard key={item.label} level={2} className="p-3 flex items-center gap-2.5">
+   952→          <IconBadge name={item.icon} accent="electric" size="sm" />
+   953→          <div className="flex-1 min-w-0 space-y-1.5">
+   954→            <div className="flex items-center gap-1.5">
+   955→              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
+   956→                {item.label}
+   957→              </p>
+   958→              {item.future && <Lock size={9} className="text-muted-foreground/60" />}
+   959→            </div>
+   960→            <div className="h-3 w-3/4 rounded shimmer" />
+   961→          </div>
+   962→        </GlassCard>
+   963→      ))}
+   964→    </div>
+   965→  );
+   966→}
+   967→
+   968→/* ===== Redeem Details Reward Info (inside Overview tab) ===== */
+   969→
+   970→function RedeemDetailsRewardInfo() {
+   971→  const summaries = [
+   972→    { label: "Reward Summary", icon: Gift, accent: "purple" as Accent },
+   973→    { label: "Wallet Summary", icon: Wallet, accent: "electric" as Accent },
+   974→    { label: "User Summary", icon: UserCheck, accent: "cyan" as Accent },
+   975→    { label: "Processing Summary", icon: Timer, accent: "gold" as Accent },
+   976→  ];
+   977→  return (
+   978→    <div>
+   979→      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1 mb-2.5">
+   980→        Request Summaries
+   981→      </p>
+   982→      <div className="grid grid-cols-2 gap-2.5">
+   983→        {summaries.map((s) => {
+   984→          const Icon = s.icon;
+   985→          return (
+   986→            <GlassCard key={s.label} level={2} className="p-3 space-y-2.5">
+   987→              <div className="flex items-center justify-between">
+   988→                <Icon size={14} className="text-muted-foreground" />
+   989→                <ChevronRight size={12} className="text-muted-foreground/60" />
+   990→              </div>
+   991→              <div className="space-y-1.5">
+   992→                <div className="h-4 w-14 rounded shimmer" />
+   993→                <p className="text-[10px] font-semibold text-muted-foreground truncate">{s.label}</p>
+   994→              </div>
+   995→            </GlassCard>
+   996→          );
+   997→        })}
+   998→      </div>
+   999→    </div>
+  1000→  );
+  1001→}
+  1002→
+  1003→/* ===== Redeem Details Verification (inside Verification tab) ===== */
+  1004→
+  1005→function RedeemDetailsVerification() {
+  1006→  return (
+  1007→    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+  1008→      {VERIFICATION_CARDS.map((v) => {
+  1009→        const Icon = v.icon;
+  1010→        const statusMap: Record<string, { variant: "success" | "warning" | "default"; label: string }> = {
+  1011→          verified: { variant: "success", label: "Verified" },
+  1012→          off: { variant: "warning", label: "Disabled" },
+  1013→          neutral: { variant: "default", label: "Pending" },
+  1014→        };
+  1015→        const meta = statusMap[v.status];
+  1016→        return (
+  1017→          <GlassCard key={v.id} level={2} className="p-3 flex items-center gap-3">
+  1018→            <Icon size={15} className="text-muted-foreground shrink-0" />
+  1019→            <div className="flex-1 min-w-0">
+  1020→              <p className="text-xs font-semibold text-foreground truncate flex items-center gap-1.5">
+  1021→                {v.label}
+  1022→                {v.future && <Lock size={9} className="text-muted-foreground/60" />}
+  1023→              </p>
+  1024→            </div>
+  1025→            <StatusBadge variant={meta.variant} dot pulse={meta.variant === "warning"}>
+  1026→              {meta.label}
+  1027→            </StatusBadge>
+  1028→          </GlassCard>
+  1029→        );
+  1030→      })}
+  1031→    </div>
+  1032→  );
+  1033→}
+  1034→
+  1035→/* ===== Redeem Details Audit Timeline (inside Audit tab) ===== */
+  1036→
+  1037→function RedeemDetailsAuditTimeline() {
+  1038→  const accentBg: Record<Accent, string> = {
+  1039→    electric: "bg-electric/15 text-electric ring-electric/25",
+  1040→    cyan: "bg-cyan/15 text-cyan-brand ring-cyan-brand/25",
+  1041→    purple: "bg-purple/15 text-purple-brand ring-purple-brand/25",
+  1042→    gold: "bg-gold/15 text-gold ring-gold/25",
+  1043→    emerald: "bg-emerald-brand/15 text-emerald-brand ring-emerald-brand/25",
+  1044→    rose: "bg-rose-brand/15 text-rose-brand ring-rose-brand/25",
+  1045→    navy: "bg-navy/15 text-navy ring-navy/25",
+  1046→  };
+  1047→  return (
+  1048→    <div className="relative pl-4">
+  1049→      <div className="absolute left-[7px] top-1 bottom-1 w-px bg-gradient-to-b from-electric/40 via-border to-transparent" />
+  1050→      <div className="space-y-2.5">
+  1051→        {AUDIT_EVENTS.map((e, i) => {
+  1052→          const Icon = e.icon;
+  1053→          return (
+  1054→            <motion.div
+  1055→              key={e.id}
+  1056→              initial={{ opacity: 0, x: -8 }}
+  1057→              animate={{ opacity: 1, x: 0 }}
+  1058→              transition={{ delay: i * 0.05 }}
+  1059→              className="relative"
+  1060→            >
+  1061→              <span className={cn(
+  1062→                "absolute -left-4 top-3 size-3.5 rounded-full ring-2 ring-background flex items-center justify-center",
+  1063→                accentBg[e.accent],
+  1064→                e.state === "future" && "opacity-50"
+  1065→              )}>
+  1066→                <Icon size={8} />
+  1067→              </span>
+  1068→              <GlassCard level={1} className="p-3 space-y-2">
+  1069→                <div className="flex items-center justify-between">
+  1070→                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+  1071→                    {e.label}
+  1072→                    {e.state === "future" && <Lock size={9} className="text-muted-foreground/60" />}
+  1073→                  </span>
+  1074→                  <span className="text-[10px] text-muted-foreground">—</span>
+  1075→                </div>
+  1076→                <div className="h-2.5 w-3/4 rounded shimmer" />
+  1077→              </GlassCard>
+  1078→            </motion.div>
+  1079→          );
+  1080→        })}
+  1081→      </div>
+  1082→    </div>
+  1083→  );
+  1084→}
+  1085→
+  1086→/* ============================================================
+  1087→   Empty / Error State Helpers
+  1088→   ============================================================ */
+  1089→
+  1090→export function NoRedeemRequestsEmpty({ onReset }: { onReset?: () => void }) {
+  1091→  return (
+  1092→    <EmptyState
+  1093→      icon="ShoppingBag"
+  1094→      title="No redeem requests yet"
+  1095→      description="Users have not submitted any reward redemption requests. New submissions will appear here automatically."
+  1096→      action={
+  1097→        onReset && (
+  1098→          <LootButton variant="glass" size="sm" leftIcon={<RefreshCw size={14} />} onClick={onReset}>
+  1099→            Refresh
+  1100→          </LootButton>
+  1101→        )
+  1102→      }
+  1103→    />
+  1104→  );
+  1105→}
+  1106→
+  1107→export function NoPendingRequestsEmpty({ onReset }: { onReset?: () => void }) {
+  1108→  return (
+  1109→    <EmptyState
+  1110→      icon="CheckCircle2"
+  1111→      title="No pending approvals"
+  1112→      description="The approval queue is empty. All current redeem requests have been reviewed."
+  1113→      action={
+  1114→        onReset && (
+  1115→          <LootButton variant="glass" size="sm" leftIcon={<RefreshCw size={14} />} onClick={onReset}>
+  1116→            Check Again
+  1117→          </LootButton>
+  1118→        )
+  1119→      }
+  1120→    />
+  1121→  );
+  1122→}
+  1123→
+  1124→export function RedeemModuleUnavailableError({ onRetry }: { onRetry?: () => void }) {
+  1125→  return (
+  1126→    <ErrorState
+  1127→      icon="ServerCrash"
+  1128→      title="Redeem module temporarily unavailable"
+  1129→      description="We could not reach the redemption management service. Please retry or check service status in Mission Control."
+  1130→      variant="error"
+  1131→      action={
+  1132→        onRetry && (
+  1133→          <LootButton variant="electric" size="sm" leftIcon={<RefreshCw size={14} />} onClick={onRetry}>
+  1134→            Retry
+  1135→          </LootButton>
+  1136→        )
+  1137→      }
+  1138→    />
+  1139→  );
+  1140→}
+  1141→
+  1142→/* ============================================================
+  1143→   Section 1: Redeem Overview Stats
+  1144→   ============================================================ */
+  1145→
+  1146→function RedeemOverviewSection() {
+  1147→  return (
+  1148→    <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}>
+  1149→      <Grid cols={4}>
+  1150→        {OVERVIEW_STATS.map((s, i) => (
+  1151→          <motion.div key={s.label} variants={cardReveal} custom={i} className="relative">
+  1152→            {s.future && (
+  1153→              <span className="absolute top-3 right-3 z-10 inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider text-gold bg-gold/10 ring-1 ring-gold/20 px-1.5 py-0.5 rounded-full">
+  1154→                <Lock size={8} /> Soon
+  1155→              </span>
+  1156→            )}
+  1157→            <StatCard
+  1158→              index={i}
+  1159→              label={s.label}
+  1160→              value={s.value}
+  1161→              icon={s.icon}
+  1162→              accent={s.accent}
+  1163→              prefix={s.prefix}
+  1164→              suffix={s.suffix}
+  1165→              decimals={s.decimals}
+  1166→              trend={s.trend}
+  1167→            />
+  1168→          </motion.div>
+  1169→        ))}
+  1170→      </Grid>
+  1171→    </motion.div>
+  1172→  );
+  1173→}
+  1174→
+  1175→/* ============================================================
+  1176→   Section 2: Global Redeem Search
+  1177→   ============================================================ */
+  1178→
+  1179→function GlobalRedeemSearchSection() {
+  1180→  const [query, setQuery] = useState("");
+  1181→  const [activeChip, setActiveChip] = useState("redeem-id");
+  1182→
+  1183→  return (
+  1184→    <WidgetCard
+  1185→      title="Global Redeem Search"
+  1186→      description="Cross-platform lookup by request identifier"
+  1187→      icon={<Search size={18} className="text-electric" />}
+  1188→      action={<StatusBadge variant="info" dot pulse>Live</StatusBadge>}
+  1189→    >
+  1190→      <div className="space-y-3">
+  1191→        <div className="relative">
+  1192→          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+  1193→          <input
+  1194→            value={query}
+  1195→            onChange={(e) => setQuery(e.target.value)}
+  1196→            placeholder="Search by Redeem ID, User ID, Username, Email, Reward Name, Category, Transaction ID…"
+  1197→            className="w-full h-11 pl-10 pr-24 rounded-xl glass-2 ring-1 ring-border text-sm text-foreground placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-electric/40 focus:outline-none transition-all"
+  1198→          />
+  1199→          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+  1200→            {query && (
+  1201→              <button
+  1202→                onClick={() => setQuery("")}
+  1203→                className="size-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-all"
+  1204→              >
+  1205→                <X size={13} />
+  1206→              </button>
+  1207→            )}
+  1208→            <LootButton size="sm" variant="electric" leftIcon={<Search size={13} />}>
+  1209→              Search
+  1210→            </LootButton>
+  1211→          </div>
+  1212→        </div>
+  1213→
+  1214→        <div className="flex items-center gap-1.5 flex-wrap">
+  1215→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 mr-1">
+  1216→            Search by:
+  1217→          </span>
+  1218→          {SEARCH_BY_CHIPS.map((c) => (
+  1219→            <FilterChip
+  1220→              key={c.id}
+  1221→              label={c.label}
+  1222→              active={activeChip === c.id}
+  1223→              future={c.future}
+  1224→              onClick={() => setActiveChip(c.id)}
+  1225→            />
+  1226→          ))}
+  1227→        </div>
+  1228→
+  1229→        <div className="flex items-center justify-between pt-2 border-t border-border/40">
+  1230→          <p className="text-[11px] text-muted-foreground">
+  1231→            Real-time search active. Results filter as you type.
+  1232→          </p>
+  1233→          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+  1234→            <ScanLine size={11} className="text-electric" />
+  1235→            Indexed across all redeem identifiers
+  1236→          </div>
+  1237→        </div>
+  1238→      </div>
+  1239→    </WidgetCard>
+  1240→  );
+  1241→}
+  1242→
+  1243→/* ============================================================
+  1244→   Section 3: Advanced Filters
+  1245→   ============================================================ */
+  1246→
+  1247→function AdvancedFiltersSection() {
+  1248→  const [sort, setSort] = useState<(typeof SORT_OPTIONS)[number]>("Newest Request");
+  1249→  const [active, setActive] = useState<Record<string, string[]>>({
+  1250→    status: ["pending"],
+  1251→    category: [],
+  1252→    verification: [],
+  1253→    priority: [],
+  1254→    payment: [],
+  1255→    country: [],
+  1256→    risk: [],
+  1257→  });
+  1258→
+  1259→  const toggle = (group: string, id: string) =>
+  1260→    setActive((s) => ({
+  1261→      ...s,
+  1262→      [group]: s[group]?.includes(id)
+  1263→        ? s[group].filter((x) => x !== id)
+  1264→        : [...(s[group] ?? []), id],
+  1265→    }));
+  1266→
+  1267→  const resetAll = () =>
+  1268→    setActive({ status: [], category: [], verification: [], priority: [], payment: [], country: [], risk: [] });
+  1269→
+  1270→  const renderChipGroup = (group: string, chips: ChipDef[], accent: Accent = "electric") => (
+  1271→    <div className="space-y-2">
+  1272→      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">{group}</p>
+  1273→      <div className="flex items-center gap-1.5 flex-wrap">
+  1274→        {chips.map((c) => (
+  1275→          <FilterChip
+  1276→            key={c.id}
+  1277→            label={c.label}
+  1278→            active={active[group]?.includes(c.id)}
+  1279→            future={c.future}
+  1280→            accent={accent}
+  1281→            onClick={() => toggle(group, c.id)}
+  1282→          />
+  1283→        ))}
+  1284→      </div>
+  1285→    </div>
+  1286→  );
+  1287→
+  1288→  return (
+  1289→    <WidgetCard
+  1290→      title="Advanced Filters"
+  1291→      description="Granular refinement across status, category, priority & risk dimensions"
+  1292→      icon={<SlidersHorizontal size={18} className="text-electric" />}
+  1293→      action={
+  1294→        <DropdownMenu>
+  1295→          <DropdownMenuTrigger asChild>
+  1296→            <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg glass-2 ring-1 ring-border text-xs font-semibold text-foreground hover:glass-3 transition-all">
+  1297→              <ArrowRight size={12} className="text-muted-foreground" />
+  1298→              {sort}
+  1299→              <ChevronDown size={12} className="text-muted-foreground" />
+  1300→            </button>
+  1301→          </DropdownMenuTrigger>
+  1302→          <DropdownMenuContent align="end" className="w-56 glass-2 ring-1 ring-border">
+  1303→            <DropdownMenuLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+  1304→              Sort By
+  1305→            </DropdownMenuLabel>
+  1306→            <DropdownMenuSeparator />
+  1307→            {SORT_OPTIONS.map((opt) => (
+  1308→              <DropdownMenuItem
+  1309→                key={opt}
+  1310→                onSelect={() => setSort(opt)}
+  1311→                className="gap-2 cursor-pointer text-sm"
+  1312→              >
+  1313→                {sort === opt && <CheckCircle2 size={13} className="text-electric" />}
+  1314→                <span className={cn(sort === opt && "ml-[-1.125rem]")}>{opt}</span>
+  1315→              </DropdownMenuItem>
+  1316→            ))}
+  1317→          </DropdownMenuContent>
+  1318→        </DropdownMenu>
+  1319→      }
+  1320→    >
+  1321→      <div className="space-y-5">
+  1322→        {/* Date ranges + coin range */}
+  1323→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  1324→          <GlassCard level={1} className="p-3.5 space-y-2.5">
+  1325→            <div className="flex items-center gap-1.5">
+  1326→              <Calendar size={12} className="text-electric" />
+  1327→              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+  1328→                Request Date Range
+  1329→              </p>
+  1330→            </div>
+  1331→            <div className="grid grid-cols-2 gap-2">
+  1332→              <div className="space-y-1">
+  1333→                <label className="text-[10px] text-muted-foreground">From</label>
+  1334→                <input type="date" className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border text-xs text-foreground focus:ring-2 focus:ring-electric/40 focus:outline-none" />
+  1335→              </div>
+  1336→              <div className="space-y-1">
+  1337→                <label className="text-[10px] text-muted-foreground">To</label>
+  1338→                <input type="date" className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border text-xs text-foreground focus:ring-2 focus:ring-electric/40 focus:outline-none" />
+  1339→              </div>
+  1340→            </div>
+  1341→          </GlassCard>
+  1342→
+  1343→          <GlassCard level={1} className="p-3.5 space-y-2.5">
+  1344→            <div className="flex items-center gap-1.5">
+  1345→              <Calendar size={12} className="text-cyan-brand" />
+  1346→              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+  1347→                Approval Date Range
+  1348→              </p>
+  1349→            </div>
+  1350→            <div className="grid grid-cols-2 gap-2">
+  1351→              <div className="space-y-1">
+  1352→                <label className="text-[10px] text-muted-foreground">From</label>
+  1353→                <input type="date" className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border text-xs text-foreground focus:ring-2 focus:ring-cyan-brand/40 focus:outline-none" />
+  1354→              </div>
+  1355→              <div className="space-y-1">
+  1356→                <label className="text-[10px] text-muted-foreground">To</label>
+  1357→                <input type="date" className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border text-xs text-foreground focus:ring-2 focus:ring-cyan-brand/40 focus:outline-none" />
+  1358→              </div>
+  1359→            </div>
+  1360→          </GlassCard>
+  1361→
+  1362→          <GlassCard level={1} className="p-3.5 space-y-2.5">
+  1363→            <div className="flex items-center gap-1.5">
+  1364→              <Coins size={12} className="text-gold" />
+  1365→              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+  1366→                Coin Range
+  1367→              </p>
+  1368→            </div>
+  1369→            <div className="grid grid-cols-2 gap-2">
+  1370→              <div className="space-y-1">
+  1371→                <label className="text-[10px] text-muted-foreground">Min Coins</label>
+  1372→                <input type="number" placeholder="0" className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border text-xs text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-gold/40 focus:outline-none" />
+  1373→              </div>
+  1374→              <div className="space-y-1">
+  1375→                <label className="text-[10px] text-muted-foreground">Max Coins</label>
+  1376→                <input type="number" placeholder="∞" className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border text-xs text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-gold/40 focus:outline-none" />
+  1377→              </div>
+  1378→            </div>
+  1379→          </GlassCard>
+  1380→
+  1381→          <GlassCard level={1} className="p-3.5 space-y-2.5">
+  1382→            <div className="flex items-center gap-1.5">
+  1383→              <Timer size={12} className="text-purple-brand" />
+  1384→              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+  1385→                Processing Time
+  1386→              </p>
+  1387→            </div>
+  1388→            <div className="grid grid-cols-2 gap-2">
+  1389→              <div className="space-y-1">
+  1390→                <label className="text-[10px] text-muted-foreground">Min (hours)</label>
+  1391→                <input type="number" placeholder="0" className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border text-xs text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-purple-brand/40 focus:outline-none" />
+  1392→              </div>
+  1393→              <div className="space-y-1">
+  1394→                <label className="text-[10px] text-muted-foreground">Max (hours)</label>
+  1395→                <input type="number" placeholder="∞" className="h-9 w-full px-2.5 rounded-lg glass-2 ring-1 ring-border text-xs text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-purple-brand/40 focus:outline-none" />
+  1396→              </div>
+  1397→            </div>
+  1398→          </GlassCard>
+  1399→        </div>
+  1400→
+  1401→        {/* Chip groups */}
+  1402→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  1403→          {renderChipGroup("Redeem Status", REDEEM_STATUS_CHIPS, "electric")}
+  1404→          {renderChipGroup("Reward Category", REWARD_CATEGORY_CHIPS, "purple")}
+  1405→          {renderChipGroup("Verification Status", VERIFICATION_CHIPS, "cyan")}
+  1406→          {renderChipGroup("Priority", PRIORITY_CHIPS, "rose")}
+  1407→          {renderChipGroup("Future Payment Method", PAYMENT_METHOD_CHIPS, "gold")}
+  1408→          {renderChipGroup("Future Country", COUNTRY_CHIPS, "navy")}
+  1409→          {renderChipGroup("Future Risk Level", RISK_LEVEL_CHIPS, "rose")}
+  1410→        </div>
+  1411→
+  1412→        {/* Footer actions */}
+  1413→        <div className="flex items-center justify-between pt-2 border-t border-border/40 flex-wrap gap-2">
+  1414→          <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-all">
+  1415→            <Star size={12} /> Saved Filters
+  1416→            <Lock size={9} className="opacity-60" />
+  1417→          </button>
+  1418→          <div className="flex items-center gap-2">
+  1419→            <LootButton variant="ghost" size="sm" leftIcon={<RotateCcw size={13} />} onClick={resetAll}>
+  1420→              Reset Filters
+  1421→            </LootButton>
+  1422→            <LootButton variant="electric" size="sm" leftIcon={<Filter size={13} />}>
+  1423→              Apply Filters
+  1424→            </LootButton>
+  1425→          </div>
+  1426→        </div>
+  1427→      </div>
+  1428→    </WidgetCard>
+  1429→  );
+  1430→}
+  1431→
+  1432→/* ============================================================
+  1433→   Section 4: Redeem Table
+  1434→   ============================================================ */
+  1435→
+  1436→function RedeemTableSection() {
+  1437→  const [drawerOpen, setDrawerOpen] = useState(false);
+  1438→  const [selected, setSelected] = useState<number[]>([]);
+  1439→  const allSelected = selected.length === 10;
+  1440→
+  1441→  const toggleAll = () => setSelected(allSelected ? [] : Array.from({ length: 10 }, (_, i) => i));
+  1442→  const toggleOne = (i: number) =>
+  1443→    setSelected((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i]));
+  1444→
+  1445→  return (
+  1446→    <WidgetCard
+  1447→      title="Redeem Requests"
+  1448→      description="All reward redemption requests — live table"
+  1449→      icon={<ShoppingBag size={18} className="text-electric" />}
+  1450→      action={
+  1451→        <div className="flex items-center gap-2">
+  1452→          <StatusBadge variant="info" dot pulse>{selected.length} selected</StatusBadge>
+  1453→          <LootButton size="sm" variant="glass" leftIcon={<RefreshCw size={13} />}>
+  1454→            Refresh
+  1455→          </LootButton>
+  1456→        </div>
+  1457→      }
+  1458→    >
+  1459→      {/* Sticky bulk bar */}
+  1460→      <AnimatePresence>
+  1461→        {selected.length > 0 && (
+  1462→          <motion.div
+  1463→            initial={{ opacity: 0, y: -8 }}
+  1464→            animate={{ opacity: 1, y: 0 }}
+  1465→            exit={{ opacity: 0, y: -8 }}
+  1466→            className="mb-4"
+  1467→          >
+  1468→            <GlassCard level={2} className="p-3 flex flex-wrap items-center gap-2 ring-1 ring-electric/20">
+  1469→              <div className="flex items-center gap-2 pr-3 border-r border-border/60">
+  1470→                <span className="inline-flex items-center justify-center size-7 rounded-lg bg-electric/15 text-electric text-xs font-bold">
+  1471→                  {selected.length}
+  1472→                </span>
+  1473→                <span className="text-xs font-semibold text-foreground">requests selected</span>
+  1474→              </div>
+  1475→              <div className="flex items-center gap-1.5 flex-wrap">
+  1476→                <button className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-semibold ring-1 ring-border bg-transparent hover:bg-accent/60 transition-all">
+  1477→                  <Download size={12} /> Export
+  1478→                  <Lock size={9} className="opacity-60" />
+  1479→                </button>
+  1480→                <button className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-semibold ring-1 ring-emerald-brand/30 bg-emerald-brand/5 text-emerald-brand hover:bg-emerald-brand/10 transition-all">
+  1481→                  <CheckCircle2 size={12} /> Bulk Approve
+  1482→                  <Lock size={9} className="opacity-60" />
+  1483→                </button>
+  1484→                <button className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-semibold ring-1 ring-rose-brand/30 bg-rose-brand/5 text-rose-brand hover:bg-rose-brand/10 transition-all">
+  1485→                  <XCircle size={12} /> Bulk Reject
+  1486→                  <Lock size={9} className="opacity-60" />
+  1487→                </button>
+  1488→              </div>
+  1489→              <button
+  1490→                onClick={() => setSelected([])}
+  1491→                className="ml-auto inline-flex items-center gap-1 h-8 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-all"
+  1492→              >
+  1493→                <X size={12} /> Clear
+  1494→              </button>
+  1495→            </GlassCard>
+  1496→          </motion.div>
+  1497→        )}
+  1498→      </AnimatePresence>
+  1499→
+  1500→      {/* ===== Desktop executive table ===== */}
+  1501→      <div className="hidden lg:block rounded-xl overflow-hidden ring-1 ring-border/60">
+  1502→        {/* Header row */}
+  1503→        <div className="bg-muted/40 grid grid-cols-[120px_1fr_110px_120px_130px_120px_110px_110px_60px] items-center gap-3 px-4 py-2.5 border-b border-border">
+  1504→          <div className="flex items-center gap-2">
+  1505→            <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all" />
+  1506→            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Redeem ID</span>
+  1507→          </div>
+  1508→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">User</span>
+  1509→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Required Coins</span>
+  1510→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Current Status</span>
+  1511→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Requested Date</span>
+  1512→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Processing Time</span>
+  1513→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Priority</span>
+  1514→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-right">View</span>
+  1515→          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-right">Actions</span>
+  1516→        </div>
+  1517→        {/* Skeleton rows */}
+  1518→        <div>
+  1519→          {Array.from({ length: 10 }).map((_, i) => (
+  1520→            <div
+  1521→              key={i}
+  1522→              className="grid grid-cols-[120px_1fr_110px_120px_130px_120px_110px_110px_60px] items-center gap-3 px-4 py-3 border-b border-border/40 last:border-0 hover:bg-accent/30 transition-colors"
+  1523→            >
+  1524→              <div className="flex items-center gap-2">
+  1525→                <Checkbox
+  1526→                  checked={selected.includes(i)}
+  1527→                  onCheckedChange={() => toggleOne(i)}
+  1528→                  aria-label={`Select row ${i + 1}`}
+  1529→                />
+  1530→                <div className="h-3 w-16 rounded shimmer" />
+  1531→              </div>
+  1532→              <div className="flex items-center gap-3 min-w-0">
+  1533→                <div className="size-9 rounded-full shimmer shrink-0" />
+  1534→                <div className="space-y-1.5 min-w-0">
+  1535→                  <div className="h-3 w-28 rounded shimmer" />
+  1536→                  <div className="h-2.5 w-36 rounded shimmer" />
+  1537→                </div>
+  1538→              </div>
+  1539→              <div className="h-3 w-16 rounded shimmer" />
+  1540→              <div className="h-5 w-20 rounded-full shimmer" />
+  1541→              <div className="h-3 w-20 rounded shimmer" />
+  1542→              <div className="h-3 w-12 rounded shimmer" />
+  1543→              <div className="h-5 w-20 rounded-full shimmer" />
+  1544→              <div className="flex items-center justify-end gap-1.5">
+  1545→                <LootButton
+  1546→                  size="sm"
+  1547→                  variant="outline"
+  1548→                  leftIcon={<Eye size={12} />}
+  1549→                  onClick={() => setDrawerOpen(true)}
+  1550→                >
+  1551→                  View
+  1552→                </LootButton>
+  1553→                <AdminRedeemActionMenu compact />
+  1554→              </div>
+  1555→            </div>
+  1556→          ))}
+  1557→        </div>
+  1558→        {/* Footer */}
+  1559→        <div className="bg-muted/30 flex items-center justify-between px-4 py-2.5 border-t border-border">
+  1560→          <p className="text-[11px] text-muted-foreground">
+  1561→            Showing <span className="font-semibold text-foreground">1–10</span> of{" "}
+  1562→            <span className="font-semibold text-foreground">—</span> requests
+  1563→          </p>
+  1564→          <div className="flex items-center gap-1">
+  1565→            <button className="size-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent/60 disabled:opacity-40 transition-all" disabled>
+  1566→              <ChevronDown size={14} className="rotate-90" />
+  1567→            </button>
+  1568→            <span className="text-[11px] font-semibold text-foreground px-1.5">1 / —</span>
+  1569→            <button className="size-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent/60 disabled:opacity-40 transition-all" disabled>
+  1570→              <ChevronDown size={14} className="-rotate-90" />
+  1571→            </button>
+  1572→          </div>
+  1573→        </div>
+  1574→      </div>
+  1575→
+  1576→      {/* ===== Mobile cards ===== */}
+  1577→      <div className="lg:hidden space-y-3 max-h-[640px] overflow-y-auto pr-1">
+  1578→        {Array.from({ length: 5 }).map((_, i) => (
+  1579→          <div key={i} className="space-y-2">
+  1580→            <RedeemCardMobile />
+  1581→            <div className="flex items-center justify-end gap-2 -mt-1">
+  1582→              <LootButton
+  1583→                size="sm"
+  1584→                variant="outline"
+  1585→                leftIcon={<Eye size={12} />}
+  1586→                onClick={() => setDrawerOpen(true)}
+  1587→              >
+  1588→                View Details
+  1589→              </LootButton>
+  1590→              <AdminRedeemActionMenu compact />
+  1591→            </div>
+  1592→          </div>
+  1593→        ))}
+  1594→      </div>
+  1595→
+  1596→      <RedeemDetailsDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
+  1597→    </WidgetCard>
+  1598→  );
+  1599→}
+  1600→
+  1601→/* ============================================================
+  1602→   Section 6: Approval Workflow
+  1603→   ============================================================ */
+  1604→
+  1605→function ApprovalWorkflowSection() {
+  1606→  return (
+  1607→    <WidgetCard
+  1608→      title="Approval Workflow"
+  1609→      description="Executive 6-stage redemption pipeline"
+  1610→      icon={<CheckCircle2 size={18} className="text-electric" />}
+  1611→      action={
+  1612→        <StatusBadge variant="info" dot pulse>
+  1613→          <span className="hidden sm:inline">Pipeline · </span>Stage 3 / 6
+  1614→        </StatusBadge>
+  1615→      }
+  1616→    >
+  1617→      <div className="space-y-4">
+  1618→        <ApprovalTimeline />
+  1619→        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-3 border-t border-border/40">
+  1620→          {[
+  1621→            { label: "Eligibility Pass Rate", icon: ShieldCheck, accent: "emerald" as Accent, future: false },
+  1622→            { label: "Avg Review Time", icon: Timer, accent: "cyan" as Accent, future: true },
+  1623→            { label: "Approver Workload", icon: UserCheck, accent: "purple" as Accent, future: true },
+  1624→            { label: "Future SLA Status", icon: Clock, accent: "gold" as Accent, future: true },
+  1625→            { label: "Future Auto-Approve", icon: Zap, accent: "electric" as Accent, future: true },
+  1626→            { label: "Future Escalations", icon: ShieldAlert, accent: "rose" as Accent, future: true },
+  1627→          ].map((tile) => {
+  1628→            const Icon = tile.icon;
+  1629→            const accentBg: Record<Accent, string> = {
+  1630→              electric: "bg-electric/10 text-electric",
+  1631→              cyan: "bg-cyan/10 text-cyan-brand",
+  1632→              purple: "bg-purple/10 text-purple-brand",
+  1633→              gold: "bg-gold/10 text-gold",
+  1634→              emerald: "bg-emerald-brand/10 text-emerald-brand",
+  1635→              rose: "bg-rose-brand/10 text-rose-brand",
+  1636→              navy: "bg-navy/10 text-navy",
+  1637→            };
+  1638→            return (
+  1639→              <GlassCard key={tile.label} level={2} className="p-3 space-y-2">
+  1640→                <div className="flex items-center justify-between">
+  1641→                  <div className={cn("size-7 rounded-lg flex items-center justify-center", accentBg[tile.accent])}>
+  1642→                    <Icon size={13} />
+  1643→                  </div>
+  1644→                  {tile.future && <Lock size={9} className="text-muted-foreground/60" />}
+  1645→                </div>
+  1646→                <div className="space-y-1">
+  1647→                  <div className="h-4 w-12 rounded shimmer" />
+  1648→                  <p className="text-[10px] font-semibold text-muted-foreground truncate">{tile.label}</p>
+  1649→                </div>
+  1650→              </GlassCard>
+  1651→            );
+  1652→          })}
+  1653→        </div>
+  1654→        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-1">
+  1655→          <ShieldCheck size={11} className="text-electric" />
+  1656→          Workflow visualization only — no approval logic or state mutation is performed.
+  1657→        </p>
+  1658→      </div>
+  1659→    </WidgetCard>
+  1660→  );
+  1661→}
+  1662→
+  1663→/* ============================================================
+  1664→   Section 8: Verification Center
+  1665→   ============================================================ */
+  1666→
+  1667→function VerificationCenterSection() {
+  1668→  const accentBg: Record<Accent, string> = {
+  1669→    electric: "bg-electric/10 text-electric ring-electric/20",
+  1670→    cyan: "bg-cyan/10 text-cyan-brand ring-cyan-brand/20",
+  1671→    purple: "bg-purple/10 text-purple-brand ring-purple-brand/20",
+  1672→    gold: "bg-gold/10 text-gold ring-gold/20",
+  1673→    emerald: "bg-emerald-brand/10 text-emerald-brand ring-emerald-brand/20",
+  1674→    rose: "bg-rose-brand/10 text-rose-brand ring-rose-brand/20",
+  1675→    navy: "bg-navy/10 text-navy ring-navy/20",
+  1676→  };
+  1677→  return (
+  1678→    <WidgetCard
+  1679→      title="Verification Center"
+  1680→      description="Pre-approval security & verification panel"
+  1681→      icon={<ShieldCheck size={18} className="text-electric" />}
+  1682→      action={
+  1683→        <StatusBadge variant="default" dot>
+  1684→          <Lock size={9} className="mr-0.5" /> Pending Backend
+  1685→        </StatusBadge>
+  1686→      }
+  1687→    >
+  1688→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+  1689→        {VERIFICATION_CARDS.map((v) => {
+  1690→          const Icon = v.icon;
+  1691→          const statusMap: Record<string, { variant: "success" | "warning" | "default"; label: string }> = {
+  1692→            verified: { variant: "success", label: "Verified" },
+  1693→            off: { variant: "warning", label: "Disabled" },
+  1694→            neutral: { variant: "default", label: "Pending" },
+  1695→          };
+  1696→          const meta = statusMap[v.status];
+  1697→          return (
+  1698→            <GlassCard key={v.id} level={2} className="p-3.5 space-y-3">
+  1699→              <div className="flex items-start justify-between">
+  1700→                <div className={cn("size-9 rounded-xl flex items-center justify-center ring-1", accentBg[v.accent])}>
+  1701→                  <Icon size={15} />
+  1702→                </div>
+  1703→                {v.future && (
+  1704→                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider text-gold bg-gold/10 ring-1 ring-gold/20 px-1.5 py-0.5 rounded-full">
+  1705→                    <Lock size={8} /> Soon
+  1706→                  </span>
+  1707→                )}
+  1708→              </div>
+  1709→              <div className="space-y-2">
+  1710→                <p className="text-xs font-semibold text-foreground">{v.label}</p>
+  1711→                <div className="h-2.5 w-2/3 rounded shimmer" />
+  1712→              </div>
+  1713→              <div className="pt-2 border-t border-border/40 flex items-center justify-between">
+  1714→                <StatusBadge variant={meta.variant} dot pulse={meta.variant === "warning"}>
+  1715→                  {meta.label}
+  1716→                </StatusBadge>
+  1717→                <ChevronRight size={12} className="text-muted-foreground/60" />
+  1718→              </div>
+  1719→            </GlassCard>
+  1720→          );
+  1721→        })}
+  1722→      </div>
+  1723→    </WidgetCard>
+  1724→  );
+  1725→}
+  1726→
+  1727→/* ============================================================
+  1728→   Section 9: Redeem Analytics
+  1729→   ============================================================ */
+  1730→
+  1731→const ACCENT_COLOR: Record<Accent, string> = {
+  1732→  electric: "oklch(0.62 0.22 255)",
+  1733→  cyan: "oklch(0.72 0.15 200)",
+  1734→  purple: "oklch(0.6 0.22 295)",
+  1735→  gold: "oklch(0.8 0.16 85)",
+  1736→  emerald: "oklch(0.7 0.17 160)",
+  1737→  rose: "oklch(0.65 0.21 15)",
+  1738→  navy: "oklch(0.3 0.1 260)",
+  1739→};
+  1740→
+  1741→function AnalyticsChartCard({
+  1742→  title,
+  1743→  description,
+  1744→  icon,
+  1745→  type,
+  1746→  data,
+  1747→  index,
+  1748→  accent,
+  1749→}: {
+  1750→  title: string;
+  1751→  description: string;
+  1752→  icon: React.ReactNode;
+  1753→  type: "line" | "bar" | "area" | "pie";
+  1754→  data: { label: string; value: number }[];
+  1755→  index: number;
+  1756→  accent: Accent;
+  1757→}) {
+  1758→  const color = ACCENT_COLOR[accent];
+  1759→
+  1760→  return (
+  1761→    <WidgetCard title={title} description={description} icon={icon} index={index}>
+  1762→      <div className="h-[200px] w-full">
+  1763→        <ResponsiveContainer width="100%" height="100%">
+  1764→          {type === "line" ? (
+  1765→            <LineChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+  1766→              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.1 260 / 0.08)" />
+  1767→              <XAxis dataKey="label" stroke="oklch(0.3 0.1 260 / 0.4)" fontSize={10} tickLine={false} axisLine={false} />
+  1768→              <YAxis stroke="oklch(0.3 0.1 260 / 0.4)" fontSize={10} tickLine={false} axisLine={false} />
+  1769→              <Tooltip
+  1770→                cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: "4 4" }}
+  1771→                contentStyle={{
+  1772→                  borderRadius: 12,
+  1773→                  border: "1px solid oklch(0.3 0.1 260 / 0.12)",
+  1774→                  background: "rgba(255,255,255,0.85)",
+  1775→                  backdropFilter: "blur(8px)",
+  1776→                  fontSize: 11,
+  1777→                }}
+  1778→              />
+  1779→              <Line
+  1780→                type="monotone"
+  1781→                dataKey="value"
+  1782→                stroke={color}
+  1783→                strokeWidth={2.5}
+  1784→                dot={{ r: 3, fill: color, strokeWidth: 0 }}
+  1785→                activeDot={{ r: 5, fill: color }}
+  1786→              />
+  1787→            </LineChart>
+  1788→          ) : type === "bar" ? (
+  1789→            <BarChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+  1790→              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.1 260 / 0.08)" />
+  1791→              <XAxis dataKey="label" stroke="oklch(0.3 0.1 260 / 0.4)" fontSize={10} tickLine={false} axisLine={false} />
+  1792→              <YAxis stroke="oklch(0.3 0.1 260 / 0.4)" fontSize={10} tickLine={false} axisLine={false} />
+  1793→              <Tooltip
+  1794→                cursor={{ fill: "oklch(0.3 0.1 260 / 0.04)" }}
+  1795→                contentStyle={{
+  1796→                  borderRadius: 12,
+  1797→                  border: "1px solid oklch(0.3 0.1 260 / 0.12)",
+  1798→                  background: "rgba(255,255,255,0.85)",
+  1799→                  backdropFilter: "blur(8px)",
+  1800→                  fontSize: 11,
+  1801→                }}
+  1802→              />
+  1803→              <Bar dataKey="value" fill={color} radius={[6, 6, 0, 0]} maxBarSize={28} />
+  1804→            </BarChart>
+  1805→          ) : type === "area" ? (
+  1806→            <AreaChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+  1807→              <defs>
+  1808→                <linearGradient id={`grad-${title}`} x1="0" y1="0" x2="0" y2="1">
+  1809→                  <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+  1810→                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+  1811→                </linearGradient>
+  1812→              </defs>
+  1813→              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.1 260 / 0.08)" />
+  1814→              <XAxis dataKey="label" stroke="oklch(0.3 0.1 260 / 0.4)" fontSize={10} tickLine={false} axisLine={false} />
+  1815→              <YAxis stroke="oklch(0.3 0.1 260 / 0.4)" fontSize={10} tickLine={false} axisLine={false} />
+  1816→              <Tooltip
+  1817→                cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: "4 4" }}
+  1818→                contentStyle={{
+  1819→                  borderRadius: 12,
+  1820→                  border: "1px solid oklch(0.3 0.1 260 / 0.12)",
+  1821→                  background: "rgba(255,255,255,0.85)",
+  1822→                  backdropFilter: "blur(8px)",
+  1823→                  fontSize: 11,
+  1824→                }}
+  1825→              />
+  1826→              <Area
+  1827→                type="monotone"
+  1828→                dataKey="value"
+  1829→                stroke={color}
+  1830→                strokeWidth={2.5}
+  1831→                fill={`url(#grad-${title})`}
+  1832→                dot={{ r: 3, fill: color, strokeWidth: 0 }}
+  1833→                activeDot={{ r: 5, fill: color }}
+  1834→              />
+  1835→            </AreaChart>
+  1836→          ) : (
+  1837→            <PieChart>
+  1838→              <Pie
+  1839→                data={data}
+  1840→                dataKey="value"
+  1841→                nameKey="label"
+  1842→                cx="50%"
+  1843→                cy="50%"
+  1844→                innerRadius={45}
+  1845→                outerRadius={70}
+  1846→                paddingAngle={2}
+  1847→                stroke="rgba(255,255,255,0.6)"
+  1848→                strokeWidth={1.5}
+  1849→              >
+  1850→                {data.map((_, i) => (
+  1851→                  <Cell key={i} fill={ACCENT_COLOR[PIE_COLORS[i % PIE_COLORS.length]]} />
+  1852→                ))}
+  1853→              </Pie>
+  1854→              <Tooltip
+  1855→                contentStyle={{
+  1856→                  borderRadius: 12,
+  1857→                  border: "1px solid oklch(0.3 0.1 260 / 0.12)",
+  1858→                  background: "rgba(255,255,255,0.85)",
+  1859→                  backdropFilter: "blur(8px)",
+  1860→                  fontSize: 11,
+  1861→                }}
+  1862→              />
+  1863→            </PieChart>
+  1864→          )}
+  1865→        </ResponsiveContainer>
+  1866→      </div>
+  1867→      {type === "pie" && (
+  1868→        <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-2 pt-2 border-t border-border/40">
+  1869→          {data.map((d, i) => (
+  1870→            <span key={d.label} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+  1871→              <span
+  1872→                className="size-2 rounded-full"
+  1873→                style={{ background: ACCENT_COLOR[PIE_COLORS[i % PIE_COLORS.length]] }}
+  1874→              />
+  1875→              {d.label}
+  1876→            </span>
+  1877→          ))}
+  1878→        </div>
+  1879→      )}
+  1880→    </WidgetCard>
+  1881→  );
+  1882→}
+  1883→
+  1884→function RedeemAnalyticsSection() {
+  1885→  const [period, setPeriod] = useState<AnalyticsPeriod>("30D");
+  1886→  const periodLabel = useMemo(() => `Last ${period}`, [period]);
+  1887→
+  1888→  return (
+  1889→    <WidgetCard
+  1890→      title="Redeem Analytics"
+  1891→      description={`Aggregate redemption trends · ${periodLabel}`}
+  1892→      icon={<BarChart3 size={18} className="text-electric" />}
+  1893→      action={<AnalyticsTabs value={period} onChange={setPeriod} />}
+  1894→    >
+  1895→      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+  1896→        <AnalyticsChartCard
+  1897→          title="Pending Requests"
+  1898→          description="Awaiting administrator review"
+  1899→          icon={<Clock size={16} className="text-gold" />}
+  1900→          type="bar"
+  1901→          data={EMPTY_BAR_WEEK}
+  1902→          index={0}
+  1903→          accent="gold"
+  1904→        />
+  1905→        <AnalyticsChartCard
+  1906→          title="Approval Trend"
+  1907→          description="Approved redemptions over time"
+  1908→          icon={<CheckCircle2 size={16} className="text-emerald-brand" />}
+  1909→          type="line"
+  1910→          data={EMPTY_TREND_6W}
+  1911→          index={1}
+  1912→          accent="emerald"
+  1913→        />
+  1914→        <AnalyticsChartCard
+  1915→          title="Rejection Trend"
+  1916→          description="Rejected redemptions over time"
+  1917→          icon={<XCircle size={16} className="text-rose-brand" />}
+  1918→          type="line"
+  1919→          data={EMPTY_TREND_6W}
+  1920→          index={2}
+  1921→          accent="rose"
+  1922→        />
+  1923→        <AnalyticsChartCard
+  1924→          title="Reward Distribution"
+  1925→          description="By reward type"
+  1926→          icon={<Gift size={16} className="text-purple-brand" />}
+  1927→          type="pie"
+  1928→          data={REWARD_DISTRIBUTION_DATA}
+  1929→          index={3}
+  1930→          accent="purple"
+  1931→        />
+  1932→        <AnalyticsChartCard
+  1933→          title="Category Distribution"
+  1934→          description="By reward category"
+  1935→          icon={<Tag size={16} className="text-cyan-brand" />}
+  1936→          type="pie"
+  1937→          data={CATEGORY_DISTRIBUTION_DATA}
+  1938→          index={4}
+  1939→          accent="cyan"
+  1940→        />
+  1941→        <AnalyticsChartCard
+  1942→          title="Processing Time"
+  1943→          description="Average hours per status"
+  1944→          icon={<Timer size={16} className="text-electric" />}
+  1945→          type="bar"
+  1946→          data={EMPTY_BAR_WEEK}
+  1947→          index={5}
+  1948→          accent="electric"
+  1949→        />
+  1950→      </div>
+  1951→
+  1952→      {/* Future analytics tiles */}
+  1953→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t border-border/40">
+  1954→        {[
+  1955→          { label: "Future Success Rate", icon: Award, accent: "emerald" as Accent, desc: "Approval success percentage" },
+  1956→          { label: "Future Coin Usage", icon: Coins, accent: "gold" as Accent, desc: "Coins redeemed over time" },
+  1957→        ].map((tile) => {
+  1958→          const Icon = tile.icon;
+  1959→          const accentBg: Record<Accent, string> = {
+  1960→            electric: "bg-electric/10 text-electric",
+  1961→            cyan: "bg-cyan/10 text-cyan-brand",
+  1962→            purple: "bg-purple/10 text-purple-brand",
+  1963→            gold: "bg-gold/10 text-gold",
+  1964→            emerald: "bg-emerald-brand/10 text-emerald-brand",
+  1965→            rose: "bg-rose-brand/10 text-rose-brand",
+  1966→            navy: "bg-navy/10 text-navy",
+  1967→          };
+  1968→          return (
+  1969→            <GlassCard key={tile.label} level={2} className="p-4 flex items-center gap-3">
+  1970→              <div className={cn("size-10 rounded-xl flex items-center justify-center", accentBg[tile.accent])}>
+  1971→                <Icon size={16} />
+  1972→              </div>
+  1973→              <div className="flex-1 min-w-0">
+  1974→                <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+  1975→                  {tile.label}
+  1976→                  <Lock size={9} className="text-muted-foreground/60" />
+  1977→                </p>
+  1978→                <p className="text-[11px] text-muted-foreground truncate">{tile.desc}</p>
+  1979→              </div>
+  1980→              <div className="h-8 w-16 rounded-md shimmer" />
+  1981→            </GlassCard>
+  1982→          );
+  1983→        })}
+  1984→      </div>
+  1985→    </WidgetCard>
+  1986→  );
+  1987→}
+  1988→
+  1989→/* ============================================================
+  1990→   Section 10: Reward Categories
+  1991→   ============================================================ */
+  1992→
+  1993→function RewardCategoriesSection() {
+  1994→  const accentBg: Record<Accent, string> = {
+  1995→    electric: "bg-electric/10 text-electric",
+  1996→    cyan: "bg-cyan/10 text-cyan-brand",
+  1997→    purple: "bg-purple/10 text-purple-brand",
+  1998→    gold: "bg-gold/10 text-gold",
+  1999→    emerald: "bg-emerald-brand/10 text-emerald-brand",
+  2000→    rose: "bg-rose-brand/10 text-rose-brand",
+
+[showing lines 1-2000 of 2491; use offset=2001 with limit to continue reading]

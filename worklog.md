@@ -1592,3 +1592,421 @@ Stage Summary:
 - All values backend-ready (empty placeholder arrays + store-driven data, "—" for not-yet-populated store fields)
 - No fake data, no hardcoded statistics, no analytics/charts/timelines/dialogs
 - ESLint passes (0 errors, 0 warnings); dev server compiles successfully
+
+---
+Task ID: p6-foundation
+Agent: main
+Task: Prompt 6 — CEO Admin Panel foundation (types, navigation, admin components, ceo-layout, app-router, delete old views)
+
+Work Log:
+- Updated src/types/index.ts: removed ceo-wallet, ceo-communication, ceo-security ViewIds; added ceo-notifications, ceo-history, ceo-settings
+- Updated src/config/navigation.ts: removed PAGE_META entries for ceo-wallet/ceo-communication/ceo-security; added entries for ceo-notifications, ceo-history, ceo-settings; updated CEO_VIEWS list to clean production set: ceo-login, ceo-dashboard, ceo-redeem, ceo-users, ceo-notifications, ceo-support, ceo-history, ceo-settings
+- Created src/components/admin/ folder with reusable admin components:
+  * data-table.tsx — DataTable<T> with AdminColumn<T> type; desktop table + automatic mobile card transformation (mobileTitle/mobileSubtitle/hideOnMobile column flags); loading + emptyState slots
+  * search.tsx — AdminSearch controlled input with icon + clear button
+  * filter.tsx — AdminFilter single-select dropdown built on shadcn Select
+  * pagination.tsx — AdminPagination with numbered pages + ellipsis + prev/next + summary
+  * action-button.tsx — ActionButton dropdown menu with tone-aware items (default/success/warning/danger/info)
+  * confirm-modal.tsx — ConfirmModal built on shadcn AlertDialog with tone variants + loading + optional children
+  * stat-card.tsx — AdminStatCard with IconBadge + AnimatedCounter (backend-ready, no fake numbers)
+  * toolbar.tsx — AdminToolbar responsive wrapper for search/filter/actions
+  * index.ts — barrel export
+- Rewrote src/components/lootloom/ceo-layout.tsx: new 8-item sidebar (Dashboard, Redeem Requests, Users, Notifications, Support, History, Settings, Logout) + mobile Sheet drawer; Logout clears authStore (role=user, authenticated=false) and navigates to ceo-login; removed "Mission Control" label (now shows current view label); notification bell + profile button in header
+- Rewrote src/components/lootloom/app-router.tsx: added lazy imports for CeoNotificationsView, CeoHistoryView, CeoSettingsView; removed references to deleted CeoWalletView/CeoCommunicationView/CeoSecurityView; CEO_APP_VIEWS list = ceo-dashboard, ceo-redeem, ceo-users, ceo-notifications, ceo-support, ceo-history, ceo-settings
+- Deleted src/features/ceo/ceo-wallet-view.tsx, ceo-communication-view.tsx, ceo-security-view.tsx
+- Created stub files for new views (ceo-notifications-view.tsx, ceo-history-view.tsx, ceo-settings-view.tsx) so dev server doesn't crash before subagents write real content
+- Ran bun run lint: 0 errors
+
+Stage Summary:
+- Foundation ready for parallel subagent view creation
+- Admin components available at @/components/admin (DataTable, AdminSearch, AdminFilter, AdminPagination, ActionButton, ConfirmModal, AdminStatCard, AdminToolbar)
+- CEO navigation simplified to 8 essential items + Logout
+- ceo-wallet, ceo-communication, ceo-security views deleted
+- 3 new view IDs added (ceo-notifications, ceo-history, ceo-settings)
+- ESLint passes; dev server stable
+
+---
+Task ID: 6a
+Agent: full-stack-developer
+Task: Write ceo-auth-view.tsx + ceo-dashboard-view.tsx
+
+Work Log:
+- Read worklog.md to understand prior work (p6-foundation: admin components, CeoLayout, navigation)
+- Reviewed existing files: ceo-auth-view.tsx (1818 lines), ceo-dashboard-view.tsx (1647 lines)
+- Reviewed reusable components: GlassCard, LootButton, Logo, IconBadge, StatusBadge, PageContainer, PageHeader, Grid, SkeletonCard from @/components/lootloom
+- Reviewed AdminStatCard from @/components/admin (props: label, value, prefix, suffix, decimals, icon, accent, hint, index, className)
+- Reviewed stores: useAuthStore.setState pattern, useNavigationStore.navigate
+- Reviewed lib/animations presets: pageTransition, scaleIn, cardReveal, staggerContainer
+- Reviewed app-router.tsx: confirmed ceo-login renders full-screen (no shell), ceo-dashboard renders inside CeoLayout
+
+- FILE 1: ceo-auth-view.tsx → CeoAuthView (named export, 443 lines, down from 1818)
+  * Full-screen split layout: left = BrandPanel (Logo + "LootLoom CEO Platform" + 3 security badges: Encrypted at rest, TLS 1.3 transport, Zero-trust design, with glow accents and footer meta). Right = login form + Future Security section
+  * Mobile: BrandPanel rendered on top, form below (stacked single column via grid-cols-1 lg:grid-cols-2)
+  * LoginField helper component: label, input with left icon, optional right slot, error message with AlertTriangle icon
+  * Input styling per spec: "h-12 rounded-xl glass-2 ring-1 ring-border px-4 text-sm focus:ring-electric/40 focus:ring-2 outline-none transition-all w-full"
+  * Login form fields: Email/Username (with Mail icon, validates empty + email format), Password (with Lock icon + show/hide Eye/EyeOff toggle, validates empty + min 6 chars)
+  * Login button: LootButton variant="electric" size="lg" fullWidth, loading state shows "Authenticating…" with spinner (simulated 1.2s delay via setTimeout)
+  * Error states: inline error per-field (below input) + top-level error card (rose bg, AlertTriangle icon)
+  * Success flow: validates → simulates 1.2s auth → calls useAuthStore.setState({ role: "ceo", isAuthenticated: true, status: "authenticated" }) → useNavigationStore.navigate("ceo-dashboard")
+  * "Back to home" link at bottom of form: navigates to "home" view
+  * FutureSecurityList section: 6 disabled glass cards with IconBadge + label + description + "Coming soon" StatusBadge (variant=default). Items: Two-Factor Authentication (electric/Smartphone), OTP Verification (cyan/KeyRound), Session Verification (purple/Fingerprint), Device Verification (gold/Monitor), Recovery Codes (emerald/RefreshCw), Login History (navy/History). Each card has opacity-70 + cursor-not-allowed to signal disabled state
+  * Used GlassCard, LootButton, Logo, IconBadge, StatusBadge from @/components/lootloom
+  * Used framer-motion: pageTransition (main wrapper), scaleIn (right column), staggerContainer + cardReveal (Future Security list)
+  * Used useAuthStore (setState) and useNavigationStore (navigate) from @/stores
+  * NO backend, NO fake users, NO hardcoded credentials — UI-only gate with comment noting real auth will be wired later
+  * Removed ALL prior content: gateway/timeline multi-step flow, dialogs, server/network/CCTV panels, fake session history, fake device list, 60+ unused lucide imports, recharts, ProgressRing
+
+- FILE 2: ceo-dashboard-view.tsx → CeoDashboardView (named export, 217 lines, down from 1647)
+  * Wrapped in <PageContainer> from @/components/lootloom
+  * PageHeader: title="Dashboard", description="Platform overview at a glance", with Refresh LootButton (glass variant) in actions slot
+  * STATS placeholder object initialized to 0 (all 8 values): totalUsers, activeUsers, pendingRedeems, completedRedeems, totalCoinsDistributed, totalPayoutInr, supportTickets, securityAlerts. Comment: "// TODO: replace with fetch from /api/ceo/dashboard"
+  * KPI_GRID config array: 8 KPI cards with label, icon (lucide string), accent, optional prefix/hint:
+    1. Total Users (Users/electric) — "All registered accounts"
+    2. Active Users (UserCheck/cyan) — "Active in last 30 days"
+    3. Pending Redeems (Clock/gold) — "Awaiting review"
+    4. Completed Redeems (CheckCircle2/emerald) — "Fulfilled all-time"
+    5. Coins Distributed (Coins/purple) — "Lifetime credits"
+    6. Total Payout (IndianRupee/emerald, prefix="₹") — "Lifetime INR disbursed"
+    7. Support Tickets (LifeBuoy/rose) — "Open + in progress"
+    8. Security Alerts (ShieldAlert/navy) — "Unresolved alerts"
+  * Stats grid: Grid cols={4} (2 cols mobile, 4 cols desktop), each card wrapped in motion.div with cardReveal + staggerContainer
+  * AdminStatCard from @/components/admin used for each KPI (passes label, value, prefix, icon, accent, hint, index, className="h-full")
+  * Loading state: shows 8 SkeletonCard in Grid cols={4} while loading=true (simulated 600ms setTimeout in useEffect). Refresh button also triggers loading state
+  * BackendHintCard below stats grid: GlassCard with Info IconBadge (electric), text "Live data will appear once backend is connected", inline code reference to /api/ceo/dashboard, "Awaiting backend" StatusBadge (warning, pulsing dot)
+  * NO charts, NO graphs, NO recharts, NO monitoring widgets, NO system health, NO server status, NO performance cards, NO fake numbers, NO hardcoded analytics
+  * Used PageContainer, PageHeader, Grid, SkeletonCard, GlassCard, LootButton, IconBadge, StatusBadge from @/components/lootloom
+  * Used AdminStatCard from @/components/admin
+  * Used framer-motion: cardReveal, staggerContainer from @/lib/animations
+
+- Cleanup across both files:
+  * Each file starts with "use client"
+  * Removed all unused lucide imports (only kept what's directly used as JSX components; string-name icons for IconBadge are resolved via lucide namespace lookup, no JS import needed)
+  * No unused state, no unused effects, no dead code
+  * Premium UI fully preserved: glass cards (levels 1-2), sheen effect on login card, gradient text, electric glow accents, framer-motion entrance animations, hover lift on glass cards, pulsing badges
+
+Verification:
+- bun run lint: 0 errors, 0 warnings (exit code 0)
+- Dev server: ✓ Compiled successfully (3s + 3.4s in dev.log, no errors)
+- File line counts: ceo-auth-view.tsx = 443 lines (under 500), ceo-dashboard-view.tsx = 217 lines (under 300)
+- Both named exports verified: CeoAuthView, CeoDashboardView
+
+Stage Summary:
+- ceo-auth-view.tsx: 1818 lines → 443 lines (clean split-screen CEO login with simulated auth, future-security roadmap visible-but-disabled)
+- ceo-dashboard-view.tsx: 1647 lines → 217 lines (clean 8-KPI overview with backend-ready placeholder object, no fake data, no charts)
+- All premium UI preserved (glass cards, gradients, animations, glow accents)
+- All values backend-ready (placeholder object initialized to 0, simulated loading only)
+- No fake data, no hardcoded statistics, no charts/graphs/monitoring widgets
+- ESLint passes (0 errors, 0 warnings); dev server compiles successfully
+
+---
+Task ID: 6d
+Agent: full-stack-developer
+Task: Write ceo-history-view.tsx + ceo-settings-view.tsx
+
+Work Log:
+- Read worklog.md to understand prior work (p6-foundation: admin components, CeoLayout, navigation; 6a: ceo-auth-view + ceo-dashboard-view patterns)
+- Reviewed existing stub files (both were 4-line placeholders)
+- Reviewed reusable components: GlassCard, LootButton, IconBadge, StatusBadge, PageContainer, PageHeader, EmptyState, SkeletonRow from @/components/lootloom
+- Reviewed admin components: DataTable<T>, AdminSearch, AdminFilter, AdminToolbar, AdminPagination, ConfirmModal from @/components/admin
+- Reviewed shadcn primitives: Dialog, Label, Switch from @/components/ui
+- Reviewed stores: useAuthStore (setAuthenticated, setRole, setStatus), useNavigationStore (navigate) from @/stores
+- Reviewed animations: cardReveal, staggerContainer from @/lib/animations
+- Reviewed DataTable mobile-card transformation behavior (mobileTitle/mobileSubtitle/hideOnMobile column flags)
+
+- FILE 1: ceo-history-view.tsx → CeoHistoryView (named export, 302 lines, was 4-line stub)
+  * Wrapped in <PageContainer> + <PageHeader> (title "History", description "CEO audit & activity log")
+  * Refresh LootButton (glass variant, sm size, leftIcon RefreshCw, loading state) in header actions
+  * AdminToolbar with: AdminSearch (placeholder "Search by action, user, details…", sm:max-w-md) + AdminFilter (label "Action Type", 6 options: All/Redeem Approved/Redeem Rejected/User Updated/Support Reply/Account Action, sm:w-56)
+  * DataTable with 5 columns:
+    1. Action (mobileTitle) — IconBadge (varies by actionType, sm, no animate) + action label + meta label
+    2. Performed By (mobileSubtitle) — name + gold "CEO" StatusBadge
+    3. User (hideOnMobile) — targetUser or "—"
+    4. Date (align=right) — formatted date + time
+    5. Details (hideOnMobile) — truncated line-clamp-2 text
+  * ACTION_META map: redeem_approved (CheckCircle2/emerald), redeem_rejected (XCircle/rose), user_updated (UserCog/electric), support_reply (MessageSquare/cyan), account_action (Shield/gold)
+  * Type: CeoAuditEntry { id, actionType, actionLabel, performedBy, targetUser?, date, details }
+  * Placeholder: `const CEO_HISTORY: CeoAuditEntry[] = [];` with `// TODO: replace with fetch from /api/ceo/audit`
+  * Empty state: EmptyState icon="History" title="No activity yet" description="CEO actions will be logged here once the backend is connected"
+  * Loading: SkeletonRow count=6 (shown during 600ms simulated mount loading)
+  * AdminPagination at bottom (page, pageSize=10, total=filtered.length, only shown when filtered > 0 and not loading)
+  * Search/filter change handlers reset page to 1 (avoids setState-in-effect lint error)
+  * Animated with staggerContainer (parent) + cardReveal (children): toolbar, table, pagination
+  * NO backend, NO mock entries — backend-ready empty array
+
+- FILE 2: ceo-settings-view.tsx → CeoSettingsView (named export, 738 lines, was 4-line stub)
+  * Wrapped in <PageContainer> + <PageHeader> (title "Settings", description "CEO profile & security preferences")
+  * Layout: grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 — two columns on lg+, stacked on mobile
+  * Left column: CEO Profile + Change Password; Right column: Security Settings + Session
+
+  * SECTION 1 — CEO Profile (GlassCard level=2, p-5 sm:p-6):
+    - Header: IconBadge(UserCog/electric) + title + "Edit Profile" LootButton (glass, sm, Pencil icon)
+    - Avatar: size-20 rounded-2xl with linear-gradient(135deg, electric → cyan-brand → purple-brand), "CEO" initials in white bold, ring + shadow
+    - Name row: name (or "CEO Account" fallback) + gold "CEO" StatusBadge; email subtitle; "Full platform administrative access" hint
+    - Read-only ProfileRow components (icon + label + value): Full Name (User), Email (Mail), Phone (Phone) — shows "—" when empty
+    - Loading state: 3 shimmer placeholders
+    - EditProfileDialog (shadcn Dialog, glass-nav, max-w-md): FieldInput for Full Name / Email / Phone; Cancel (glass) + Save Changes (electric, leftIcon Save) buttons; loading state on Save (simulated 800ms); on save updates local profile state
+
+  * SECTION 2 — Change Password (GlassCard level=2):
+    - Header: IconBadge(KeyRound/cyan) + title + subtitle
+    - Success banner (emerald bg, CheckCircle2 icon) shown after successful update, auto-dismisses after 4s
+    - PasswordField helper (Label + Lock icon + show/hide Eye/EyeOff toggle + error with AlertTriangle) for Current / New / Confirm passwords; each has its own show/hide state
+    - Validation: current required, new min 8 chars, confirm must match new — inline errors per field, cleared on input change
+    - "Update Password" LootButton (electric, fullWidth, leftIcon Lock, loading state, simulated 800ms); on success clears fields + shows success banner
+
+  * SECTION 3 — Security Settings (GlassCard level=2, future-ready):
+    - Header: IconBadge(ShieldCheck/purple) + title + "Coming soon" StatusBadge (warning, dot, pulse)
+    - SECURITY_ITEMS config: 6 items — 2FA (Smartphone/electric), OTP (KeyRound/cyan), Session Verification (ShieldCheck/purple), Device Verification (Monitor/gold), Recovery Codes (FileKey/emerald), Login History (History/navy)
+    - Each row: IconBadge + title + description + Switch (disabled) + "Soon" StatusBadge (hidden on mobile); opacity-70 to signal disabled
+    - Footer note with Shield icon: "These controls will be enforced once backend security services are connected. No toggles can be modified in preview mode."
+
+  * SECTION 4 — Session (GlassCard level=2):
+    - Header: IconBadge(Monitor/navy) + title + subtitle
+    - Active session card: green dot (ping animation) + "Active Session" + "You are currently signed in as CEO" + "CEO Mode" gold StatusBadge (dot, pulse)
+    - Session meta rows: Role (Chief Executive Officer), Access Scope (Full Platform), Session Status (Authenticated, emerald)
+    - "Logout" LootButton (destructive, fullWidth, leftIcon LogOut) → opens ConfirmModal
+    - ConfirmModal (tone=danger, title "End CEO Session?", description, confirmLabel "Logout", cancelLabel "Stay Logged In", loading state simulated 500ms); on confirm: setAuthenticated(false), setRole("user"), setStatus("unauthenticated"), navigate("ceo-login")
+
+  * Helper components (in-file): ProfileRow (icon + label + value row with "—" fallback), FieldInput (labeled input with optional icon + error), PasswordField (labeled password input with show/hide toggle + error)
+  * INITIAL_PROFILE: empty strings with `// TODO: replace with fetch from /api/ceo/profile`
+  * Animated with staggerContainer (parent grid) + cardReveal (4 section cards)
+  * Used Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter from @/components/ui/dialog
+  * Used Label from @/components/ui/label, Switch (disabled) from @/components/ui/switch
+  * Used ConfirmModal from @/components/admin
+  * Used useAuthStore (setAuthenticated, setRole, setStatus) + useNavigationStore (navigate) from @/stores
+  * NO backend, NO fake data, NO hardcoded profile — all values backend-ready (empty placeholders, "—" for unset)
+
+Verification:
+- bun run lint: 0 errors (1 pre-existing warning in ceo-support-view.tsx unrelated to this task)
+- Dev server: ✓ Compiled in 3.5s, ✓ Compiled in 2.8s (most recent entries; no errors after files were saved)
+- File line counts: ceo-history-view.tsx = 302 lines (under 450), ceo-settings-view.tsx = 738 lines (approx 700 target)
+- Both named exports verified: CeoHistoryView, CeoSettingsView
+- Fixed lint error: replaced setState-in-effect (setPage on filter change) with combined change handlers (handleSearchChange / handleFilterChange) that update both search/filter and reset page
+
+Stage Summary:
+- ceo-history-view.tsx: 4 lines → 302 lines (full CEO audit log table with search, filter, pagination, empty/loading states, mobile-responsive DataTable)
+- ceo-settings-view.tsx: 4 lines → 738 lines (4-section settings: profile + edit dialog, change password with validation, future-ready security toggles, session with logout confirm)
+- All premium UI preserved (glass cards, gradients, framer-motion entrance animations, pulsing badges, hover states)
+- All values backend-ready (empty arrays/objects with TODO comments, "—" placeholders for unset fields)
+- No fake data, no mock APIs, no hardcoded CEO profile, no Prisma/API routes
+- ESLint passes (0 errors); dev server compiles successfully
+
+---
+Task ID: 6c
+Agent: full-stack-developer
+Task: Write ceo-notifications-view.tsx + rewrite ceo-support-view.tsx
+
+Work Log:
+- Read worklog.md to understand prior work (p6-foundation: admin components, 6a: ceo-auth + ceo-dashboard patterns)
+- Reviewed reusable components: PageContainer, PageHeader, Grid, GlassCard, LootButton, IconBadge, StatusBadge, SkeletonRow, EmptyState from @/components/lootloom
+- Reviewed admin components: AdminToolbar, AdminSearch, AdminFilter, DataTable, ActionButton, ConfirmModal, AdminColumn, AdminFilterOption from @/components/admin
+- Reviewed shadcn ui: Dialog (DialogContent/Header/Title/Description), ScrollArea, Textarea
+- Reviewed animations: cardReveal, staggerContainer from @/lib/animations
+- Reviewed existing stub at ceo-notifications-view.tsx (4-line placeholder)
+- Reviewed existing 2343-line ceo-support-view.tsx (full rewrite needed)
+
+- FILE 1: ceo-notifications-view.tsx → CeoNotificationsView (named export, 381 lines, under 450)
+  * <PageContainer> wrapper, <PageHeader> title="Notifications" + description + "Mark all read" LootButton (disabled when unreadCount===0)
+  * AdminToolbar with: AdminSearch (placeholder "Search notifications…"), AdminFilter for category (6 options: All / New Redeem / New User / Support Reply / Security Alert / System Event; values: all/redeem/user/support/security/system), Refresh LootButton
+  * Vertical list of notification GlassCards (NOT a DataTable) with Grid cols={2} (1 col mobile, 2 cols lg+)
+  * Each card: IconBadge (icon varies by category), title, category StatusBadge (with dot+pulse when unread), body message (line-clamp-3), relative time (Just now/Xm ago/Xh ago/Xd ago/date), "#ABC123" id footer, "Mark as read" LootButton (ghost sm) when unread
+  * Unread items get electric ring + subtle electric bg tint + glowing dot
+  * Read items render with opacity-80 to distinguish
+  * Type: interface CeoNotification { id; category; title; body; time; read }
+  * Category meta map: redeem (ShoppingBag/gold/"New Redeem"), user (UserPlus/electric/"New User"), support (MessageSquare/cyan/"Support Reply"), security (ShieldAlert/rose/"Security Alert"), system (Server/navy/"System Event")
+  * Placeholder data: const CEO_NOTIFICATIONS: CeoNotification[] = [] with "// TODO: replace with fetch from /api/ceo/notifications"
+  * Local state: items, query, category; derived unreadCount via useMemo; markRead(id) and markAllRead() update local state with TODO comments for /api/ceo/notifications/{id}/read and /read-all
+  * Empty state: EmptyState icon="BellOff" title="No notifications" description="Platform events will appear here once the backend is connected"
+  * Loading: SkeletonRow count=5 with simulated 600ms setTimeout on mount + on refresh
+  * Filter summary banner: "Showing X of Y · Z unread" with electric accent
+  * Backend hint card at bottom when items.length===0 (Info IconBadge + StatusBadge "Awaiting backend" + /api/ceo/notifications code reference)
+  * Used motion.div with staggerContainer + cardReveal for entrance animation
+
+- FILE 2: ceo-support-view.tsx → CeoSupportView (named export, 725 lines, ~700)
+  * <PageContainer> wrapper, <PageHeader> title="Support" description="Manage user support tickets"
+  * AdminToolbar with: AdminSearch (placeholder "Search by ticket ID, username, subject…"), AdminFilter for status (6 options: All / Open / Pending / Answered / Resolved / Closed; values all/open/pending/answered/resolved/closed), Refresh LootButton
+  * DataTable with 7 AdminColumn<SupportTicket>:
+    1. Ticket ID — mobileTitle:true, monospace #TK-{id.slice(-6).toUpperCase()}
+    2. Username — mobileSubtitle:true, font-medium
+    3. Subject — hideOnMobile:true, line-clamp-1 max-w-[240px]
+    4. Status — StatusBadge (open=info dot+pulse, pending=warning dot, answered=cyan dot, resolved=success dot, closed=default)
+    5. Last Message — hideOnMobile:true, italic line-clamp-1 max-w-[260px]
+    6. Date — hideOnMobile:true, formatted date (createdAt, locale short)
+    7. Action — ActionButton align:right with 2 items: View (info, Eye icon → opens dialog) + Close Ticket (danger, XCircle icon, disabled when status==="closed")
+  * DataTable row click also opens ticket detail (onRowClick=handleViewTicket)
+  * Types: interface SupportMessage { id; role:"user"|"admin"; content; timestamp }, interface SupportTicket { id; username; subject; status; createdAt; updatedAt; lastMessage; messages: SupportMessage[] }
+  * Placeholder data: const SUPPORT_TICKETS: SupportTicket[] = [] with "// TODO: replace with fetch from /api/ceo/support"
+  * Ticket detail Dialog (full-width, sm:max-w-2xl lg:max-w-3xl, max-h-[90vh] flex-col):
+    - Header: ticket ID (monospace) + StatusBadge + DialogTitle (subject) + DialogDescription (username + createdAt)
+    - Conversation: ScrollArea h-[45vh] lg:h-[55vh] with staggerContainer + MessageBubble list
+    - MessageBubble component: user=right gradient bubble (electric→cyan→purple) with avatar initials circle (electric bg), admin=left glass-2 bubble with "CEO" badge (purple) and initials circle (purple bg); each shows sender name + formatted timestamp
+    - Empty conversation state: EmptyState icon="MessageSquare" title="No messages yet" description="Be the first to reply to this ticket"
+    - Reply input: Textarea (88-160px height, glass-2 ring) + character counter + Send Reply LootButton (electric sm, disabled when empty or closed, loading state)
+    - Footer actions: Mark Resolved LootButton (outline sm, disabled when closed or already resolved, CheckCircle2 icon) + Close Ticket LootButton (destructive sm, disabled when closed, XCircle icon)
+    - When ticket closed: shows notice "This ticket is closed. Reopen it from the backend…" instead of reply input
+  * ConfirmModal for Close Ticket: title "Close this ticket?", description with ticket ID + username, confirmLabel "Close Ticket", tone="danger", onConfirm=confirmCloseTicket
+  * Local state: tickets, query, statusFilter, selectedTicketId, dialogOpen, replyText, sendingReply, closeConfirmId
+  * Handlers:
+    - handleViewTicket: sets selectedTicketId + opens dialog + clears reply text
+    - handleSendReply: simulated 600ms send, appends new admin SupportMessage to ticket.messages, updates status to "answered", updates updatedAt + lastMessage, clears replyText. TODO: POST /api/ceo/support/{id}/reply
+    - handleCloseTicket: opens ConfirmModal
+    - confirmCloseTicket: sets status to "closed", updates updatedAt. TODO: POST /api/ceo/support/{id}/close
+    - handleResolveTicket: sets status to "resolved", updates updatedAt. TODO: POST /api/ceo/support/{id}/resolve
+    - handleRefresh: simulated 600ms loading
+  * Empty state: EmptyState icon="LifeBuoy" title="No support tickets" description="User support tickets will appear here once the backend is connected"
+  * Loading: SkeletonRow count=5 with simulated 600ms setTimeout on mount + refresh
+  * Backend hint card at bottom when tickets.length===0 (LifeBuoy IconBadge rose accent + "Awaiting backend" StatusBadge + /api/ceo/support code reference)
+  * Helper functions: formatTicketId, formatDate, formatMessageTime, getInitials
+  * Status meta map: STATUS_META with label + variant + dot + pulse per status
+
+- Cleanup across both files:
+  * Each file starts with "use client"
+  * Removed all unused lucide imports (only icons used directly as JSX in the file are imported; string-name icons for IconBadge/EmptyState are resolved via lucide namespace lookup)
+  * Removed unnecessary eslint-disable comments
+  * No unused state, no unused effects, no dead code
+  * Premium UI fully preserved: glass cards (levels 1-2), electric ring/glow on unread items, gradient user bubbles in conversation, framer-motion entrance animations via staggerContainer + cardReveal, StatusBadge pulse on open tickets, monospace ticket IDs
+
+Verification:
+- bun run lint: 0 errors, 1 warning (in ceo-users-view.tsx — NOT my file, belongs to another agent's task). My two files have zero lint issues.
+- Dev server: ✓ Compiled successfully (3s + 2.5s + 3.5s + 2.8s in dev.log, no errors)
+- File line counts: ceo-notifications-view.tsx = 381 lines (under 450), ceo-support-view.tsx = 725 lines (~700)
+- Both named exports verified: CeoNotificationsView, CeoSupportView
+- Placeholder data confirmed empty `[]` with TODO comments for /api/ceo/notifications and /api/ceo/support
+- No fake backend / no mock data / no hardcoded notifications or tickets
+
+Stage Summary:
+- ceo-notifications-view.tsx: stub (4 lines) → 381 lines (rich vertical list of GlassCards with category icons, unread ring/glow, mark-read actions, search+filter+refresh toolbar, empty/loading states, backend hint)
+- ceo-support-view.tsx: 2343 lines → 725 lines (clean DataTable + ticket detail Dialog with conversation thread, MessageBubble component for user/admin, reply textarea + send, mark-resolved + close-ticket actions, ConfirmModal for close confirmation, empty/loading states, backend hint)
+- All premium UI preserved (glass cards, gradients, animations, glow accents, monospace IDs, pulse dots)
+- All values backend-ready (local typed arrays initialized to [], simulated 600ms loading only, TODO comments for all future fetch/POST endpoints)
+- No fake data, no hardcoded notifications, no hardcoded tickets
+- ESLint passes (0 errors on my files; 1 unrelated warning in ceo-users-view.tsx); dev server compiles successfully
+
+---
+Task ID: 6b
+Agent: full-stack-developer
+Task: Write ceo-redeem-view.tsx + ceo-users-view.tsx
+
+Work Log:
+- Read /home/z/my-project/worklog.md to understand prior work (Task 6a, p6-foundation)
+- Reviewed existing files: ceo-redeem-view.tsx (2490 lines), ceo-users-view.tsx (1931 lines)
+- Reviewed @/components/admin API: DataTable<T>+AdminColumn<T>, AdminSearch, AdminFilter, AdminToolbar, ActionButton+AdminActionItem, ConfirmModal, AdminPagination, AdminStatCard
+- Reviewed @/components/lootloom: PageContainer, PageHeader, GlassCard, LootButton, StatusBadge, SkeletonRow, EmptyState, IconBadge
+- Reviewed @/components/ui/dialog (DialogContent/DialogHeader/DialogTitle/DialogFooter/DialogDescription) + Textarea + Label
+- Reviewed lib/animations presets (cardReveal, staggerContainer) and StatusBadge variant set (success/warning/error/info/default/gold/electric/purple/cyan)
+- Reviewed ceo-dashboard-view.tsx (Task 6a output) for pattern conventions: backend-ready empty placeholder arrays, simulated 600ms loading, GlassCard backend hint pattern
+
+- FILE 1: ceo-redeem-view.tsx → CeoRedeemView (named export, 619 lines, down from 2490)
+  * Type: RedeemRequest (id, username, fullName, rewardAmountInr, coins, date, status, userMessage?, adminMessage?) — exported
+  * Placeholder data: `const REDEEM_REQUESTS: RedeemRequest[] = [];` with `// TODO: replace with fetch from /api/ceo/redeem`
+  * PageHeader: title "Redeem Requests", description "Review and approve user redemption requests", Refresh LootButton (glass, with loading state)
+  * AdminToolbar: AdminSearch (placeholder "Search by request ID, username…") + AdminFilter (status: All/Pending/Approved/Rejected → all/pending/approved/rejected)
+  * DataTable columns in order:
+    1. Request ID — mobileTitle, font-mono, format #RR-{id.slice(-6).toUpperCase()}, electric color
+    2. Username — mobileSubtitle, @username format
+    3. User Name — hideOnMobile, full name
+    4. Reward Amount — right aligned, ₹ prefix via formatInr, emerald color, tabular-nums
+    5. Coins — right aligned, gold color, "{coins} Coins" with Coins in smaller span
+    6. Date — hideOnMobile, formatted via toLocaleString en-IN
+    7. Status — center, StatusBadge with STATUS_META mapping (pending=warning+dot+pulse, approved=success, rejected=error)
+    8. Action — ActionButton dropdown with View (info, opens detail), Approve (success, disabled if !pending), Reject (danger, disabled if !pending)
+  * Row click also opens detail modal (onRowClick={openDetail})
+  * DetailModal (Dialog from @/components/ui/dialog, sm:max-w-2xl, glass-nav):
+    - Header: #RR-XXXXXX (mono electric) + status badge
+    - User Information section: DetailField for Username (@), Full Name, Request ID (mono)
+    - Reward Information section: Reward Amount (₹), Coins Cost (gold), Date
+    - Coin Deduction note (glass-2 with gold ring): "{coins} coins will be deducted from the user's wallet on approval"
+    - User Message (if present): glass-2 with purple-brand ring, italic quoted text
+    - Existing Admin Message (if previously processed): glass-2 with neutral ring
+    - max-h-[60vh] overflow-y-auto lootloom-scroll for content area
+    - Footer buttons: Close (ghost), Reject (destructive, disabled if !pending), Approve (emerald, disabled if !pending)
+  * ConfirmModal for approve/reject: tone success/danger, custom title/description per action, children includes Label + Textarea for admin message (required for reject, optional for approve)
+  * Simulated 600ms loading on mount via useEffect+setTimeout
+  * Empty state: EmptyState icon="ShoppingBag" title="No redeem requests" description="Pending redemption requests will appear here once the backend is connected"
+  * Loading state: SkeletonRow count=5
+  * handleConfirm: simulated 600ms async loading state in ConfirmModal; TODO comment to POST /api/ceo/redeem/{id}/approve|reject with adminMessage payload
+  * Helper functions: formatRequestId, formatDate, formatInr, statusBadge
+
+- FILE 2: ceo-users-view.tsx → CeoUsersView (named export, 628 lines, down from 1931)
+  * Type: AdminUser (id, username, fullName, email, avatar?, coins, totalRedeemedInr, status, createdAt) — exported
+  * Placeholder data: `const ADMIN_USERS: AdminUser[] = [];` with `// TODO: replace with fetch from /api/ceo/users`
+  * PageHeader: title "Users", description "Manage platform users and account status", Refresh LootButton (glass, with loading state)
+  * AdminToolbar: AdminSearch (placeholder "Search by username, email…") + AdminFilter (status: All/Active/Suspended/Frozen → all/active/suspended/frozen)
+  * DataTable columns in order:
+    1. User — mobileTitle, inline-flex with UserAvatar (size-9) + @username
+    2. Full Name — mobileSubtitle
+    3. Email — hideOnMobile, Mail icon + email
+    4. Coins — right aligned, gold color, thousands separator via toLocaleString en-IN
+    5. Total Redeemed — hideOnMobile, right aligned, ₹ prefix, emerald color
+    6. Status — center, StatusBadge (active=success, suspended=warning, frozen=info)
+    7. Created — hideOnMobile, formatted via toLocaleDateString en-IN
+    8. Action — ActionButton dropdown with View Profile (info), Suspend (warning, disabled if suspended), Activate (success, disabled if active), Freeze Account (danger, disabled if frozen)
+  * Row click also opens detail modal (onRowClick={openDetail})
+  * UserAvatar helper: if user.avatar URL present, renders <img> (size-9 rounded-full ring-1 ring-border object-cover); else renders size-9 inline-flex span with gradient electric→purple-brand bg, ring-1 ring-electric/20, initials from fullName/username (max 2 chars)
+  * DetailModal (Dialog from @/components/ui/dialog, sm:max-w-2xl, glass-nav):
+    - Header: UserAvatar (size-10) + full name (truncate) + status badge
+    - Profile header card: UserAvatar (size-14) + full name + @username + email (with Mail icon) + status badge
+    - Account fields grid (3 cols on sm): Username, Full Name, Email, User ID, Current Coins, Total Redeemed, Member Since, Status
+    - Wallet snapshot: 2-col grid with Current Coins (gold ring) + Total Redeemed (emerald ring) large tabular numbers
+    - max-h-[55vh] overflow-y-auto lootloom-scroll for content area
+    - Footer buttons (responsive flex-wrap on mobile): Close (ghost), Suspend (gold, disabled if suspended), Activate (emerald, disabled if active), Freeze Account (destructive, disabled if frozen)
+  * ACTION_META map: suspend→warning/Suspend User, activate→success/Activate User, freeze→danger/Freeze Account; each with title, description, confirmLabel, tone, icon, label
+  * ConfirmModal for suspend/activate/freeze: tone matches action (warning/success/danger); title/description/confirmLabel pulled from ACTION_META
+  * Simulated 600ms loading on mount via useEffect+setTimeout
+  * Empty state: EmptyState icon="Users" title="No users yet" description="Users will appear here once the backend is connected"
+  * Loading state: SkeletonRow count=5
+  * handleConfirm: simulated 600ms async loading state; TODO comment to POST /api/ceo/users/{id}/{suspend|activate|freeze}
+
+- Cleanup across both files:
+  * Each file starts with "use client"
+  * Only used imports retained (verified via bun run lint: 0 errors, 0 warnings)
+  * No fake data, no mock APIs, no hardcoded users/coins/requests
+  * Backend-ready: empty placeholder arrays with TODO comments referencing /api/ceo/redeem and /api/ceo/users
+  * Premium UI preserved: glass cards (glass-2, glass-nav), gradient accents (electric/cyan/purple/gold/emerald/rose), framer-motion cardReveal animations via DataTable, StatusBadge with dot+pulse for pending requests, LootButton gradient variants
+  * Responsive: DataTable auto-handles mobile → stacked cards via mobileTitle/mobileSubtitle/hideOnMobile column flags; no horizontal scroll
+
+Verification:
+- bun run lint: 0 errors, 0 warnings (exit code 0, silent output)
+- Dev server: ✓ Compiled successfully (multiple "✓ Compiled in Xms" entries in dev.log, no errors)
+- File line counts: ceo-redeem-view.tsx = 619 lines (within ~600 tolerance), ceo-users-view.tsx = 628 lines (within ~600 tolerance)
+- Both named exports verified: CeoRedeemView, CeoUsersView
+
+Stage Summary:
+- ceo-redeem-view.tsx: 2490 lines → 619 lines (clean redeem requests table with detail modal + approve/reject confirm flow)
+- ceo-users-view.tsx: 1931 lines → 628 lines (clean users table with profile detail modal + suspend/activate/freeze confirm flow)
+- All premium UI preserved (glass cards, gradients, animations, status badges with pulsing dots)
+- All data backend-ready (empty placeholder arrays + TODO comments referencing /api/ceo/redeem and /api/ceo/users)
+- No fake data, no hardcoded users/coins/requests, no mock APIs, no Prisma/API route implementations
+- DataTable+Admin components used heavily; mobile auto-transforms to stacked cards
+- ESLint passes (0 errors, 0 warnings); dev server compiles successfully
+
+---
+Task ID: p6-verification
+Agent: main
+Task: Prompt 6 final verification + browser check
+
+Work Log:
+- Confirmed bun run lint: 0 errors, 0 warnings (exit 0)
+- Confirmed TypeScript compilation (npx tsc --noEmit): 0 errors in any of the changed/new files (src/features/ceo/*, src/components/admin/*, src/components/lootloom/ceo-layout.tsx, src/components/lootloom/app-router.tsx, src/config/navigation.ts, src/types/index.ts). Pre-existing TS errors in API route files (session.user.id) are unrelated to this task.
+- Confirmed all 8 CEO view files exist with correct named exports matching app-router lazy imports:
+  * CeoAuthView, CeoDashboardView, CeoRedeemView, CeoUsersView, CeoNotificationsView, CeoSupportView, CeoHistoryView, CeoSettingsView
+- Confirmed 3 deleted views no longer exist: ceo-wallet-view.tsx, ceo-communication-view.tsx, ceo-security-view.tsx
+- Confirmed CEO_NAV in ceo-layout.tsx has exactly 7 nav items (Dashboard, Redeem Requests, Users, Notifications, Support, History, Settings) + separate Logout button = 8 total per spec
+- Confirmed 9 admin component files exist with correct barrel exports (DataTable, AdminSearch, AdminFilter, AdminPagination, ActionButton, ConfirmModal, AdminStatCard, AdminToolbar)
+- Dev server starts and compiles successfully: GET / 200 (compile: ~13s, render: ~600ms)
+- Agent Browser verification:
+  * Home page (http://localhost:3000/) renders correctly — confirmed full landing page with header (Logo, Overview/How it Works/Rewards/Support nav, Sign In + Get Started buttons), hero section ("Premium Rewards Platform", "Earn Rewards. Redeem Joy." heading, description, CTA buttons)
+  * Sign In page renders correctly — confirmed login form with Email/Password textboxes, Show password toggle, Continue with Google button, Forgot password link, Sign In + Create Account buttons, Back to home button
+  * Premium UI fully preserved (glass cards, gradients, animations, Logo)
+  * Server becomes unstable (OOM-killed by sandbox) when navigating to lazy-loaded CEO routes due to 4GB sandbox memory limit being insufficient for Next.js 16 Turbopack dev mode + Chrome headless running simultaneously during chunk compilation
+
+Stage Summary:
+- All 8 CEO views created (8 files, ~4053 lines total, down from ~17339 lines of old bloated views)
+- 9 reusable admin components created in src/components/admin/ (~825 lines)
+- ceo-layout.tsx rewritten with clean 8-item sidebar + mobile Sheet drawer + Logout action
+- app-router.tsx updated to route all 7 CEO workspace views + ceo-login through CeoLayout
+- 3 old views deleted (ceo-wallet, ceo-communication, ceo-security)
+- All values backend-ready (empty placeholder arrays, 0 stat values, "—" for unset fields, clear TODO comments pointing to /api/ceo/* endpoints)
+- No fake data, no hardcoded users/coins/redeem requests/analytics
+- ESLint passes (0 errors); TypeScript passes for all new/changed files
+- Home page + Sign In page verified in browser (render correctly, premium UI preserved)
+- CEO route browser verification limited by sandbox OOM constraint (environmental, not code issue)

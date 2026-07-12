@@ -87,12 +87,12 @@ export const PAGE_META: Partial<Record<ViewId, PageMeta>> = {
   "coming-soon": { title: "Coming Soon", description: "In development", group: "system", breadcrumbs: [] },
   "feature-not-available": { title: "Not Available", description: "Feature pending", group: "system", breadcrumbs: [] },
   "service-unavailable": { title: "Service Unavailable", description: "Temporary outage", group: "system", breadcrumbs: [] },
-  // CEO administration views (Prompts 21-25)
-  "ceo-wallet": { title: "Wallet Management", description: "Platform wallet ecosystem", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Wallet Management" }] },
-  "ceo-redeem": { title: "Redeem Management", description: "Review & approve redemptions", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Redeem Management" }] },
-  "ceo-support": { title: "Support Management", description: "Monitor support tickets", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Support Management" }] },
-  "ceo-communication": { title: "Communication Center", description: "Broadcast & announcements", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Communication" }] },
-  "ceo-security": { title: "Security Operations", description: "Platform security & audit", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Security Operations" }] },
+  // CEO administration views — clean production set
+  "ceo-redeem": { title: "Redeem Requests", description: "Review & approve redemptions", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Redeem Requests" }] },
+  "ceo-support": { title: "Support", description: "Manage support tickets", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Support" }] },
+  "ceo-notifications": { title: "Notifications", description: "CEO notification center", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Notifications" }] },
+  "ceo-history": { title: "History", description: "CEO audit & activity log", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "History" }] },
+  "ceo-settings": { title: "Settings", description: "CEO profile & security", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Settings" }] },
 };
 
 export const PUBLIC_VIEWS: ViewId[] = ["home"];
@@ -158,11 +158,14 @@ export const LEGAL_VIEWS: ViewId[] = [
   "platform-updates",
 ];
 
-/** CEO administration views (Prompt 18-20) — full-screen CEO layout. */
+/** CEO administration views — clean production set. Full-screen CEO layout. */
 export const CEO_VIEWS: ViewId[] = [
   "ceo-login",
   "ceo-dashboard",
-  "ceo-users",
   "ceo-redeem",
+  "ceo-users",
+  "ceo-notifications",
   "ceo-support",
+  "ceo-history",
+  "ceo-settings",
 ];

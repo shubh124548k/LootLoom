@@ -1,0 +1,1819 @@
+     1→"use client";
+     2→
+     3→/**
+     4→ * LootLoom — CeoAuthView
+     5→ * The completely private CEO Platform security gateway + login.
+     6→ *
+     7→ * Flow steps (local UI state only — NO backend auth, NO JWT, NO DB):
+     8→ *   "gateway"  → Security gateway hero (locked entry panel)
+     9→ *   "login"    → CEO login form (CEO ID + Password + Remember Device)
+    10→ *   "timeline" → Multi-step authentication timeline → Enter CEO Dashboard
+    11→ *
+    12→ * Layout: Desktop split (left = animated security illustration + panels + session
+    13→ * architecture, right = login form / timeline). Tablet adaptive. Mobile stacked.
+    14→ *
+    15→ * BackgroundEngine is global (rendered by AppRouter) — not duplicated here.
+    16→ */
+    17→import { useEffect, useMemo, useState } from "react";
+    18→import { motion, AnimatePresence } from "framer-motion";
+    19→import {
+    20→  Lock,
+    21→  ShieldCheck,
+    22→  KeyRound,
+    23→  Fingerprint,
+    24→  Smartphone,
+    25→  Eye,
+    26→  EyeOff,
+    27→  ArrowLeft,
+    28→  ArrowRight,
+    29→  Check,
+    30→  X,
+    31→  AlertTriangle,
+    32→  Wifi,
+    33→  Cpu,
+    34→  Clock,
+    35→  MapPin,
+    36→  Monitor,
+    37→  ShieldAlert,
+    38→  Server,
+    39→  Globe,
+    40→  Activity,
+    41→  History,
+    42→  UserCog,
+    43→  Crown,
+    44→  Timer,
+    45→  RefreshCw,
+    46→  Network,
+    47→  LockKeyhole,
+    48→  ScanFace,
+    49→  Building2,
+    50→  AlertCircle,
+    51→  Ban,
+    52→  HardDrive,
+    53→  BadgeCheck,
+    54→  ShieldHalf,
+    55→  ShieldX,
+    56→  TriangleAlert,
+    57→  KeySquare,
+    58→  Cctv,
+    59→  Radar,
+    60→  Globe2,
+    61→  Users,
+    62→  Gift,
+    63→  Bell,
+    64→} from "lucide-react";
+    65→import {
+    66→  GlassCard,
+    67→  LootButton,
+    68→  Logo,
+    69→  IconBadge,
+    70→  StatusBadge,
+    71→  ProgressRing,
+    72→} from "@/components/lootloom";
+    73→import { useNavigationStore, useAuthStore } from "@/stores";
+    74→import {
+    75→  pageTransition,
+    76→  fade,
+    77→  slideUp,
+    78→  scaleIn,
+    79→  floating,
+    80→  modalPop,
+    81→  pulseGlow,
+    82→  staggerContainer,
+    83→} from "@/lib/animations";
+    84→import {
+    85→  Dialog,
+    86→  DialogContent,
+    87→  DialogHeader,
+    88→  DialogTitle,
+    89→  DialogDescription,
+    90→  DialogFooter,
+    91→} from "@/components/ui/dialog";
+    92→import { Checkbox } from "@/components/ui/checkbox";
+    93→import { cn } from "@/lib/utils";
+    94→
+    95→/* ============================================================
+    96→   Shared input styling
+    97→   ============================================================ */
+    98→const INPUT_CLASS =
+    99→  "h-12 rounded-xl glass-2 ring-1 ring-border px-4 text-sm focus:ring-navy/40 focus:ring-2 outline-none transition-all w-full";
+   100→
+   101→/* ============================================================
+   102→   Types
+   103→   ============================================================ */
+   104→type AuthStep = "gateway" | "login" | "timeline";
+   105→
+   106→type Accent =
+   107→  | "navy"
+   108→  | "electric"
+   109→  | "cyan"
+   110→  | "purple"
+   111→  | "gold"
+   112→  | "emerald"
+   113→  | "rose";
+   114→
+   115→interface SecurityPanelDef {
+   116→  id: string;
+   117→  title: string;
+   118→  description: string;
+   119→  icon: React.ReactNode;
+   120→  accent: Accent;
+   121→  status: "active" | "locked" | "future";
+   122→  statusLabel: string;
+   123→}
+   124→
+   125→interface SessionFieldDef {
+   126→  label: string;
+   127→  value: string;
+   128→  icon: React.ReactNode;
+   129→  future?: boolean;
+   130→}
+   131→
+   132→interface WarningDef {
+   133→  id: string;
+   134→  title: string;
+   135→  message: string;
+   136→  severity: "high" | "critical" | "medium";
+   137→  icon: React.ReactNode;
+   138→}
+   139→
+   140→/* ============================================================
+   141→   SECURITY COMPONENTS — reusable, defined in-file
+   142→   ============================================================ */
+   143→
+   144→/** SecurityCard — glass card with accent rail + icon + status badge */
+   145→function SecurityCard({
+   146→  title,
+   147→  description,
+   148→  icon,
+   149→  accent = "navy",
+   150→  status,
+   151→  statusLabel,
+   152→  children,
+   153→  className,
+   154→}: {
+   155→  title: string;
+   156→  description?: string;
+   157→  icon: React.ReactNode;
+   158→  accent?: Accent;
+   159→  status?: "active" | "locked" | "future";
+   160→  statusLabel?: string;
+   161→  children?: React.ReactNode;
+   162→  className?: string;
+   163→}) {
+   164→  const accentText: Record<Accent, string> = {
+   165→    navy: "text-navy",
+   166→    electric: "text-electric",
+   167→    cyan: "text-cyan-brand",
+   168→    purple: "text-purple-brand",
+   169→    gold: "text-gold",
+   170→    emerald: "text-emerald-brand",
+   171→    rose: "text-rose-brand",
+   172→  };
+   173→  const accentBg: Record<Accent, string> = {
+   174→    navy: "bg-navy/10",
+   175→    electric: "bg-electric/10",
+   176→    cyan: "bg-cyan/10",
+   177→    purple: "bg-purple/10",
+   178→    gold: "bg-gold/15",
+   179→    emerald: "bg-emerald-brand/10",
+   180→    rose: "bg-rose-brand/10",
+   181→  };
+   182→  const accentRail: Record<Accent, string> = {
+   183→    navy: "bg-navy",
+   184→    electric: "bg-electric",
+   185→    cyan: "bg-cyan-brand",
+   186→    purple: "bg-purple-brand",
+   187→    gold: "bg-gold",
+   188→    emerald: "bg-emerald-brand",
+   189→    rose: "bg-rose-brand",
+   190→  };
+   191→
+   192→  return (
+   193→    <GlassCard
+   194→      level={2}
+   195→      hover
+   196→      sheen
+   197→      className={cn("p-4 sm:p-5 relative overflow-hidden h-full", className)}
+   198→    >
+   199→      <div className={cn("absolute left-0 top-0 bottom-0 w-1", accentRail[accent])} />
+   200→      <div className="flex items-start gap-3">
+   201→        <div
+   202→          className={cn(
+   203→            "size-10 rounded-xl flex items-center justify-center ring-1 ring-border shrink-0",
+   204→            accentBg[accent],
+   205→            accentText[accent]
+   206→          )}
+   207→        >
+   208→          {icon}
+   209→        </div>
+   210→        <div className="flex-1 min-w-0">
+   211→          <div className="flex items-start justify-between gap-2">
+   212→            <h3 className="text-sm font-semibold text-foreground truncate">{title}</h3>
+   213→            {status && statusLabel && (
+   214→              <StatusBadge
+   215→                variant={
+   216→                  status === "active" ? "success" : status === "future" ? "default" : "error"
+   217→                }
+   218→                dot
+   219→                pulse={status === "active"}
+   220→                className="shrink-0"
+   221→              >
+   222→                {statusLabel}
+   223→              </StatusBadge>
+   224→            )}
+   225→          </div>
+   226→          {description && (
+   227→            <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
+   228→              {description}
+   229→            </p>
+   230→          )}
+   231→          {children && <div className="mt-3">{children}</div>}
+   232→        </div>
+   233→      </div>
+   234→    </GlassCard>
+   235→  );
+   236→}
+   237→
+   238→/** VerificationCard — single step verification tile (used by timeline) */
+   239→function VerificationCard({
+   240→  index,
+   241→  title,
+   242→  subtitle,
+   243→  icon,
+   244→  state,
+   245→}: {
+   246→  index: number;
+   247→  title: string;
+   248→  subtitle: string;
+   249→  icon: React.ReactNode;
+   250→  state: "completed" | "active" | "pending" | "future";
+   251→}) {
+   252→  const stateConfig = {
+   253→    completed: {
+   254→      ring: "ring-emerald-brand/40 bg-emerald-brand/10 text-emerald-brand",
+   255→      icon: <Check size={14} strokeWidth={3} />,
+   256→      label: "Verified",
+   257→      labelClass: "bg-emerald-brand/12 text-emerald-brand ring-emerald-brand/20",
+   258→      body: "opacity-100",
+   259→    },
+   260→    active: {
+   261→      ring: "ring-navy/50 bg-navy/10 text-navy",
+   262→      icon: icon,
+   263→      label: "In Progress",
+   264→      labelClass: "bg-navy/12 text-navy ring-navy/20",
+   265→      body: "opacity-100",
+   266→    },
+   267→    pending: {
+   268→      ring: "ring-electric/40 bg-electric/10 text-electric",
+   269→      icon: icon,
+   270→      label: "Pending",
+   271→      labelClass: "bg-electric/12 text-electric ring-electric/20",
+   272→      body: "opacity-80",
+   273→    },
+   274→    future: {
+   275→      ring: "ring-border bg-muted/40 text-muted-foreground",
+   276→      icon: icon,
+   277→      label: "Locked",
+   278→      labelClass: "bg-muted text-muted-foreground ring-border",
+   279→      body: "opacity-55",
+   280→    },
+   281→  }[state];
+   282→
+   283→  return (
+   284→    <motion.div
+   285→      variants={slideUp}
+   286→      className={cn(
+   287→        "relative rounded-xl glass-2 ring-1 p-3 sm:p-3.5 flex items-center gap-3",
+   288→        stateConfig.ring
+   289→      )}
+   290→    >
+   291→      <div className="flex items-center gap-3 min-w-0 flex-1">
+   292→        <div className="size-9 rounded-lg bg-background/60 ring-1 ring-border flex items-center justify-center shrink-0">
+   293→          {stateConfig.icon}
+   294→        </div>
+   295→        <div className="min-w-0 flex-1">
+   296→          <div className="flex items-center gap-2">
+   297→            <span className="text-[10px] font-bold tabular-nums text-muted-foreground">
+   298→              {String(index).padStart(2, "0")}
+   299→            </span>
+   300→            <p className="text-sm font-semibold text-foreground truncate">{title}</p>
+   301→          </div>
+   302→          <p className={cn("text-[11px] text-muted-foreground truncate", stateConfig.body)}>
+   303→            {subtitle}
+   304→          </p>
+   305→        </div>
+   306→      </div>
+   307→      <span
+   308→        className={cn(
+   309→          "shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1",
+   310→          stateConfig.labelClass
+   311→        )}
+   312→      >
+   313→        {stateConfig.label}
+   314→      </span>
+   315→    </motion.div>
+   316→  );
+   317→}
+   318→
+   319→/** AuthenticationTimeline — vertical timeline of the auth flow */
+   320→function AuthenticationTimeline({
+   321→  currentStep,
+   322→  steps,
+   323→}: {
+   324→  currentStep: number;
+   325→  steps: { title: string; subtitle: string; icon: React.ReactNode; future?: boolean }[];
+   326→}) {
+   327→  return (
+   328→    <div className="relative">
+   329→      {/* Vertical connector */}
+   330→      <div className="absolute left-[18px] top-2 bottom-2 w-px bg-gradient-to-b from-electric/40 via-navy/30 to-transparent" />
+   331→      <motion.ol
+   332→        variants={staggerContainer}
+   333→        initial="hidden"
+   334→        animate="visible"
+   335→        className="space-y-2.5"
+   336→      >
+   337→        {steps.map((s, i) => {
+   338→          const state: "completed" | "active" | "pending" | "future" = s.future
+   339→            ? "future"
+   340→            : i < currentStep
+   341→            ? "completed"
+   342→            : i === currentStep
+   343→            ? "active"
+   344→            : "pending";
+   345→          return (
+   346→            <li key={i} className="relative">
+   347→              <VerificationCard
+   348→                index={i + 1}
+   349→                title={s.title}
+   350→                subtitle={s.subtitle}
+   351→                icon={s.icon}
+   352→                state={state}
+   353→              />
+   354→            </li>
+   355→          );
+   356→        })}
+   357→      </motion.ol>
+   358→    </div>
+   359→  );
+   360→}
+   361→
+   362→/** SecurityBadge — small pill with shield/check icon */
+   363→function SecurityBadge({
+   364→  label,
+   365→  icon,
+   366→  tone = "navy",
+   367→}: {
+   368→  label: string;
+   369→  icon?: React.ReactNode;
+   370→  tone?: Accent;
+   371→}) {
+   372→  const tones: Record<Accent, string> = {
+   373→    navy: "bg-navy/8 text-navy ring-navy/20",
+   374→    electric: "bg-electric/8 text-electric ring-electric/20",
+   375→    cyan: "bg-cyan/8 text-cyan-brand ring-cyan-brand/20",
+   376→    purple: "bg-purple/8 text-purple-brand ring-purple-brand/20",
+   377→    gold: "bg-gold/12 text-gold ring-gold/25",
+   378→    emerald: "bg-emerald-brand/8 text-emerald-brand ring-emerald-brand/20",
+   379→    rose: "bg-rose-brand/8 text-rose-brand ring-rose-brand/20",
+   380→  };
+   381→  return (
+   382→    <span
+   383→      className={cn(
+   384→        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1",
+   385→        tones[tone]
+   386→      )}
+   387→    >
+   388→      {icon ?? <ShieldCheck size={11} />}
+   389→      {label}
+   390→    </span>
+   391→  );
+   392→}
+   393→
+   394→/** TrustBadge — large trust certification tile */
+   395→function TrustBadge({
+   396→  title,
+   397→  subtitle,
+   398→  icon,
+   399→  level = "Verified",
+   400→}: {
+   401→  title: string;
+   402→  subtitle: string;
+   403→  icon: React.ReactNode;
+   404→  level?: string;
+   405→}) {
+   406→  return (
+   407→    <div className="rounded-xl glass-2 ring-1 ring-border p-3 flex items-center gap-3">
+   408→      <div className="size-10 rounded-lg bg-gradient-to-br from-navy/15 to-electric/10 ring-1 ring-border flex items-center justify-center text-navy">
+   409→        {icon}
+   410→      </div>
+   411→      <div className="min-w-0 flex-1">
+   412→        <p className="text-xs font-semibold text-foreground truncate">{title}</p>
+   413→        <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
+   414→      </div>
+   415→      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-brand/12 px-2 py-0.5 text-[10px] font-semibold text-emerald-brand ring-1 ring-emerald-brand/20 shrink-0">
+   416→        <BadgeCheck size={11} />
+   417→        {level}
+   418→      </span>
+   419→    </div>
+   420→  );
+   421→}
+   422→
+   423→/** EncryptedSessionBadge — animated encryption indicator */
+   424→function EncryptedSessionBadge() {
+   425→  return (
+   426→    <motion.div
+   427→      variants={pulseGlow}
+   428→      animate="animate"
+   429→      className="inline-flex items-center gap-2 rounded-full glass-2 ring-1 ring-navy/25 px-3 py-1.5"
+   430→    >
+   431→      <motion.span
+   432→        animate={{ opacity: [0.4, 1, 0.4] }}
+   433→        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+   434→        className="size-1.5 rounded-full bg-emerald-brand"
+   435→      />
+   436→      <span className="text-[10px] font-bold tracking-wider text-navy uppercase">
+   437→        AES-256 Encrypted
+   438→      </span>
+   439→      <Lock size={11} className="text-navy" />
+   440→    </motion.div>
+   441→  );
+   442→}
+   443→
+   444→/** SecurityBanner — top alert banner */
+   445→function SecurityBanner({
+   446→  tone = "navy",
+   447→  icon,
+   448→  title,
+   449→  message,
+   450→}: {
+   451→  tone?: Accent;
+   452→  icon: React.ReactNode;
+   453→  title: string;
+   454→  message: string;
+   455→}) {
+   456→  const toneBg: Record<Accent, string> = {
+   457→    navy: "bg-navy/8 ring-navy/20 text-navy",
+   458→    electric: "bg-electric/8 ring-electric/20 text-electric",
+   459→    cyan: "bg-cyan/8 ring-cyan-brand/20 text-cyan-brand",
+   460→    purple: "bg-purple/8 ring-purple-brand/20 text-purple-brand",
+   461→    gold: "bg-gold/12 ring-gold/25 text-gold",
+   462→    emerald: "bg-emerald-brand/8 ring-emerald-brand/20 text-emerald-brand",
+   463→    rose: "bg-rose-brand/8 ring-rose-brand/20 text-rose-brand",
+   464→  };
+   465→  return (
+   466→    <div
+   467→      className={cn(
+   468→        "rounded-xl ring-1 p-3 sm:p-3.5 flex items-start gap-3",
+   469→        toneBg[tone]
+   470→      )}
+   471→    >
+   472→      <div className="size-8 rounded-lg bg-background/60 ring-1 ring-border flex items-center justify-center shrink-0">
+   473→        {icon}
+   474→      </div>
+   475→      <div className="flex-1 min-w-0">
+   476→        <p className="text-xs font-bold uppercase tracking-wider">{title}</p>
+   477→        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{message}</p>
+   478→      </div>
+   479→    </div>
+   480→  );
+   481→}
+   482→
+   483→/** RiskIndicator — animated risk score with ProgressRing */
+   484→function RiskIndicator({
+   485→  value,
+   486→  label = "Risk Score",
+   487→  size = 100,
+   488→}: {
+   489→  value: number;
+   490→  label?: string;
+   491→  size?: number;
+   492→}) {
+   493→  const level =
+   494→    value < 25 ? "Low" : value < 55 ? "Moderate" : value < 80 ? "Elevated" : "Critical";
+   495→  const ringGradient: "emerald" | "gold" | "purple" =
+   496→    value < 25 ? "emerald" : value < 55 ? "gold" : "purple";
+   497→  return (
+   498→    <div className="flex flex-col items-center text-center">
+   499→      <ProgressRing value={value} size={size} strokeWidth={9} gradient={ringGradient} />
+   500→      <span className="mt-2 text-xs font-semibold text-foreground">{label}</span>
+   501→      <span className="text-[10px] text-muted-foreground">{level} Risk</span>
+   502→    </div>
+   503→  );
+   504→}
+   505→
+   506→/** AdministratorAvatar — premium avatar with crown + lock */
+   507→function AdministratorAvatar({ size = 64 }: { size?: number }) {
+   508→  return (
+   509→    <div className="relative inline-flex" style={{ width: size, height: size }}>
+   510→      {/* Pulsing halo */}
+   511→      <motion.span
+   512→        animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.7, 0.4] }}
+   513→        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+   514→        className="absolute inset-0 rounded-2xl bg-navy/25 blur-xl"
+   515→      />
+   516→      {/* Avatar body */}
+   517→      <div className="relative size-full rounded-2xl bg-[linear-gradient(135deg,var(--navy),oklch(0.4_0.06_260)_55%,var(--electric))] ring-1 ring-navy/30 flex items-center justify-center shadow-[var(--shadow-lg)]">
+   518→        <Crown className="text-amber-300" size={size * 0.36} strokeWidth={2.2} />
+   519→        <motion.div
+   520→          animate={{ y: [0, -2, 0] }}
+   521→          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+   522→          className="absolute -bottom-1.5 -right-1.5 size-6 rounded-full bg-background ring-1 ring-border flex items-center justify-center shadow-sm"
+   523→        >
+   524→          <Lock size={11} className="text-navy" />
+   525→        </motion.div>
+   526→      </div>
+   527→    </div>
+   528→  );
+   529→}
+   530→
+   531→/** PermissionCard — single permission scope tile */
+   532→function PermissionCard({
+   533→  label,
+   534→  icon,
+   535→  scope,
+   536→  granted,
+   537→}: {
+   538→  label: string;
+   539→  icon: React.ReactNode;
+   540→  scope: string;
+   541→  granted: boolean;
+   542→}) {
+   543→  return (
+   544→    <div
+   545→      className={cn(
+   546→        "rounded-xl ring-1 p-3 flex items-center gap-3 transition-colors",
+   547→        granted
+   548→          ? "ring-emerald-brand/25 bg-emerald-brand/5"
+   549→          : "ring-border bg-muted/30 opacity-70"
+   550→      )}
+   551→    >
+   552→      <div
+   553→        className={cn(
+   554→          "size-8 rounded-lg flex items-center justify-center shrink-0",
+   555→          granted ? "bg-emerald-brand/10 text-emerald-brand" : "bg-muted text-muted-foreground"
+   556→        )}
+   557→      >
+   558→        {icon}
+   559→      </div>
+   560→      <div className="flex-1 min-w-0">
+   561→        <p className="text-xs font-semibold text-foreground truncate">{label}</p>
+   562→        <p className="text-[10px] text-muted-foreground truncate font-mono">{scope}</p>
+   563→      </div>
+   564→      <span
+   565→        className={cn(
+   566→          "shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1",
+   567→          granted
+   568→            ? "bg-emerald-brand/12 text-emerald-brand ring-emerald-brand/20"
+   569→            : "bg-muted text-muted-foreground ring-border"
+   570→        )}
+   571→      >
+   572→        {granted ? <Check size={10} /> : <X size={10} />}
+   573→        {granted ? "Granted" : "Locked"}
+   574→      </span>
+   575→    </div>
+   576→  );
+   577→}
+   578→
+   579→/* ============================================================
+   580→   AuthTimeline (legacy alias kept for spec naming parity)
+   581→   ============================================================ */
+   582→function AuthTimeline({
+   583→  currentStep,
+   584→  steps,
+   585→}: {
+   586→  currentStep: number;
+   587→  steps: { title: string; subtitle: string; icon: React.ReactNode; future?: boolean }[];
+   588→}) {
+   589→  return <AuthenticationTimeline currentStep={currentStep} steps={steps} />;
+   590→}
+   591→
+   592→/* ============================================================
+   593→   SecurityWarningDialog — reusable warning dialog
+   594→   ============================================================ */
+   595→const SECURITY_WARNINGS: WarningDef[] = [
+   596→  {
+   597→    id: "unauthorized",
+   598→    title: "Unauthorized Access",
+   599→    message:
+   600→      "Your account does not have permission to enter the CEO administration platform. This access attempt has been logged and reported to the platform security team.",
+   601→    severity: "high",
+   602→    icon: <ShieldX className="text-rose-brand" size={22} />,
+   603→  },
+   604→  {
+   605→    id: "invalid-credentials",
+   606→    title: "Invalid Credentials",
+   607→    message:
+   608→      "The CEO ID or password you entered is incorrect. Please verify your credentials and try again. Repeated failures may temporarily lock this device.",
+   609→    severity: "high",
+   610→    icon: <KeyRound className="text-gold" size={22} />,
+   611→  },
+   612→  {
+   613→    id: "otp-failed",
+   614→    title: "Future OTP Failed",
+   615→    message:
+   616→      "The one-time passcode you entered could not be verified. Future OTP verification is not yet enabled on this platform. Please contact the platform owner.",
+   617→    severity: "medium",
+   618→    icon: <Smartphone className="text-electric" size={22} />,
+   619→  },
+   620→  {
+   621→    id: "device-rejected",
+   622→    title: "Future Device Rejected",
+   623→    message:
+   624→      "This device has not been added to the trusted devices list. Future device verification is not yet enabled. The session has been terminated as a precaution.",
+   625→    severity: "high",
+   626→    icon: <Monitor className="text-purple-brand" size={22} />,
+   627→  },
+   628→  {
+   629→    id: "session-expired",
+   630→    title: "Future Session Expired",
+   631→    message:
+   632→      "Your administrator session has expired due to inactivity. Future session validation is not yet enabled. Please re-authenticate to continue.",
+   633→    severity: "medium",
+   634→    icon: <Clock className="text-cyan-brand" size={22} />,
+   635→  },
+   636→  {
+   637→    id: "account-locked",
+   638→    title: "Future Account Locked",
+   639→    message:
+   640→      "This administrator account has been temporarily locked after multiple failed verification attempts. Future lockout protection is not yet enabled.",
+   641→    severity: "critical",
+   642→    icon: <Ban className="text-rose-brand" size={22} />,
+   643→  },
+   644→  {
+   645→    id: "too-many-attempts",
+   646→    title: "Future Too Many Attempts",
+   647→    message:
+   648→      "Too many authentication attempts have been detected from this device. Future rate limiting is not yet enforced. Please wait before trying again.",
+   649→    severity: "high",
+   650→    icon: <TriangleAlert className="text-gold" size={22} />,
+   651→  },
+   652→  {
+   653→    id: "maintenance",
+   654→    title: "Future Maintenance",
+   655→    message:
+   656→      "The CEO administration platform is undergoing scheduled maintenance. Future maintenance windows are not yet configured. Please try again later.",
+   657→    severity: "medium",
+   658→    icon: <AlertCircle className="text-electric" size={22} />,
+   659→  },
+   660→];
+   661→
+   662→function SecurityWarningDialog({
+   663→  open,
+   664→  onOpenChange,
+   665→  warningId,
+   666→}: {
+   667→  open: boolean;
+   668→  onOpenChange: (v: boolean) => void;
+   669→  warningId: string;
+   670→}) {
+   671→  const warning = useMemo(
+   672→    () => SECURITY_WARNINGS.find((w) => w.id === warningId) ?? SECURITY_WARNINGS[0],
+   673→    [warningId]
+   674→  );
+   675→
+   676→  const severityConfig = {
+   677→    high: {
+   678→      tone: "rose" as const,
+   679→      label: "High Severity",
+   680→      labelClass: "bg-rose-brand/12 text-rose-brand ring-rose-brand/20",
+   681→    },
+   682→    critical: {
+   683→      tone: "rose" as const,
+   684→      label: "Critical Severity",
+   685→      labelClass: "bg-rose-brand/15 text-rose-brand ring-rose-brand/30",
+   686→    },
+   687→    medium: {
+   688→      tone: "gold" as const,
+   689→      label: "Medium Severity",
+   690→      labelClass: "bg-gold/15 text-gold ring-gold/25",
+   691→    },
+   692→  }[warning.severity];
+   693→
+   694→  return (
+   695→    <Dialog open={open} onOpenChange={onOpenChange}>
+   696→      <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-transparent border-0 shadow-none">
+   697→        <motion.div variants={modalPop} initial="initial" animate="animate" exit="exit">
+   698→          <GlassCard level={3} sheen reflect className="overflow-hidden">
+   699→            {/* Severity bar */}
+   700→            <div
+   701→              className={cn(
+   702→                "h-1.5 w-full",
+   703→                severityConfig.tone === "rose"
+   704→                  ? "bg-[linear-gradient(90deg,var(--rose-brand),var(--purple-brand))]"
+   705→                  : "bg-[linear-gradient(90deg,var(--gold),var(--electric))]"
+   706→              )}
+   707→            />
+   708→            <div className="p-6 sm:p-7">
+   709→              <div className="flex items-start gap-4">
+   710→                <motion.div
+   711→                  variants={pulseGlow}
+   712→                  animate="animate"
+   713→                  className="size-14 rounded-2xl glass-2 ring-1 ring-border flex items-center justify-center shrink-0"
+   714→                >
+   715→                  {warning.icon}
+   716→                </motion.div>
+   717→                <div className="flex-1 min-w-0">
+   718→                  <span
+   719→                    className={cn(
+   720→                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ring-1",
+   721→                      severityConfig.labelClass
+   722→                    )}
+   723→                  >
+   724→                    <AlertTriangle size={10} />
+   725→                    {severityConfig.label}
+   726→                  </span>
+   727→                  <DialogTitle className="mt-2 text-lg font-bold text-foreground">
+   728→                    {warning.title}
+   729→                  </DialogTitle>
+   730→                  <DialogDescription className="mt-1 text-sm text-muted-foreground leading-relaxed">
+   731→                    {warning.message}
+   732→                  </DialogDescription>
+   733→                </div>
+   734→              </div>
+   735→
+   736→              {/* Incident metadata */}
+   737→              <div className="mt-5 grid grid-cols-3 gap-2">
+   738→                {[
+   739→                  { label: "Incident ID", value: "INC-" + warning.id.slice(0, 4).toUpperCase() + "-7K2" },
+   740→                  { label: "Timestamp", value: new Date().toISOString().slice(11, 19) + " UTC" },
+   741→                  { label: "Status", value: "Logged" },
+   742→                ].map((m) => (
+   743→                  <div
+   744→                    key={m.label}
+   745→                    className="rounded-lg bg-muted/30 ring-1 ring-border px-2.5 py-1.5"
+   746→                  >
+   747→                    <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+   748→                      {m.label}
+   749→                    </p>
+   750→                    <p className="text-[11px] font-mono font-semibold text-foreground truncate">
+   751→                      {m.value}
+   752→                    </p>
+   753→                  </div>
+   754→                ))}
+   755→              </div>
+   756→
+   757→              <DialogFooter className="mt-6 sm:justify-between gap-2">
+   758→                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+   759→                  <Cctv size={11} className="text-rose-brand" />
+   760→                  Recorded to security audit log
+   761→                </div>
+   762→                <div className="flex gap-2">
+   763→                  <LootButton variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+   764→                    Dismiss
+   765→                  </LootButton>
+   766→                  <LootButton
+   767→                    variant="destructive"
+   768→                    size="sm"
+   769→                    leftIcon={<ShieldAlert size={14} />}
+   770→                    onClick={() => onOpenChange(false)}
+   771→                  >
+   772→                    Acknowledge
+   773→                  </LootButton>
+   774→                </div>
+   775→              </DialogFooter>
+   776→            </div>
+   777→          </GlassCard>
+   778→        </motion.div>
+   779→      </DialogContent>
+   780→    </Dialog>
+   781→  );
+   782→}
+   783→
+   784→/* ============================================================
+   785→   Animated security illustration (left panel centerpiece)
+   786→   ============================================================ */
+   787→function SecurityIllustration() {
+   788→  return (
+   789→    <div className="relative w-full aspect-square max-w-md mx-auto">
+   790→      {/* Background aura */}
+   791→      <motion.div
+   792→        animate={{ scale: [1, 1.08, 1], opacity: [0.3, 0.5, 0.3] }}
+   793→        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+   794→        className="absolute inset-6 rounded-full bg-[radial-gradient(circle,var(--navy)/0.18,transparent_70%)] blur-2xl"
+   795→      />
+   796→
+   797→      {/* Concentric rings */}
+   798→      {[0, 1, 2].map((i) => (
+   799→        <motion.div
+   800→          key={i}
+   801→          animate={{ rotate: i % 2 === 0 ? 360 : -360 }}
+   802→          transition={{ duration: 20 + i * 8, repeat: Infinity, ease: "linear" }}
+   803→          className="absolute inset-0 rounded-full border border-dashed"
+   804→          style={{
+   805→            margin: `${i * 24}px`,
+   806→            borderColor: i === 0 ? "oklch(0.27 0.05 260 / 0.25)" : i === 1 ? "oklch(0.62 0.22 255 / 0.2)" : "oklch(0.72 0.15 200 / 0.18)",
+   807→          }}
+   808→        />
+   809→      ))}
+   810→
+   811→      {/* Orbiting badges — outer ring */}
+   812→      <motion.div
+   813→        animate={{ rotate: 360 }}
+   814→        transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
+   815→        className="absolute inset-0"
+   816→      >
+   817→        {[
+   818→          { icon: <ShieldCheck size={14} />, color: "text-emerald-brand", bg: "bg-emerald-brand/10", pos: "top-0 left-1/2 -translate-x-1/2" },
+   819→          { icon: <KeyRound size={14} />, color: "text-gold", bg: "bg-gold/15", pos: "right-0 top-1/2 -translate-y-1/2" },
+   820→          { icon: <Fingerprint size={14} />, color: "text-electric", bg: "bg-electric/10", pos: "bottom-0 left-1/2 -translate-x-1/2" },
+   821→          { icon: <Lock size={14} />, color: "text-navy", bg: "bg-navy/10", pos: "left-0 top-1/2 -translate-y-1/2" },
+   822→        ].map((b, i) => (
+   823→          <div
+   824→            key={i}
+   825→            className={cn(
+   826→              "absolute size-9 rounded-xl ring-1 ring-border flex items-center justify-center glass-2",
+   827→              b.bg,
+   828→              b.color,
+   829→              b.pos
+   830→            )}
+   831→          >
+   832→            <motion.span
+   833→              animate={{ rotate: -360 }}
+   834→              transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
+   835→            >
+   836→              {b.icon}
+   837→            </motion.span>
+   838→          </div>
+   839→        ))}
+   840→      </motion.div>
+   841→
+   842→      {/* Center shield */}
+   843→      <motion.div
+   844→        variants={floating}
+   845→        initial="initial"
+   846→        animate="animate"
+   847→        className="absolute inset-0 flex items-center justify-center"
+   848→      >
+   849→        <motion.div
+   850→          animate={{ rotate: [0, -6, 6, -3, 0] }}
+   851→          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+   852→          className="relative size-32 sm:size-36 rounded-3xl glass-3 ring-1 ring-navy/30 flex items-center justify-center shadow-[var(--shadow-xl)]"
+   853→        >
+   854→          <motion.div
+   855→            animate={{ scale: [1, 1.06, 1] }}
+   856→            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+   857→            className="absolute inset-0 rounded-3xl bg-[radial-gradient(circle_at_center,var(--electric)/0.18,transparent_60%)]"
+   858→          />
+   859→          <Lock
+   860→            className="relative text-navy"
+   861→            size={56}
+   862→            strokeWidth={1.8}
+   863→          />
+   864→          {/* Shield orbiting the lock */}
+   865→          <motion.div
+   866→            animate={{ rotate: 360 }}
+   867→            transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
+   868→            className="absolute inset-0"
+   869→          >
+   870→            <ShieldCheck
+   871→              className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-electric"
+   872→              size={18}
+   873→            />
+   874→          </motion.div>
+   875→        </motion.div>
+   876→      </motion.div>
+   877→
+   878→      {/* Floating mini badges */}
+   879→      <motion.div
+   880→        variants={floating}
+   881→        initial="initial"
+   882→        animate="animate"
+   883→        transition={{ delay: 0.6 }}
+   884→        className="absolute top-[8%] right-[6%] glass-2 ring-1 ring-border rounded-xl px-2.5 py-1.5 flex items-center gap-1.5"
+   885→      >
+   886→        <Wifi size={11} className="text-emerald-brand" />
+   887→        <span className="text-[10px] font-semibold text-foreground">Secure</span>
+   888→      </motion.div>
+   889→      <motion.div
+   890→        variants={floating}
+   891→        initial="initial"
+   892→        animate="animate"
+   893→        transition={{ delay: 1.2 }}
+   894→        className="absolute bottom-[12%] left-[4%] glass-2 ring-1 ring-border rounded-xl px-2.5 py-1.5 flex items-center gap-1.5"
+   895→      >
+   896→        <Cpu size={11} className="text-electric" />
+   897→        <span className="text-[10px] font-semibold text-foreground">256-bit</span>
+   898→      </motion.div>
+   899→    </div>
+   900→  );
+   901→}
+   902→
+   903→/* ============================================================
+   904→   STEP 1 — CEO Security Gateway Hero
+   905→   ============================================================ */
+   906→function GatewayHero({
+   907→  onContinue,
+   908→}: {
+   909→  onContinue: () => void;
+   910→}) {
+   911→  const navigate = useNavigationStore((s) => s.navigate);
+   912→
+   913→  return (
+   914→    <motion.div
+   915→      variants={staggerContainer}
+   916→      initial="hidden"
+   917→      animate="visible"
+   918→      className="space-y-6"
+   919→    >
+   920→      <motion.div variants={slideUp} className="flex justify-center">
+   921→        <SecurityBadge
+   922→          label="Restricted Administration Zone"
+   923→          icon={<ShieldHalf size={11} />}
+   924→          tone="navy"
+   925→        />
+   926→      </motion.div>
+   927→
+   928→      <motion.div variants={slideUp} className="text-center space-y-3">
+   929→        <div className="inline-flex items-center gap-2 text-2xl sm:text-3xl font-bold text-foreground">
+   930→          <Lock className="text-navy" size={26} />
+   931→          CEO Dashboard
+   932→        </div>
+   933→        <p className="text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">
+   934→          This administration platform is reserved exclusively for authorized Chief
+   935→          Executive Officers and approved platform administrators. Your current account
+   936→          does not have sufficient permissions to continue.
+   937→        </p>
+   938→        <p className="text-xs text-muted-foreground/80 italic">
+   939→          If you believe this is an error, please contact the platform owner.
+   940→        </p>
+   941→      </motion.div>
+   942→
+   943→      <motion.div variants={slideUp} className="flex justify-center">
+   944→        <EncryptedSessionBadge />
+   945→      </motion.div>
+   946→
+   947→      <motion.div variants={slideUp} className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+   948→        <LootButton
+   949→          variant="glass"
+   950→          size="lg"
+   951→          fullWidth
+   952→          leftIcon={<ArrowLeft size={16} />}
+   953→          onClick={() => navigate("dashboard")}
+   954→        >
+   955→          Return Dashboard
+   956→        </LootButton>
+   957→        <LootButton
+   958→          variant="outline"
+   959→          size="lg"
+   960→          fullWidth
+   961→          leftIcon={<ShieldAlert size={16} />}
+   962→          onClick={() => navigate("support")}
+   963→        >
+   964→          Contact Support
+   965→        </LootButton>
+   966→        <LootButton
+   967→          variant="electric"
+   968→          size="lg"
+   969→          fullWidth
+   970→          rightIcon={<ArrowRight size={16} />}
+   971→          onClick={onContinue}
+   972→        >
+   973→          Administrator Login
+   974→        </LootButton>
+   975→      </motion.div>
+   976→
+   977→      <motion.div
+   978→        variants={slideUp}
+   979→        className="pt-4 border-t border-border/60 flex flex-wrap items-center justify-center gap-2"
+   980→      >
+   981→        <SecurityBadge label="SOC 2 Aligned" tone="emerald" icon={<Check size={10} />} />
+   982→        <SecurityBadge label="ISO 27001" tone="navy" icon={<Check size={10} />} />
+   983→        <SecurityBadge label="Audit Logged" tone="purple" icon={<History size={10} />} />
+   984→        <SecurityBadge label="Zero-Trust" tone="cyan" icon={<Network size={10} />} />
+   985→      </motion.div>
+   986→    </motion.div>
+   987→  );
+   988→}
+   989→
+   990→/* ============================================================
+   991→   STEP 2 — CEO Login Form
+   992→   ============================================================ */
+   993→function CeoLoginForm({
+   994→  onContinue,
+   995→}: {
+   996→  onContinue: () => void;
+   997→}) {
+   998→  const navigate = useNavigationStore((s) => s.navigate);
+   999→  const [ceoId, setCeoId] = useState("");
+  1000→  const [password, setPassword] = useState("");
+  1001→  const [remember, setRemember] = useState(false);
+  1002→  const [showPassword, setShowPassword] = useState(false);
+  1003→
+  1004→  const futureAuthMethods = [
+  1005→    { label: "2FA", icon: <Smartphone size={14} /> },
+  1006→    { label: "Security Key", icon: <KeySquare size={14} /> },
+  1007→    { label: "Passkey", icon: <ScanFace size={14} /> },
+  1008→    { label: "Trusted Device", icon: <HardDrive size={14} /> },
+  1009→  ];
+  1010→
+  1011→  return (
+  1012→    <motion.div
+  1013→      variants={staggerContainer}
+  1014→      initial="hidden"
+  1015→      animate="visible"
+  1016→      className="space-y-5"
+  1017→    >
+  1018→      <motion.div variants={slideUp} className="flex justify-center">
+  1019→        <SecurityBadge
+  1020→          label="Administrator Credentials"
+  1021→          icon={<UserCog size={11} />}
+  1022→          tone="navy"
+  1023→        />
+  1024→      </motion.div>
+  1025→
+  1026→      <motion.div variants={slideUp} className="text-center space-y-2">
+  1027→        <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+  1028→          Secure Administrator Login
+  1029→        </h2>
+  1030→        <p className="text-xs text-muted-foreground">
+  1031→          Enter your CEO administration credentials to continue.
+  1032→        </p>
+  1033→      </motion.div>
+  1034→
+  1035→      {/* CEO ID input */}
+  1036→      <motion.div variants={slideUp} className="space-y-1.5">
+  1037→        <label
+  1038→          htmlFor="ceo-id"
+  1039→          className="text-xs font-semibold text-foreground/70 tracking-wide"
+  1040→        >
+  1041→          CEO Administrator ID
+  1042→        </label>
+  1043→        <div className="relative">
+  1044→          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-navy">
+  1045→            <UserCog size={16} />
+  1046→          </span>
+  1047→          <input
+  1048→            id="ceo-id"
+  1049→            name="ceo-id"
+  1050→            type="text"
+  1051→            placeholder="CEO-XXXX-XXXX"
+  1052→            value={ceoId}
+  1053→            onChange={(e) => setCeoId(e.target.value)}
+  1054→            autoComplete="off"
+  1055→            className={cn(INPUT_CLASS, "pl-11 font-mono tracking-wider")}
+  1056→          />
+  1057→        </div>
+  1058→      </motion.div>
+  1059→
+  1060→      {/* Password input with eye toggle */}
+  1061→      <motion.div variants={slideUp} className="space-y-1.5">
+  1062→        <label
+  1063→          htmlFor="ceo-pw"
+  1064→          className="text-xs font-semibold text-foreground/70 tracking-wide"
+  1065→        >
+  1066→          Administrator Password
+  1067→        </label>
+  1068→        <div className="relative">
+  1069→          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-navy">
+  1070→            <LockKeyhole size={16} />
+  1071→          </span>
+  1072→          <input
+  1073→            id="ceo-pw"
+  1074→            name="ceo-pw"
+  1075→            type={showPassword ? "text" : "password"}
+  1076→            placeholder="••••••••••••"
+  1077→            value={password}
+  1078→            onChange={(e) => setPassword(e.target.value)}
+  1079→            autoComplete="off"
+  1080→            className={cn(INPUT_CLASS, "pl-11 pr-12")}
+  1081→          />
+  1082→          <button
+  1083→            type="button"
+  1084→            onClick={() => setShowPassword((v) => !v)}
+  1085→            aria-label={showPassword ? "Hide password" : "Show password"}
+  1086→            className="absolute right-2 top-1/2 -translate-y-1/2 size-8 rounded-lg inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+  1087→          >
+  1088→            {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+  1089→          </button>
+  1090→        </div>
+  1091→      </motion.div>
+  1092→
+  1093→      {/* Remember device checkbox */}
+  1094→      <motion.div variants={slideUp} className="flex items-center gap-2.5">
+  1095→        <Checkbox
+  1096→          id="remember-device"
+  1097→          checked={remember}
+  1098→          onCheckedChange={(v) => setRemember(v === true)}
+  1099→        />
+  1100→        <label
+  1101→          htmlFor="remember-device"
+  1102→          className="text-xs text-muted-foreground select-none cursor-pointer"
+  1103→        >
+  1104→          Remember this device for future sessions{" "}
+  1105→          <span className="text-[10px] text-muted-foreground/70">(placeholder)</span>
+  1106→        </label>
+  1107→      </motion.div>
+  1108→
+  1109→      {/* Action buttons */}
+  1110→      <motion.div variants={slideUp} className="space-y-2.5">
+  1111→        <LootButton
+  1112→          variant="electric"
+  1113→          size="lg"
+  1114→          fullWidth
+  1115→          leftIcon={<ShieldCheck size={16} />}
+  1116→          onClick={onContinue}
+  1117→        >
+  1118→          Secure Login
+  1119→        </LootButton>
+  1120→        <div className="grid grid-cols-2 gap-2.5">
+  1121→          <LootButton
+  1122→            variant="ghost"
+  1123→            size="md"
+  1124→            fullWidth
+  1125→            leftIcon={<X size={14} />}
+  1126→            onClick={() => navigate("dashboard")}
+  1127→          >
+  1128→            Cancel
+  1129→          </LootButton>
+  1130→          <LootButton
+  1131→            variant="outline"
+  1132→            size="md"
+  1133→            fullWidth
+  1134→            leftIcon={<ArrowLeft size={14} />}
+  1135→            onClick={() => navigate("dashboard")}
+  1136→          >
+  1137→            Return User Dashboard
+  1138→          </LootButton>
+  1139→        </div>
+  1140→      </motion.div>
+  1141→
+  1142→      {/* Future auth methods (disabled) */}
+  1143→      <motion.div
+  1144→        variants={slideUp}
+  1145→        className="pt-4 border-t border-border/60 space-y-2"
+  1146→      >
+  1147→        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+  1148→          Future Authentication Methods
+  1149→        </p>
+  1150→        <div className="grid grid-cols-4 gap-2">
+  1151→          {futureAuthMethods.map((m) => (
+  1152→            <button
+  1153→              key={m.label}
+  1154→              disabled
+  1155→              className="rounded-xl ring-1 ring-border bg-muted/30 px-2 py-2.5 flex flex-col items-center gap-1.5 opacity-50 cursor-not-allowed"
+  1156→            >
+  1157→              <span className="text-muted-foreground">{m.icon}</span>
+  1158→              <span className="text-[10px] font-semibold text-muted-foreground">
+  1159→                {m.label}
+  1160→              </span>
+  1161→            </button>
+  1162→          ))}
+  1163→        </div>
+  1164→        <p className="text-[10px] text-muted-foreground/70 text-center">
+  1165→          These methods are placeholders — not yet implemented.
+  1166→        </p>
+  1167→      </motion.div>
+  1168→    </motion.div>
+  1169→  );
+  1170→}
+  1171→
+  1172→/* ============================================================
+  1173→   STEP 3 — Multi-Step Authentication Timeline
+  1174→   ============================================================ */
+  1175→function AuthTimelineStep({
+  1176→  currentStep,
+  1177→  onAdvance,
+  1178→  onBack,
+  1179→}: {
+  1180→  currentStep: number;
+  1181→  onAdvance: () => void;
+  1182→  onBack: () => void;
+  1183→}) {
+  1184→  const navigate = useNavigationStore((s) => s.navigate);
+  1185→  const setRole = useAuthStore((s) => s.setRole);
+  1186→
+  1187→  const steps = [
+  1188→    { title: "CEO Identity", subtitle: "Administrator ID verified", icon: <UserCog size={14} /> },
+  1189→    { title: "Password", subtitle: "Credentials accepted", icon: <LockKeyhole size={14} /> },
+  1190→    { title: "Future OTP", subtitle: "One-time passcode (placeholder)", icon: <Smartphone size={14} />, future: true },
+  1191→    { title: "Future Device Verification", subtitle: "Trusted device check (placeholder)", icon: <Monitor size={14} />, future: true },
+  1192→    { title: "Future Trusted Device", subtitle: "Device attestation (placeholder)", icon: <HardDrive size={14} />, future: true },
+  1193→    { title: "Future Session Validation", subtitle: "Session integrity (placeholder)", icon: <Activity size={14} />, future: true },
+  1194→    { title: "Future Risk Analysis", subtitle: "Behavioral scoring (placeholder)", icon: <Radar size={14} />, future: true },
+  1195→    { title: "CEO Dashboard", subtitle: "Enter administration platform", icon: <Crown size={14} /> },
+  1196→  ];
+  1197→
+  1198→  // Active non-future steps: 0 (identity), 1 (password), then 2-6 are future, 7 is dashboard.
+  1199→  // We treat "current step" as the index up to which steps are completed.
+  1200→  // The dashboard step becomes "active" when currentStep reaches 7 (the final step).
+  1201→  const isFinal = currentStep >= 2;
+  1202→
+  1203→  return (
+  1204→    <motion.div
+  1205→      variants={staggerContainer}
+  1206→      initial="hidden"
+  1207→      animate="visible"
+  1208→      className="space-y-5"
+  1209→    >
+  1210→      <motion.div variants={slideUp} className="flex justify-center">
+  1211→        <SecurityBadge
+  1212→          label="Authentication In Progress"
+  1213→          icon={<Activity size={11} />}
+  1214→          tone="electric"
+  1215→        />
+  1216→      </motion.div>
+  1217→
+  1218→      <motion.div variants={slideUp} className="text-center space-y-2">
+  1219→        <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+  1220→          Multi-Step Verification
+  1221→        </h2>
+  1222→        <p className="text-xs text-muted-foreground">
+  1223→          Step {Math.min(currentStep + 1, steps.length)} of {steps.length} —{" "}
+  1224→          {steps[Math.min(currentStep, steps.length - 1)].title}
+  1225→        </p>
+  1226→      </motion.div>
+  1227→
+  1228→      {/* Progress bar */}
+  1229→      <motion.div variants={slideUp} className="space-y-1.5">
+  1230→        <div className="flex justify-between text-[10px] font-semibold text-muted-foreground">
+  1231→          <span>Progress</span>
+  1232→          <span className="tabular-nums text-navy">
+  1233→            {Math.round((Math.min(currentStep, steps.length) / steps.length) * 100)}%
+  1234→          </span>
+  1235→        </div>
+  1236→        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+  1237→          <motion.div
+  1238→            initial={{ width: 0 }}
+  1239→            animate={{
+  1240→              width: `${(Math.min(currentStep, steps.length) / steps.length) * 100}%`,
+  1241→            }}
+  1242→            transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+  1243→            className="h-full rounded-full bg-[linear-gradient(90deg,var(--navy),var(--electric))]"
+  1244→          />
+  1245→        </div>
+  1246→      </motion.div>
+  1247→
+  1248→      {/* Timeline */}
+  1249→      <motion.div variants={slideUp}>
+  1250→        <AuthenticationTimeline currentStep={currentStep} steps={steps} />
+  1251→      </motion.div>
+  1252→
+  1253→      {/* Action area */}
+  1254→      <motion.div variants={slideUp} className="pt-2 space-y-2.5">
+  1255→        <AnimatePresence mode="wait">
+  1256→          {isFinal ? (
+  1257→            <motion.div
+  1258→              key="enter"
+  1259→              variants={scaleIn}
+  1260→              initial="initial"
+  1261→              animate="animate"
+  1262→              exit="exit"
+  1263→            >
+  1264→              <LootButton
+  1265→                variant="electric"
+  1266→                size="lg"
+  1267→                fullWidth
+  1268→                leftIcon={<Crown size={16} />}
+  1269→                rightIcon={<ArrowRight size={16} />}
+  1270→                onClick={() => { setRole("ceo"); navigate("ceo-dashboard"); }}
+  1271→              >
+  1272→                Enter CEO Dashboard
+  1273→              </LootButton>
+  1274→            </motion.div>
+  1275→          ) : (
+  1276→            <motion.div
+  1277→              key="continue"
+  1278→              variants={scaleIn}
+  1279→              initial="initial"
+  1280→              animate="animate"
+  1281→              exit="exit"
+  1282→            >
+  1283→              <LootButton
+  1284→                variant="electric"
+  1285→                size="lg"
+  1286→                fullWidth
+  1287→                rightIcon={<ArrowRight size={16} />}
+  1288→                onClick={onAdvance}
+  1289→              >
+  1290→                Continue Verification
+  1291→              </LootButton>
+  1292→            </motion.div>
+  1293→          )}
+  1294→        </AnimatePresence>
+  1295→
+  1296→        <LootButton
+  1297→          variant="ghost"
+  1298→          size="md"
+  1299→          fullWidth
+  1300→          leftIcon={<ArrowLeft size={14} />}
+  1301→          onClick={onBack}
+  1302→        >
+  1303→          Back to Login
+  1304→        </LootButton>
+  1305→      </motion.div>
+  1306→
+  1307→      <motion.p
+  1308→        variants={slideUp}
+  1309→        className="text-[10px] text-muted-foreground/70 text-center pt-2"
+  1310→      >
+  1311→        Future verification steps are placeholders — clicking Continue advances the
+  1312→        UI but does not perform real authentication.
+  1313→      </motion.p>
+  1314→    </motion.div>
+  1315→  );
+  1316→}
+  1317→
+  1318→/* ============================================================
+  1319→   Static data — security panels + session fields
+  1320→   ============================================================ */
+  1321→const SECURITY_PANELS: SecurityPanelDef[] = [
+  1322→  {
+  1323→    id: "encryption",
+  1324→    title: "Encryption Status",
+  1325→    description: "AES-256-GCM end-to-end encryption active on this session.",
+  1326→    icon: <Lock size={18} />,
+  1327→    accent: "emerald",
+  1328→    status: "active",
+  1329→    statusLabel: "Active",
+  1330→  },
+  1331→  {
+  1332→    id: "connection",
+  1333→    title: "Secure Connection",
+  1334→    description: "TLS 1.3 with certificate pinning enforced.",
+  1335→    icon: <Globe2 size={18} />,
+  1336→    accent: "cyan",
+  1337→    status: "active",
+  1338→    statusLabel: "Active",
+  1339→  },
+  1340→  {
+  1341→    id: "session",
+  1342→    title: "Session Protection",
+  1343→    description: "Real-time session integrity monitoring enabled.",
+  1344→    icon: <ShieldCheck size={18} />,
+  1345→    accent: "navy",
+  1346→    status: "active",
+  1347→    statusLabel: "Active",
+  1348→  },
+  1349→  {
+  1350→    id: "fingerprint",
+  1351→    title: "Future Device Fingerprint",
+  1352→    description: "Hardware attestation will bind session to this device.",
+  1353→    icon: <Fingerprint size={18} />,
+  1354→    accent: "purple",
+  1355→    status: "future",
+  1356→    statusLabel: "Future",
+  1357→  },
+  1358→  {
+  1359→    id: "login-history",
+  1360→    title: "Future Login History",
+  1361→    description: "Chronological administrator access audit trail.",
+  1362→    icon: <History size={18} />,
+  1363→    accent: "gold",
+  1364→    status: "future",
+  1365→    statusLabel: "Future",
+  1366→  },
+  1367→  {
+  1368→    id: "trusted-devices",
+  1369→    title: "Future Trusted Devices",
+  1370→    description: "Registered devices permitted to access CEO platform.",
+  1371→    icon: <HardDrive size={18} />,
+  1372→    accent: "electric",
+  1373→    status: "future",
+  1374→    statusLabel: "Future",
+  1375→  },
+  1376→  {
+  1377→    id: "security-alerts",
+  1378→    title: "Future Security Alerts",
+  1379→    description: "Anomalies flagged by behavioral risk engine.",
+  1380→    icon: <Bell size={18} />,
+  1381→    accent: "rose",
+  1382→    status: "future",
+  1383→    statusLabel: "Future",
+  1384→  },
+  1385→];
+  1386→
+  1387→const SESSION_FIELDS: SessionFieldDef[] = [
+  1388→  { label: "Administrator Identity", value: "Platform Owner (Verified)", icon: <UserCog size={13} /> },
+  1389→  { label: "Session Started", value: "—", icon: <Clock size={13} /> },
+  1390→  { label: "Last Activity", value: "Awaiting authentication", icon: <Activity size={13} /> },
+  1391→  { label: "Session Timeout", value: "15 minutes (planned)", icon: <Timer size={13} /> },
+  1392→  { label: "Future Device", value: "Not registered", icon: <Monitor size={13} />, future: true },
+  1393→  { label: "Future Location", value: "Not resolved", icon: <MapPin size={13} />, future: true },
+  1394→  { label: "Future IP Address", value: "Not logged", icon: <Globe size={13} />, future: true },
+  1395→  { label: "Future Browser", value: "Not fingerprinted", icon: <Server size={13} />, future: true },
+  1396→  { label: "Future Recovery", value: "Not configured", icon: <RefreshCw size={13} />, future: true },
+  1397→];
+  1398→
+  1399→const PERMISSIONS = [
+  1400→  { label: "View All Users", icon: <Users size={14} />, scope: "ceo:users:read", granted: true },
+  1401→  { label: "Manage Rewards", icon: <Gift size={14} />, scope: "ceo:rewards:write", granted: true },
+  1402→  { label: "Audit Transactions", icon: <Activity size={14} />, scope: "ceo:audit:read", granted: true },
+  1403→  { label: "Broadcast Notices", icon: <Bell size={14} />, scope: "ceo:notices:write", granted: false },
+  1404→  { label: "Modify Platform Config", icon: <Building2 size={14} />, scope: "ceo:config:write", granted: false },
+  1405→  { label: "Delete User Accounts", icon: <Ban size={14} />, scope: "ceo:users:delete", granted: false },
+  1406→];
+  1407→
+  1408→/* ============================================================
+  1409→   LEFT panel — illustration + security panels + session
+  1410→   ============================================================ */
+  1411→function LeftPanel({
+  1412→  onSimulateWarning,
+  1413→}: {
+  1414→  onSimulateWarning: () => void;
+  1415→}) {
+  1416→  return (
+  1417→    <motion.div
+  1418→      variants={staggerContainer}
+  1419→      initial="hidden"
+  1420→      animate="visible"
+  1421→      className="space-y-5"
+  1422→    >
+  1423→      {/* Illustration */}
+  1424→      <motion.div variants={slideUp}>
+  1425→        <GlassCard level={2} sheen className="p-5 sm:p-6">
+  1426→          <div className="flex items-center justify-between mb-3">
+  1427→            <SecurityBadge
+  1428→              label="Security Gateway"
+  1429→              icon={<ShieldHalf size={11} />}
+  1430→              tone="navy"
+  1431→            />
+  1432→            <SecurityBadge label="Private" icon={<Lock size={10} />} tone="rose" />
+  1433→          </div>
+  1434→          <SecurityIllustration />
+  1435→        </GlassCard>
+  1436→      </motion.div>
+  1437→
+  1438→      {/* Security banner */}
+  1439→      <motion.div variants={slideUp}>
+  1440→        <SecurityBanner
+  1441→          tone="navy"
+  1442→          icon={<ShieldCheck size={16} className="text-navy" />}
+  1443→          title="Zero-Trust Architecture"
+  1444→          message="Every administrator action requires explicit verification. Sessions are isolated, encrypted, and audit-logged."
+  1445→        />
+  1446→      </motion.div>
+  1447→
+  1448→      {/* Security panels grid */}
+  1449→      <motion.div variants={slideUp}>
+  1450→        <div className="flex items-center justify-between mb-3">
+  1451→          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+  1452→            <ShieldCheck size={15} className="text-navy" />
+  1453→            Security Panels
+  1454→          </h3>
+  1455→          <span className="text-[10px] font-semibold text-muted-foreground">
+  1456→            {SECURITY_PANELS.filter((p) => p.status === "active").length} active /{" "}
+  1457→            {SECURITY_PANELS.length} total
+  1458→          </span>
+  1459→        </div>
+  1460→        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  1461→          {SECURITY_PANELS.map((p) => (
+  1462→            <SecurityCard
+  1463→              key={p.id}
+  1464→              title={p.title}
+  1465→              description={p.description}
+  1466→              icon={p.icon}
+  1467→              accent={p.accent}
+  1468→              status={p.status}
+  1469→              statusLabel={p.statusLabel}
+  1470→            />
+  1471→          ))}
+  1472→          {/* Risk score panel — uses ProgressRing */}
+  1473→          <SecurityCard
+  1474→            title="Future Risk Score"
+  1475→            description="Behavioral risk analysis score for this session."
+  1476→            icon={<Radar size={18} />}
+  1477→            accent="rose"
+  1478→            status="future"
+  1479→            statusLabel="Future"
+  1480→            className="sm:col-span-2"
+  1481→          >
+  1482→            <div className="flex items-center justify-center py-2">
+  1483→              <RiskIndicator value={18} label="Future Risk Score" size={96} />
+  1484→            </div>
+  1485→          </SecurityCard>
+  1486→        </div>
+  1487→      </motion.div>
+  1488→
+  1489→      {/* Trust badges */}
+  1490→      <motion.div variants={slideUp} className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+  1491→        <TrustBadge
+  1492→          title="Platform Owner"
+  1493→          subtitle="Verified administrator entity"
+  1494→          icon={<Crown size={18} className="text-amber-500" />}
+  1495→          level="Verified"
+  1496→        />
+  1497→        <TrustBadge
+  1498→          title="Audit Trail"
+  1499→          subtitle="Immutable session log"
+  1500→          icon={<History size={18} />}
+  1501→          level="Active"
+  1502→        />
+  1503→      </motion.div>
+  1504→
+  1505→      {/* Simulate warning button */}
+  1506→      <motion.div variants={slideUp}>
+  1507→        <GlassCard level={2} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+  1508→          <div className="flex items-center gap-3">
+  1509→            <div className="size-10 rounded-xl bg-rose-brand/10 text-rose-brand ring-1 ring-rose-brand/20 flex items-center justify-center">
+  1510→              <AlertTriangle size={18} />
+  1511→            </div>
+  1512→            <div>
+  1513→              <p className="text-sm font-semibold text-foreground">
+  1514→                Security Warning Simulator
+  1515→              </p>
+  1516→              <p className="text-xs text-muted-foreground">
+  1517→                Preview the unauthorized access warning dialog.
+  1518→              </p>
+  1519→            </div>
+  1520→          </div>
+  1521→          <LootButton
+  1522→            variant="destructive"
+  1523→            size="sm"
+  1524→            leftIcon={<ShieldAlert size={14} />}
+  1525→            onClick={onSimulateWarning}
+  1526→          >
+  1527→            Simulate Warning
+  1528→          </LootButton>
+  1529→        </GlassCard>
+  1530→      </motion.div>
+  1531→    </motion.div>
+  1532→  );
+  1533→}
+  1534→
+  1535→/* ============================================================
+  1536→   CEO Session Placeholder panel (left side, below panels)
+  1537→   ============================================================ */
+  1538→function CeoSessionPlaceholder() {
+  1539→  return (
+  1540→    <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">
+  1541→      {/* Administrator identity + avatar */}
+  1542→      <motion.div variants={slideUp}>
+  1543→        <GlassCard level={2} sheen className="p-5 sm:p-6">
+  1544→          <div className="flex items-center gap-4">
+  1545→            <AdministratorAvatar size={64} />
+  1546→            <div className="flex-1 min-w-0">
+  1547→              <div className="flex items-center gap-2">
+  1548→                <h3 className="text-base font-bold text-foreground">
+  1549→                  Administrator Identity
+  1550→                </h3>
+  1551→                <StatusBadge variant="info" dot pulse>
+  1552→                  Verified
+  1553→                </StatusBadge>
+  1554→              </div>
+  1555→              <p className="text-xs text-muted-foreground mt-0.5">
+  1556→                Chief Executive Officer · Platform Owner
+  1557→              </p>
+  1558→              <p className="text-[10px] text-muted-foreground/70 mt-1 font-mono">
+  1559→                Session ID: CEO-SESSION-PENDING
+  1560→              </p>
+  1561→            </div>
+  1562→          </div>
+  1563→        </GlassCard>
+  1564→      </motion.div>
+  1565→
+  1566→      {/* Session fields grid */}
+  1567→      <motion.div variants={slideUp}>
+  1568→        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+  1569→          <Activity size={15} className="text-electric" />
+  1570→          Session Architecture (Placeholder)
+  1571→        </h3>
+  1572→        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+  1573→          {SESSION_FIELDS.map((f) => (
+  1574→            <div
+  1575→              key={f.label}
+  1576→              className={cn(
+  1577→                "rounded-xl ring-1 p-3 flex items-center gap-3",
+  1578→                f.future
+  1579→                  ? "ring-dashed ring-border bg-muted/20 opacity-70"
+  1580→                  : "ring-border glass-2"
+  1581→              )}
+  1582→            >
+  1583→              <div className="size-8 rounded-lg bg-background/60 ring-1 ring-border flex items-center justify-center text-muted-foreground shrink-0">
+  1584→                {f.icon}
+  1585→              </div>
+  1586→              <div className="min-w-0 flex-1">
+  1587→                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+  1588→                  {f.label}
+  1589→                </p>
+  1590→                <p className="text-xs font-mono text-foreground truncate">{f.value}</p>
+  1591→              </div>
+  1592→              {f.future && (
+  1593→                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70 shrink-0">
+  1594→                  Future
+  1595→                </span>
+  1596→              )}
+  1597→            </div>
+  1598→          ))}
+  1599→        </div>
+  1600→      </motion.div>
+  1601→
+  1602→      {/* Permissions */}
+  1603→      <motion.div variants={slideUp}>
+  1604→        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+  1605→          <KeySquare size={15} className="text-purple-brand" />
+  1606→          Administrator Permissions
+  1607→        </h3>
+  1608→        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+  1609→          {PERMISSIONS.map((p) => (
+  1610→            <PermissionCard
+  1611→              key={p.scope}
+  1612→              label={p.label}
+  1613→              icon={p.icon}
+  1614→              scope={p.scope}
+  1615→              granted={p.granted}
+  1616→            />
+  1617→          ))}
+  1618→        </div>
+  1619→      </motion.div>
+  1620→    </motion.div>
+  1621→  );
+  1622→}
+  1623→
+  1624→/* ============================================================
+  1625→   Main CeoAuthView
+  1626→   ============================================================ */
+  1627→export function CeoAuthView() {
+  1628→  const navigate = useNavigationStore((s) => s.navigate);
+  1629→  const setRole = useAuthStore((s) => s.setRole);
+  1630→  const [step, setStep] = useState<AuthStep>("gateway");
+  1631→  const [timelineStep, setTimelineStep] = useState(0);
+  1632→  const [warningOpen, setWarningOpen] = useState(false);
+  1633→
+  1634→  // Scroll to top whenever step changes
+  1635→  useEffect(() => {
+  1636→    if (typeof window !== "undefined") {
+  1637→      window.scrollTo({ top: 0, behavior: "smooth" });
+  1638→    }
+  1639→  }, [step]);
+  1640→
+  1641→  const handleGatewayContinue = () => {
+  1642→    setStep("login");
+  1643→  };
+  1644→
+  1645→  const handleLoginContinue = () => {
+  1646→    setStep("timeline");
+  1647→    setTimelineStep(0);
+  1648→  };
+  1649→
+  1650→  const handleTimelineAdvance = () => {
+  1651→    setTimelineStep((s) => Math.min(s + 1, 7));
+  1652→  };
+  1653→
+  1654→  const handleTimelineBack = () => {
+  1655→    setStep("login");
+  1656→  };
+  1657→
+  1658→  const handleSimulateWarning = () => {
+  1659→    setWarningOpen(true);
+  1660→  };
+  1661→
+  1662→  const stepHeader = useMemo(() => {
+  1663→    if (step === "gateway") {
+  1664→      return { title: "CEO Security Gateway", sub: "Authorized administration access only" };
+  1665→    }
+  1666→    if (step === "login") {
+  1667→      return { title: "Administrator Login", sub: "Step 1 of 3 — Credentials" };
+  1668→    }
+  1669→    return { title: "Multi-Step Verification", sub: "Step 2 of 3 — Authentication timeline" };
+  1670→  }, [step]);
+  1671→
+  1672→  return (
+  1673→    <motion.div
+  1674→      variants={pageTransition}
+  1675→      initial="initial"
+  1676→      animate="animate"
+  1677→      exit="exit"
+  1678→      className="relative min-h-screen w-full flex flex-col"
+  1679→    >
+  1680→      {/* Top-left floating Logo → home */}
+  1681→      <motion.button
+  1682→        onClick={() => navigate("home")}
+  1683→        initial={{ opacity: 0, x: -10 }}
+  1684→        animate={{ opacity: 1, x: 0 }}
+  1685→        transition={{ duration: 0.5, delay: 0.1 }}
+  1686→        whileHover={{ scale: 1.03 }}
+  1687→        whileTap={{ scale: 0.98 }}
+  1688→        className="absolute top-5 left-5 sm:top-6 sm:left-6 z-50 inline-flex items-center gap-2 rounded-full glass-2 ring-1 ring-border px-3 py-1.5"
+  1689→        aria-label="Back to home"
+  1690→      >
+  1691→        <Logo size="sm" />
+  1692→      </motion.button>
+  1693→
+  1694→      {/* Top-right floating security badges */}
+  1695→      <motion.div
+  1696→        initial={{ opacity: 0, x: 10 }}
+  1697→        animate={{ opacity: 1, x: 0 }}
+  1698→        transition={{ duration: 0.5, delay: 0.15 }}
+  1699→        className="absolute top-5 right-5 sm:top-6 sm:right-6 z-50 hidden sm:flex items-center gap-2"
+  1700→      >
+  1701→        <EncryptedSessionBadge />
+  1702→        <button
+  1703→          onClick={() => navigate("support")}
+  1704→          className="inline-flex items-center gap-1.5 rounded-full glass-2 ring-1 ring-border px-3 py-1.5 text-[10px] font-semibold text-foreground hover:bg-accent transition-colors"
+  1705→        >
+  1706→          <ShieldAlert size={11} className="text-rose-brand" />
+  1707→          Security Help
+  1708→        </button>
+  1709→      </motion.div>
+  1710→
+  1711→      {/* Main content — centered workspace */}
+  1712→      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-20 sm:py-16 lg:py-12">
+  1713→        <div className="w-full max-w-7xl grid lg:grid-cols-[1.05fr_minmax(420px,520px)] gap-6 lg:gap-10 items-start">
+  1714→          {/* LEFT — illustration + security panels + session placeholder */}
+  1715→          <div className="hidden lg:block space-y-6">
+  1716→            <LeftPanel onSimulateWarning={handleSimulateWarning} />
+  1717→            <CeoSessionPlaceholder />
+  1718→          </div>
+  1719→
+  1720→          {/* RIGHT — step content (animated swap) */}
+  1721→          <div className="lg:sticky lg:top-12">
+  1722→            <GlassCard
+  1723→              level={3}
+  1724→              sheen
+  1725→              reflect
+  1726→              className="p-6 sm:p-8 shadow-[var(--shadow-xl)] relative overflow-hidden"
+  1727→            >
+  1728→              {/* Accent bar */}
+  1729→              <div className="absolute top-0 left-0 right-0 h-1.5 bg-[linear-gradient(90deg,var(--navy),var(--electric),var(--cyan-brand))]" />
+  1730→
+  1731→              {/* Step header */}
+  1732→              <div className="mb-6 flex items-center justify-between">
+  1733→                <div>
+  1734→                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-navy">
+  1735→                    {stepHeader.sub}
+  1736→                  </p>
+  1737→                  <h2 className="text-lg sm:text-xl font-bold text-foreground mt-0.5">
+  1738→                    {stepHeader.title}
+  1739→                  </h2>
+  1740→                </div>
+  1741→                {/* Mini step indicator */}
+  1742→                <div className="flex items-center gap-1.5">
+  1743→                  {(["gateway", "login", "timeline"] as AuthStep[]).map((s, i) => (
+  1744→                    <div
+  1745→                      key={s}
+  1746→                      className={cn(
+  1747→                        "h-1.5 rounded-full transition-all duration-300",
+  1748→                        step === s
+  1749→                          ? "w-6 bg-gradient-to-r from-navy to-electric"
+  1750→                          : "w-1.5 bg-muted"
+  1751→                      )}
+  1752→                      aria-label={`Step ${i + 1}: ${s}`}
+  1753→                    />
+  1754→                  ))}
+  1755→                </div>
+  1756→              </div>
+  1757→
+  1758→              {/* Animated step swap */}
+  1759→              <AnimatePresence mode="wait">
+  1760→                <motion.div
+  1761→                  key={step}
+  1762→                  variants={fade}
+  1763→                  initial="initial"
+  1764→                  animate="animate"
+  1765→                  exit="exit"
+  1766→                >
+  1767→                  {step === "gateway" && <GatewayHero onContinue={handleGatewayContinue} />}
+  1768→                  {step === "login" && <CeoLoginForm onContinue={handleLoginContinue} />}
+  1769→                  {step === "timeline" && (
+  1770→                    <AuthTimelineStep
+  1771→                      currentStep={timelineStep}
+  1772→                      onAdvance={handleTimelineAdvance}
+  1773→                      onBack={handleTimelineBack}
+  1774→                    />
+  1775→                  )}
+  1776→                </motion.div>
+  1777→              </AnimatePresence>
+  1778→            </GlassCard>
+  1779→
+  1780→            {/* Mobile-only: stacked security panels below the form */}
+  1781→            <div className="lg:hidden mt-6 space-y-5">
+  1782→              <LeftPanel onSimulateWarning={handleSimulateWarning} />
+  1783→              <CeoSessionPlaceholder />
+  1784→            </div>
+  1785→          </div>
+  1786→        </div>
+  1787→      </div>
+  1788→
+  1789→      {/* Bottom security footer */}
+  1790→      <motion.footer
+  1791→        initial={{ opacity: 0, y: 10 }}
+  1792→        animate={{ opacity: 1, y: 0 }}
+  1793→        transition={{ duration: 0.5, delay: 0.3 }}
+  1794→        className="border-t border-border/60 mt-auto"
+  1795→      >
+  1796→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+  1797→          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+  1798→            <Cctv size={12} className="text-rose-brand" />
+  1799→            All access attempts are recorded. Unauthorized access is prohibited.
+  1800→          </div>
+  1801→          <div className="flex items-center gap-2 flex-wrap justify-center">
+  1802→            <SecurityBadge label="SOC 2" tone="emerald" icon={<Check size={10} />} />
+  1803→            <SecurityBadge label="ISO 27001" tone="navy" icon={<Check size={10} />} />
+  1804→            <SecurityBadge label="Audit Logged" tone="purple" icon={<History size={10} />} />
+  1805→            <SecurityBadge label="Zero-Trust" tone="cyan" icon={<Network size={10} />} />
+  1806→          </div>
+  1807→        </div>
+  1808→      </motion.footer>
+  1809→
+  1810→      {/* Security warning dialog */}
+  1811→      <SecurityWarningDialog
+  1812→        open={warningOpen}
+  1813→        onOpenChange={setWarningOpen}
+  1814→        warningId="unauthorized"
+  1815→      />
+  1816→    </motion.div>
+  1817→  );
+  1818→}
+  1819→
