@@ -1458,3 +1458,70 @@ Stage Summary:
 - All premium UI preserved (glass cards, animations, gradients, colors)
 - All values backend-ready (from stores or API placeholder)
 - No fake data, no hardcoded statistics
+
+---
+Task ID: p4-history-notif-leaderboard
+Agent: full-stack-developer
+Task: Rewrite History, Notifications, Leaderboard pages
+
+Work Log:
+- Read worklog.md and analyzed existing source files: transactions-view.tsx (2291 lines), notifications-view.tsx, gamification-view.tsx
+- Reviewed lootloom component APIs: PageContainer, PageHeader, GlassCard, LootButton, IconBadge, StatusBadge, EmptyState, SkeletonRow, AnimatedCounter, WidgetCard
+- Reviewed lib/animations presets: cardReveal, staggerContainer, hoverLift, floating
+- Reviewed stores: useNavigationStore, useNotificationStore, useUserStore, useWalletStore
+- Reviewed types: NotificationItem, TransactionItem, LeaderboardUser, ViewId
+
+- FILE 1: transactions-view.tsx → TransactionsView (History)
+  * Replaced 2291-line mega-view with focused single-purpose History view (~334 lines)
+  * PageHeader: "History" / "Your redeem and account activity" + Wallet nav + Refresh button
+  * Defined local HistoryItem type with: id, type (redeem/credit/debit/bonus/referral/system), amountInr (₹), coins, status (Pending/Approved/Rejected/Cancelled/Completed), date, description, ceoMessage
+  * HISTORY_ITEMS placeholder array initialized to [] — backend will populate via /api/transactions
+  * HistoryItemCard: type icon (IconBadge), label, StatusBadge with status-specific icon (Hourglass/CheckCircle2/XCircle/Ban), color-coded amount (+green/−red/neutral), gold coins counter, formatted date, CEO Message callout (purple-themed, dynamic label: "Rejection Reason" / "Approval Message" / "CEO Message")
+  * Loading state: SkeletonRow count=5; Empty state: "No history yet" / "Start earning coins to see your activity" with "Start Earning" CTA
+  * Status → variant mapping: Pending=warning, Approved=success, Rejected=error, Cancelled=default, Completed=success
+  * Removed ALL: fake analytics (ANALYTICS_DAILY/WEEKLY/MONTHLY, CATEGORY_DISTRIBUTION pie), charts (Area/Pie charts, recharts), statistics tiles with fake trends, progress rings, timeline section, wallet+redeem activity split, referral+achievement activity split, analytics preview, notification activity preview, export center, states preview, transaction detail dialog, advanced filters (StatusChip/FilterBar/FilterField/FilterSelect/AnalyticsTabs helpers), MiniStatTile with trend, all hardcoded demo transaction cards
+  * Removed unused recharts, dialog imports, and 40+ unused lucide icons
+
+- FILE 2: notifications-view.tsx → NotificationsView
+  * Replaced long notifications-view with focused single-purpose Notifications view (~297 lines)
+  * PageHeader: "Notifications" / "Your recent updates" + Earn Coins nav + Mark All Read button (disabled when 0 unread)
+  * Defined local NotificationEvent union: redeem_submitted, redeem_approved, redeem_rejected, coins_added, coins_deducted, ceo_message, support_reply, profile_updated, security_alert
+  * EVENT_META: each event → { label, icon (string for IconBadge), accent }
+  * deriveEvent(item): infers event from NotificationItem.type + title/body keywords (security/ceo/support/profile/approved/rejected/submitted/deduct/added) — backend can later send richer discriminator
+  * NotificationCard: IconBadge icon, title (or event label), Read/Unread StatusBadge, event label caption, body message, relative time (Just now / Xm/Xh/Xd ago / date), per-item "Mark as Read" LootButton when unread
+  * Unread items get electric ring + subtle bg tint + dot indicator on icon
+  * Uses useNotificationStore for items, markRead, markAllRead, unreadCount
+  * Loading state: SkeletonRow count=5; Empty state: "No notifications" / "You're all caught up"
+  * Removed ALL: notification statistics/analytics, AreaChart/BarChart/PieChart charts, fake counters, fake categories, fake marketing notifications, dummy alerts, notification preferences tabs, notification timeline, notification detail dialog, archive/pin/delete actions
+
+- FILE 3: gamification-view.tsx → GamificationView (Leaderboard)
+  * Replaced long gamification-view with focused single-purpose Leaderboard view (~493 lines)
+  * PageHeader: "Leaderboard" / "Top earners on LootLoom" + History nav + Refresh button
+  * Current user "Your Standing" banner at top (uses useUserStore.fullName, IconBadge Trophy gold, electric glow)
+  * Defined local LeaderboardEntry type: id, rank, username, avatar?, totalRedeemedInr (₹), coinsRedeemed, isCurrentUser?
+  * LEADERBOARD_ENTRIES placeholder array initialized to [] — backend will populate via /api/leaderboard
+  * Podium component: top 3 ranked entries with gold (rank 1, center, Crown icon), silver (rank 2, left, Medal icon), bronze (rank 3, right, Medal icon); staggered heights (mt-0/6/12) for visual podium effect; gradient backgrounds, glow shadows, ring accents; shows large Avatar, username, rank, Total Redeemed (₹ via AnimatedCounter) + Coins counters; current user gets electric outline + "You" badge
+  * LeaderboardRow (rank 4+): compact row with rank chip, Avatar, username (with "You" indicator if current user), coins counter (hidden on mobile), redeemed ₹ counter; current user highlighted with electric ring + bg
+  * Avatar helper: uses <img> when avatar URL present, otherwise initials fallback with gradient bg
+  * Loading state: SkeletonRow count=6; Empty state: "No rankings yet" / "Be the first to redeem!" with "Redeem Now" CTA
+  * Removed ALL: XP, levels, achievements, badges, streaks, referral ranking, daily/weekly/monthly tabs, fake users/demo profiles, fake scores, challenges, missions, milestone rewards, reward showcase, progress dashboard, activity feed, AreaChart/BarChart/LineChart/RadialBarChart charts, recharts, all hardcoded fake leaderboard data
+
+- Cleanup: Each file starts with "use client"; only imports actually used; no void placeholder refs; no unused state/effects
+- Reused lootloom components: PageContainer, PageHeader, GlassCard, LootButton, IconBadge, StatusBadge, EmptyState, SkeletonRow, AnimatedCounter
+- Reused framer-motion presets: cardReveal, staggerContainer
+- All values placeholder-ready (0 items in HISTORY_ITEMS / LEADERBOARD_ENTRIES, store-driven notifications) — zero hardcoded fake numbers
+- Premium design language fully preserved: glass cards (levels 1-2), sheen/hover/glow effects, gradient text, IndianRupee + Coins accent icons, color-coded credit/debit amounts, podium gradients with gold/silver/bronze theming, framer-motion staggered reveals
+
+Verification:
+- bun run lint: 0 errors, 0 warnings (exit code 0)
+- Dev server: hot-reloaded successfully ("✓ Compiled" entries in dev.log)
+- All three named exports verified: TransactionsView, NotificationsView, GamificationView
+
+Stage Summary:
+- History view: 2291 lines → ~334 lines (single focused list with CEO message integration)
+- Notifications view: long multi-section view → ~297 lines (simple list with mark-read actions, store-driven)
+- Leaderboard view: long multi-section view → ~493 lines (podium + ranked list, no XP/achievements/streaks)
+- All premium UI preserved (glass cards, gradients, animations)
+- All values backend-ready (empty placeholder arrays + store data)
+- No fake data, no hardcoded statistics, no analytics/charts/timelines/preferences dialogs
+- ESLint passes; dev server compiles successfully
