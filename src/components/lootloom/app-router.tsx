@@ -5,36 +5,39 @@ import { useNavigationStore, useAuthStore } from "@/stores";
 import { BackgroundEngine, AppShell, pageTransition, RestrictedAccess, CeoLayout } from "@/components/lootloom";
 import { LEGAL_VIEWS, CEO_VIEWS, SYSTEM_VIEWS, AUTH_VIEWS } from "@/config/navigation";
 import { RouteGuard } from "@/components/auth";
-import { lazy, Suspense, useMemo, Component, type ReactNode } from "react";
+import { Suspense, useMemo, Component, type ReactNode } from "react";
 import { GlassLoader } from "@/components/lootloom/states";
 import { RefreshCw, AlertTriangle } from "lucide-react";
 import type { ViewId } from "@/types";
 
-// Lazy-load all feature views for code splitting
-const HomeView = lazy(() => import("@/features/home/home-view").then((m) => ({ default: m.HomeView })));
-const AuthView = lazy(() => import("@/features/auth/auth-view").then((m) => ({ default: m.AuthView })));
-const DashboardView = lazy(() => import("@/features/dashboard/dashboard-view").then((m) => ({ default: m.DashboardView })));
-const WalletView = lazy(() => import("@/features/wallet/wallet-view").then((m) => ({ default: m.WalletView })));
-const EarnView = lazy(() => import("@/features/earn/earn-view").then((m) => ({ default: m.EarnView })));
-const RewardsView = lazy(() => import("@/features/rewards/rewards-view").then((m) => ({ default: m.RewardsView })));
-const PagesView = lazy(() => import("@/features/pages/pages-view").then((m) => ({ default: m.PagesView })));
-const SystemView = lazy(() => import("@/features/system/system-view").then((m) => ({ default: m.SystemView })));
-const TransactionsView = lazy(() => import("@/features/transactions/transactions-view").then((m) => ({ default: m.TransactionsView })));
-const NotificationsView = lazy(() => import("@/features/notifications/notifications-view").then((m) => ({ default: m.NotificationsView })));
-const ProfileView = lazy(() => import("@/features/profile/profile-view").then((m) => ({ default: m.ProfileView })));
-const GamificationView = lazy(() => import("@/features/gamification/gamification-view").then((m) => ({ default: m.GamificationView })));
-const SupportView = lazy(() => import("@/features/support/support-view").then((m) => ({ default: m.SupportView })));
-const LegalView = lazy(() => import("@/features/legal/legal-view").then((m) => ({ default: m.LegalView })));
+// CRITICAL: All views are imported DIRECTLY (not lazy) because lazy loading
+// causes separate chunk compilation/loading which fails in memory-constrained
+// environments (4GB sandbox). Direct imports bundle everything into one chunk
+// that loads reliably.
+import { HomeView } from "@/features/home/home-view";
+import { AuthView } from "@/features/auth/auth-view";
+import { DashboardView } from "@/features/dashboard/dashboard-view";
+import { WalletView } from "@/features/wallet/wallet-view";
+import { EarnView } from "@/features/earn/earn-view";
+import { RewardsView } from "@/features/rewards/rewards-view";
+import { PagesView } from "@/features/pages/pages-view";
+import { SystemView } from "@/features/system/system-view";
+import { TransactionsView } from "@/features/transactions/transactions-view";
+import { NotificationsView } from "@/features/notifications/notifications-view";
+import { ProfileView } from "@/features/profile/profile-view";
+import { GamificationView } from "@/features/gamification/gamification-view";
+import { SupportView } from "@/features/support/support-view";
+import { LegalView } from "@/features/legal/legal-view";
 
 // CEO views
-const CeoAuthView = lazy(() => import("@/features/ceo/ceo-auth-view").then((m) => ({ default: m.CeoAuthView })));
-const CeoDashboardView = lazy(() => import("@/features/ceo/ceo-dashboard-view").then((m) => ({ default: m.CeoDashboardView })));
-const CeoUsersView = lazy(() => import("@/features/ceo/ceo-users-view").then((m) => ({ default: m.CeoUsersView })));
-const CeoRedeemView = lazy(() => import("@/features/ceo/ceo-redeem-view").then((m) => ({ default: m.CeoRedeemView })));
-const CeoSupportView = lazy(() => import("@/features/ceo/ceo-support-view").then((m) => ({ default: m.CeoSupportView })));
-const CeoNotificationsView = lazy(() => import("@/features/ceo/ceo-notifications-view").then((m) => ({ default: m.CeoNotificationsView })));
-const CeoHistoryView = lazy(() => import("@/features/ceo/ceo-history-view").then((m) => ({ default: m.CeoHistoryView })));
-const CeoSettingsView = lazy(() => import("@/features/ceo/ceo-settings-view").then((m) => ({ default: m.CeoSettingsView })));
+import { CeoAuthView } from "@/features/ceo/ceo-auth-view";
+import { CeoDashboardView } from "@/features/ceo/ceo-dashboard-view";
+import { CeoUsersView } from "@/features/ceo/ceo-users-view";
+import { CeoRedeemView } from "@/features/ceo/ceo-redeem-view";
+import { CeoSupportView } from "@/features/ceo/ceo-support-view";
+import { CeoNotificationsView } from "@/features/ceo/ceo-notifications-view";
+import { CeoHistoryView } from "@/features/ceo/ceo-history-view";
+import { CeoSettingsView } from "@/features/ceo/ceo-settings-view";
 
 const AUTH_SET = new Set(AUTH_VIEWS);
 const SYSTEM_SET = new Set(SYSTEM_VIEWS);
@@ -159,56 +162,56 @@ export function AppRouter() {
 
   const view = useMemo(() => {
     if (isPublicView)
-      return <ViewSuspense><HomeView /></ViewSuspense>;
+      return <HomeView />;
     if (isAuthView)
-      return <ViewSuspense><AuthView /></ViewSuspense>;
+      return <AuthView />;
     if (isSystemView)
-      return <ViewSuspense><SystemView /></ViewSuspense>;
+      return <SystemView />;
     if (isLegalView)
-      return <ViewSuspense><LegalView /></ViewSuspense>;
+      return <LegalView />;
     if (current === "ceo-login")
-      return <ViewSuspense><CeoAuthView /></ViewSuspense>;
+      return <CeoAuthView />;
 
     // CEO authenticated views — guarded by role check
     if (current === "ceo-dashboard")
-      return isCeoAuthenticated ? <ViewSuspense><CeoDashboardView /></ViewSuspense> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoDashboardView /> : <RestrictedAccess />;
     if (current === "ceo-redeem")
-      return isCeoAuthenticated ? <ViewSuspense><CeoRedeemView /></ViewSuspense> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoRedeemView /> : <RestrictedAccess />;
     if (current === "ceo-users")
-      return isCeoAuthenticated ? <ViewSuspense><CeoUsersView /></ViewSuspense> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoUsersView /> : <RestrictedAccess />;
     if (current === "ceo-notifications")
-      return isCeoAuthenticated ? <ViewSuspense><CeoNotificationsView /></ViewSuspense> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoNotificationsView /> : <RestrictedAccess />;
     if (current === "ceo-support")
-      return isCeoAuthenticated ? <ViewSuspense><CeoSupportView /></ViewSuspense> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoSupportView /> : <RestrictedAccess />;
     if (current === "ceo-history")
-      return isCeoAuthenticated ? <ViewSuspense><CeoHistoryView /></ViewSuspense> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoHistoryView /> : <RestrictedAccess />;
     if (current === "ceo-settings")
-      return isCeoAuthenticated ? <ViewSuspense><CeoSettingsView /></ViewSuspense> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoSettingsView /> : <RestrictedAccess />;
 
     // App views — protected by RouteGuard (redirects to login when unauthenticated)
     switch (current) {
       case "dashboard":
-        return <RouteGuard><ViewSuspense><DashboardView /></ViewSuspense></RouteGuard>;
+        return <RouteGuard><DashboardView /></RouteGuard>;
       case "wallet":
-        return <RouteGuard><ViewSuspense><WalletView /></ViewSuspense></RouteGuard>;
+        return <RouteGuard><WalletView /></RouteGuard>;
       case "earn":
-        return <RouteGuard><ViewSuspense><EarnView /></ViewSuspense></RouteGuard>;
+        return <RouteGuard><EarnView /></RouteGuard>;
       case "redeem":
-        return <RouteGuard><ViewSuspense><RewardsView /></ViewSuspense></RouteGuard>;
+        return <RouteGuard><RewardsView /></RouteGuard>;
       case "history":
-        return <RouteGuard><ViewSuspense><TransactionsView /></ViewSuspense></RouteGuard>;
+        return <RouteGuard><TransactionsView /></RouteGuard>;
       case "notifications":
-        return <RouteGuard><ViewSuspense><NotificationsView /></ViewSuspense></RouteGuard>;
+        return <RouteGuard><NotificationsView /></RouteGuard>;
       case "profile":
-        return <RouteGuard><ViewSuspense><ProfileView /></ViewSuspense></RouteGuard>;
+        return <RouteGuard><ProfileView /></RouteGuard>;
       case "leaderboard":
-        return <RouteGuard><ViewSuspense><GamificationView /></ViewSuspense></RouteGuard>;
+        return <RouteGuard><GamificationView /></RouteGuard>;
       case "support":
-        return <RouteGuard><ViewSuspense><SupportView /></ViewSuspense></RouteGuard>;
+        return <RouteGuard><SupportView /></RouteGuard>;
       case "ceo-restricted":
         return <RestrictedAccess />;
       default:
-        return <RouteGuard><ViewSuspense><PagesView /></ViewSuspense></RouteGuard>;
+        return <RouteGuard><PagesView /></RouteGuard>;
     }
   }, [current, isAuthView, isSystemView, isLegalView, isCeoView, isPublicView, isCeoAuthenticated]);
 
