@@ -52,6 +52,10 @@ interface AuthState {
   setStatus: (status: AuthStatus) => void;
   setRole: (role: UserRole) => void;
   setAuthenticated: (v: boolean) => void;
+  /** Convenience: mark authenticated + role=user. Backend wiring happens in AuthDataSync. */
+  login: () => void;
+  /** Convenience: mark unauthenticated + role=user. Call signOut() for real session cleanup. */
+  logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -67,6 +71,10 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: v,
           status: v ? "authenticated" : "unauthenticated",
         })),
+      login: () =>
+        set({ isAuthenticated: true, status: "authenticated", role: "user" }),
+      logout: () =>
+        set({ isAuthenticated: false, status: "unauthenticated", role: "user" }),
     }),
     {
       name: "lootloom-auth",

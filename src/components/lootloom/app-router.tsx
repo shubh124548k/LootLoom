@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useNavigationStore, useAuthStore } from "@/stores";
 import { BackgroundEngine, AppShell, pageTransition, RestrictedAccess, CeoLayout } from "@/components/lootloom";
 import { LEGAL_VIEWS, CEO_VIEWS, SYSTEM_VIEWS, AUTH_VIEWS } from "@/config/navigation";
+import { RouteGuard } from "@/components/auth";
 import { lazy, Suspense, useMemo } from "react";
 import { GlassLoader } from "@/components/lootloom/states";
 import type { ViewId } from "@/types";
@@ -107,30 +108,30 @@ export function AppRouter() {
     if (current === "ceo-settings")
       return isCeoAuthenticated ? <ViewSuspense><CeoSettingsView /></ViewSuspense> : <RestrictedAccess />;
 
-    // App views
+    // App views — protected by RouteGuard (redirects to login when unauthenticated)
     switch (current) {
       case "dashboard":
-        return <ViewSuspense><DashboardView /></ViewSuspense>;
+        return <RouteGuard><ViewSuspense><DashboardView /></ViewSuspense></RouteGuard>;
       case "wallet":
-        return <ViewSuspense><WalletView /></ViewSuspense>;
+        return <RouteGuard><ViewSuspense><WalletView /></ViewSuspense></RouteGuard>;
       case "earn":
-        return <ViewSuspense><EarnView /></ViewSuspense>;
+        return <RouteGuard><ViewSuspense><EarnView /></ViewSuspense></RouteGuard>;
       case "redeem":
-        return <ViewSuspense><RewardsView /></ViewSuspense>;
+        return <RouteGuard><ViewSuspense><RewardsView /></ViewSuspense></RouteGuard>;
       case "history":
-        return <ViewSuspense><TransactionsView /></ViewSuspense>;
+        return <RouteGuard><ViewSuspense><TransactionsView /></ViewSuspense></RouteGuard>;
       case "notifications":
-        return <ViewSuspense><NotificationsView /></ViewSuspense>;
+        return <RouteGuard><ViewSuspense><NotificationsView /></ViewSuspense></RouteGuard>;
       case "profile":
-        return <ViewSuspense><ProfileView /></ViewSuspense>;
+        return <RouteGuard><ViewSuspense><ProfileView /></ViewSuspense></RouteGuard>;
       case "leaderboard":
-        return <ViewSuspense><GamificationView /></ViewSuspense>;
+        return <RouteGuard><ViewSuspense><GamificationView /></ViewSuspense></RouteGuard>;
       case "support":
-        return <ViewSuspense><SupportView /></ViewSuspense>;
+        return <RouteGuard><ViewSuspense><SupportView /></ViewSuspense></RouteGuard>;
       case "ceo-restricted":
         return <RestrictedAccess />;
       default:
-        return <ViewSuspense><PagesView /></ViewSuspense>;
+        return <RouteGuard><ViewSuspense><PagesView /></ViewSuspense></RouteGuard>;
     }
   }, [current, isAuthView, isSystemView, isLegalView, isCeoView, isPublicView, isCeoAuthenticated]);
 

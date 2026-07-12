@@ -1,0 +1,1816 @@
+     1→"use client";
+     2→
+     3→/**
+     4→ * LootLoom — AuthView
+     5→ * Renders ALL authentication screens based on `useNavigationStore().current`.
+     6→ *
+     7→ * Screens handled:
+     8→ *   login, register, forgot-password, reset-password,
+     9→ *   verify-email, verify-success, verify-failed,
+    10→ *   auth-loading, session-expired, unauthorized
+    11→ *
+    12→ * Split layout on lg+: LEFT = animated application preview (floating glass widgets),
+    13→ * RIGHT = auth form in GlassCard. Mobile: single column.
+    14→ *
+    15→ * BackgroundEngine is global and intentionally NOT rendered here.
+    16→ */
+    17→import { useEffect, useMemo, useRef, useState } from "react";
+    18→import { motion, AnimatePresence } from "framer-motion";
+    19→import {
+    20→  Mail,
+    21→  Lock,
+    22→  Eye,
+    23→  EyeOff,
+    24→  User,
+    25→  AtSign,
+    26→  ArrowRight,
+    27→  ArrowLeft,
+    28→  CheckCircle2,
+    29→  XCircle,
+    30→  ShieldCheck,
+    31→  KeyRound,
+    32→  LockKeyhole,
+    33→  ShieldAlert,
+    34→  Sparkles,
+    35→  Bell,
+    36→  RefreshCw,
+    37→} from "lucide-react";
+    38→import {
+    39→  GlassCard,
+    40→  LootButton,
+    41→  Logo,
+    42→  IconBadge,
+    43→  StatusBadge,
+    44→  GlassLoader,
+    45→} from "@/components/lootloom";
+    46→import { AnimatedCounter } from "@/components/lootloom";
+    47→import { useNavigationStore, useAuthStore } from "@/stores";
+    48→import { signIn, signOut } from "next-auth/react";
+    49→import type { ViewId } from "@/types";
+    50→import {
+    51→  pageTransition,
+    52→  fade,
+    53→  slideUp,
+    54→  scaleIn,
+    55→  floating,
+    56→  hoverLift,
+    57→  staggerContainer,
+    58→  modalPop,
+    59→  successCheck,
+    60→} from "@/lib/animations";
+    61→import { cn } from "@/lib/utils";
+    62→
+    63→/* ============================================================
+    64→   Premium input base class (shared by all auth inputs)
+    65→   ============================================================ */
+    66→const INPUT_CLASS =
+    67→  "h-12 rounded-xl glass-2 ring-1 ring-border px-4 text-sm focus:ring-electric/40 focus:ring-2 outline-none transition-all w-full";
+    68→
+    69→/* ============================================================
+    70→   AuthInput — premium labeled input with leading icon
+    71→   ============================================================ */
+    72→interface AuthInputProps {
+    73→  id: string;
+    74→  label: string;
+    75→  type?: "text" | "email" | "tel" | "password";
+    76→  placeholder?: string;
+    77→  value: string;
+    78→  onChange: (v: string) => void;
+    79→  icon?: React.ReactNode;
+    80→  error?: string | null;
+    81→  autoComplete?: string;
+    82→  inputMode?: "text" | "email" | "tel" | "numeric";
+    83→  maxLength?: number;
+    84→  rightSlot?: React.ReactNode;
+    85→  disabled?: boolean;
+    86→}
+    87→
+    88→function AuthInput({
+    89→  id,
+    90→  label,
+    91→  type = "text",
+    92→  placeholder,
+    93→  value,
+    94→  onChange,
+    95→  icon,
+    96→  error = null,
+    97→  autoComplete,
+    98→  inputMode,
+    99→  maxLength,
+   100→  rightSlot,
+   101→  disabled = false,
+   102→}: AuthInputProps) {
+   103→  return (
+   104→    <div className="space-y-1.5">
+   105→      <label
+   106→        htmlFor={id}
+   107→        className="text-xs font-semibold text-foreground/70 tracking-wide"
+   108→      >
+   109→        {label}
+   110→      </label>
+   111→      <div className="relative">
+   112→        {icon && (
+   113→          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+   114→            {icon}
+   115→          </span>
+   116→        )}
+   117→        <input
+   118→          id={id}
+   119→          name={id}
+   120→          type={type}
+   121→          placeholder={placeholder}
+   122→          value={value}
+   123→          onChange={(e) => onChange(e.target.value)}
+   124→          autoComplete={autoComplete}
+   125→          inputMode={inputMode}
+   126→          maxLength={maxLength}
+   127→          disabled={disabled}
+   128→          className={cn(
+   129→            INPUT_CLASS,
+   130→            icon && "pl-11",
+   131→            rightSlot && "pr-12",
+   132→            error && "ring-rose-brand/50 focus:ring-rose-brand/40",
+   133→            disabled && "opacity-60 pointer-events-none"
+   134→          )}
+   135→        />
+   136→        {rightSlot && (
+   137→          <span className="absolute right-2 top-1/2 -translate-y-1/2">
+   138→            {rightSlot}
+   139→          </span>
+   140→        )}
+   141→      </div>
+   142→      <AnimatePresence mode="wait">
+   143→        {error && (
+   144→          <motion.p
+   145→            initial={{ opacity: 0, y: -4, height: 0 }}
+   146→            animate={{ opacity: 1, y: 0, height: "auto" }}
+   147→            exit={{ opacity: 0, y: -4, height: 0 }}
+   148→            transition={{ duration: 0.2 }}
+   149→            className="text-xs font-medium text-rose-brand flex items-center gap-1"
+   150→          >
+   151→            <XCircle size={12} />
+   152→            {error}
+   153→          </motion.p>
+   154→        )}
+   155→      </AnimatePresence>
+   156→    </div>
+   157→  );
+   158→}
+   159→
+   160→/* ============================================================
+   161→   PasswordInput — password with eye toggle + optional meter
+   162→   ============================================================ */
+   163→interface PasswordInputProps {
+   164→  id: string;
+   165→  label: string;
+   166→  placeholder?: string;
+   167→  value: string;
+   168→  onChange: (v: string) => void;
+   169→  error?: string | null;
+   170→  showStrength?: boolean;
+   171→  autoComplete?: string;
+   172→}
+   173→
+   174→function PasswordInput({
+   175→  id,
+   176→  label,
+   177→  placeholder = "••••••••",
+   178→  value,
+   179→  onChange,
+   180→  error = null,
+   181→  showStrength = false,
+   182→  autoComplete,
+   183→}: PasswordInputProps) {
+   184→  const [show, setShow] = useState(false);
+   185→  return (
+   186→    <div className="space-y-1.5">
+   187→      <AuthInput
+   188→        id={id}
+   189→        label={label}
+   190→        type={show ? "text" : "password"}
+   191→        placeholder={placeholder}
+   192→        value={value}
+   193→        onChange={onChange}
+   194→        icon={<Lock size={16} />}
+   195→        error={error}
+   196→        autoComplete={autoComplete}
+   197→        rightSlot={
+   198→          <button
+   199→            type="button"
+   200→            onClick={() => setShow((s) => !s)}
+   201→            className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+   202→            aria-label={show ? "Hide password" : "Show password"}
+   203→            tabIndex={-1}
+   204→          >
+   205→            {show ? <EyeOff size={16} /> : <Eye size={16} />}
+   206→          </button>
+   207→        }
+   208→      />
+   209→      {showStrength && <PasswordStrengthMeter password={value} />}
+   210→    </div>
+   211→  );
+   212→}
+   213→
+   214→/* ============================================================
+   215→   PasswordStrengthMeter — weak / medium / strong
+   216→   ============================================================ */
+   217→function PasswordStrengthMeter({ password }: { password: string }) {
+   218→  const { score, label, color, percent } = useMemo(() => {
+   219→    if (!password) return { score: 0, label: "", color: "bg-transparent", percent: 0 };
+   220→    let s = 0;
+   221→    if (password.length >= 8) s++;
+   222→    if (password.length >= 12) s++;
+   223→    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) s++;
+   224→    if (/\d/.test(password)) s++;
+   225→    if (/[^A-Za-z0-9]/.test(password)) s++;
+   226→    const final = Math.min(s, 3);
+   227→    const map = [
+   228→      { label: "Too short", color: "bg-rose-brand", percent: 20 },
+   229→      { label: "Weak", color: "bg-rose-brand", percent: 35 },
+   230→      { label: "Medium", color: "bg-gold", percent: 65 },
+   231→      { label: "Strong", color: "bg-emerald-brand", percent: 100 },
+   232→    ];
+   233→    return { score: final, ...map[final] };
+   234→  }, [password]);
+   235→
+   236→  if (!password) return null;
+   237→
+   238→  return (
+   239→    <motion.div
+   240→      initial={{ opacity: 0, height: 0 }}
+   241→      animate={{ opacity: 1, height: "auto" }}
+   242→      exit={{ opacity: 0, height: 0 }}
+   243→      className="flex items-center gap-2"
+   244→    >
+   245→      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+   246→        <motion.div
+   247→          className={cn("h-full rounded-full", color)}
+   248→          initial={{ width: 0 }}
+   249→          animate={{ width: `${percent}%` }}
+   250→          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+   251→        />
+   252→      </div>
+   253→      <span
+   254→        className={cn(
+   255→          "text-[10px] font-semibold w-14 text-right",
+   256→          score === 0 && "text-muted-foreground",
+   257→          score === 1 && "text-rose-brand",
+   258→          score === 2 && "text-gold",
+   259→          score === 3 && "text-emerald-brand"
+   260→        )}
+   261→      >
+   262→        {label}
+   263→      </span>
+   264→    </motion.div>
+   265→  );
+   266→}
+   267→
+   268→/* ============================================================
+   269→   AuthHeader — title + subtitle + optional icon badge
+   270→   ============================================================ */
+   271→function AuthHeader({
+   272→  icon,
+   273→  title,
+   274→  subtitle,
+   275→  badge,
+   276→}: {
+   277→  icon?: React.ReactNode;
+   278→  title: string;
+   279→  subtitle?: string;
+   280→  badge?: React.ReactNode;
+   281→}) {
+   282→  return (
+   283→    <div className="space-y-2">
+   284→      {icon && (
+   285→        <motion.div
+   286→          initial={{ scale: 0, rotate: -20 }}
+   287→          animate={{ scale: 1, rotate: 0 }}
+   288→          transition={{ type: "spring", stiffness: 280, damping: 18, delay: 0.05 }}
+   289→          className="inline-flex"
+   290→        >
+   291→          {icon}
+   292→        </motion.div>
+   293→      )}
+   294→      <div className="flex items-center gap-2">
+   295→        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+   296→          {title}
+   297→        </h1>
+   298→        {badge}
+   299→      </div>
+   300→      {subtitle && (
+   301→        <p className="text-sm text-muted-foreground leading-relaxed">
+   302→          {subtitle}
+   303→        </p>
+   304→      )}
+   305→    </div>
+   306→  );
+   307→}
+   308→
+   309→/* ============================================================
+   310→   Divider — "or continue with"
+   311→   ============================================================ */
+   312→function Divider({ label = "or continue with" }: { label?: string }) {
+   313→  return (
+   314→    <div className="flex items-center gap-3">
+   315→      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+   316→      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+   317→        {label}
+   318→      </span>
+   319→      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+   320→    </div>
+   321→  );
+   322→}
+   323→
+   324→/* ============================================================
+   325→   SocialPlaceholders — Google / GitHub / Facebook (disabled look)
+   326→   ============================================================ */
+   327→function SocialPlaceholders() {
+   328→  const socials = [
+   329→    { name: "Google", glyph: "G", color: "text-rose-brand", ring: "hover:ring-rose-brand/30" },
+   330→    { name: "GitHub", glyph: "", icon: "GH", color: "text-foreground", ring: "hover:ring-electric/30" },
+   331→    { name: "Facebook", glyph: "f", color: "text-electric", ring: "hover:ring-electric/30" },
+   332→  ];
+   333→  return (
+   334→    <div className="grid grid-cols-3 gap-2.5">
+   335→      {socials.map((s) => (
+   336→        <motion.button
+   337→          key={s.name}
+   338→          type="button"
+   339→          disabled
+   340→          whileHover={{ y: -2 }}
+   341→          className={cn(
+   342→            "h-11 rounded-xl glass-2 ring-1 ring-border flex items-center justify-center gap-2",
+   343→            "text-sm font-semibold text-muted-foreground cursor-not-allowed",
+   344→            "opacity-70 grayscale"
+   345→          )}
+   346→          aria-label={`Continue with ${s.name} (coming soon)`}
+   347→          title={`${s.name} — coming soon`}
+   348→        >
+   349→          <span className={cn("text-base font-bold", s.color)}>
+   350→            {s.glyph || (
+   351→              <span className="text-xs tracking-tighter font-mono">{s.icon}</span>
+   352→            )}
+   353→          </span>
+   354→          <span className="hidden sm:inline text-xs">{s.name}</span>
+   355→        </motion.button>
+   356→      ))}
+   357→    </div>
+   358→  );
+   359→}
+   360→
+   361→/* ============================================================
+   362→   TermsCheckbox + RememberMe — premium checkbox
+   363→   ============================================================ */
+   364→interface CheckboxProps {
+   365→  id: string;
+   366→  checked: boolean;
+   367→  onChange: (v: boolean) => void;
+   368→  label: React.ReactNode;
+   369→  error?: string | null;
+   370→}
+   371→
+   372→function PremiumCheckbox({ id, checked, onChange, label, error }: CheckboxProps) {
+   373→  return (
+   374→    <div className="space-y-1">
+   375→      <label
+   376→        htmlFor={id}
+   377→        className="flex items-start gap-2.5 cursor-pointer group select-none"
+   378→      >
+   379→        <button
+   380→          type="button"
+   381→          role="checkbox"
+   382→          id={id}
+   383→          aria-checked={checked}
+   384→          onClick={() => onChange(!checked)}
+   385→          className={cn(
+   386→            "mt-0.5 size-5 rounded-md ring-1 flex items-center justify-center transition-all shrink-0",
+   387→            checked
+   388→              ? "bg-electric ring-electric text-white"
+   389→              : "bg-transparent ring-border text-transparent group-hover:ring-electric/40"
+   390→          )}
+   391→        >
+   392→          <AnimatePresence>
+   393→            {checked && (
+   394→              <motion.svg
+   395→                initial={{ scale: 0, rotate: -30 }}
+   396→                animate={{ scale: 1, rotate: 0 }}
+   397→                exit={{ scale: 0 }}
+   398→                transition={{ type: "spring", stiffness: 320, damping: 16 }}
+   399→                width="12"
+   400→                height="12"
+   401→                viewBox="0 0 24 24"
+   402→                fill="none"
+   403→                stroke="currentColor"
+   404→                strokeWidth="3.5"
+   405→                strokeLinecap="round"
+   406→                strokeLinejoin="round"
+   407→              >
+   408→                <path d="M20 6 9 17l-5-5" />
+   409→              </motion.svg>
+   410→            )}
+   411→          </AnimatePresence>
+   412→        </button>
+   413→        <span className="text-xs text-muted-foreground leading-relaxed">
+   414→          {label}
+   415→        </span>
+   416→      </label>
+   417→      <AnimatePresence>
+   418→        {error && (
+   419→          <motion.p
+   420→            initial={{ opacity: 0, height: 0 }}
+   421→            animate={{ opacity: 1, height: "auto" }}
+   422→            exit={{ opacity: 0, height: 0 }}
+   423→            className="text-xs font-medium text-rose-brand flex items-center gap-1 pl-7"
+   424→          >
+   425→            <XCircle size={12} />
+   426→            {error}
+   427→          </motion.p>
+   428→        )}
+   429→      </AnimatePresence>
+   430→    </div>
+   431→  );
+   432→}
+   433→
+   434→/* ============================================================
+   435→   AuthFooter — switch link line
+   436→   ============================================================ */
+   437→function AuthFooter({
+   438→  text,
+   439→  actionText,
+   440→  onAction,
+   441→}: {
+   442→  text: string;
+   443→  actionText: string;
+   444→  onAction: () => void;
+   445→}) {
+   446→  return (
+   447→    <motion.div
+   448→      variants={slideUp}
+   449→      className="text-center text-sm text-muted-foreground"
+   450→    >
+   451→      {text}{" "}
+   452→      <button
+   453→        type="button"
+   454→        onClick={onAction}
+   455→        className="font-semibold text-electric hover:text-electric/80 transition-colors inline-flex items-center gap-1 group"
+   456→      >
+   457→        {actionText}
+   458→        <ArrowRight
+   459→          size={14}
+   460→          className="transition-transform group-hover:translate-x-0.5"
+   461→        />
+   462→      </button>
+   463→    </motion.div>
+   464→  );
+   465→}
+   466→
+   467→/* ============================================================
+   468→   OtpInput — 6-box verification code
+   469→   ============================================================ */
+   470→function OtpInput({
+   471→  value,
+   472→  onChange,
+   473→  hasError = false,
+   474→}: {
+   475→  value: string[];
+   476→  onChange: (v: string[]) => void;
+   477→  hasError?: boolean;
+   478→}) {
+   479→  const refs = useRef<(HTMLInputElement | null)[]>([]);
+   480→
+   481→  const handleChange = (idx: number, raw: string) => {
+   482→    const char = raw.replace(/\D/g, "").slice(-1);
+   483→    const next = [...value];
+   484→    next[idx] = char;
+   485→    onChange(next);
+   486→    if (char && idx < 5) {
+   487→      refs.current[idx + 1]?.focus();
+   488→    }
+   489→  };
+   490→
+   491→  const handleKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+   492→    if (e.key === "Backspace" && !value[idx] && idx > 0) {
+   493→      refs.current[idx - 1]?.focus();
+   494→    }
+   495→    if (e.key === "ArrowLeft" && idx > 0) refs.current[idx - 1]?.focus();
+   496→    if (e.key === "ArrowRight" && idx < 5) refs.current[idx + 1]?.focus();
+   497→  };
+   498→
+   499→  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+   500→    e.preventDefault();
+   501→    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+   502→    if (!text) return;
+   503→    const next = ["", "", "", "", "", ""];
+   504→    for (let i = 0; i < text.length; i++) next[i] = text[i];
+   505→    onChange(next);
+   506→    refs.current[Math.min(text.length, 5)]?.focus();
+   507→  };
+   508→
+   509→  return (
+   510→    <div
+   511→      className="flex justify-between gap-2"
+   512→      onPaste={handlePaste}
+   513→    >
+   514→      {Array.from({ length: 6 }).map((_, i) => (
+   515→        <motion.input
+   516→          key={i}
+   517→          ref={(el) => {
+   518→            refs.current[i] = el;
+   519→          }}
+   520→          type="text"
+   521→          inputMode="numeric"
+   522→          maxLength={1}
+   523→          value={value[i] || ""}
+   524→          onChange={(e) => handleChange(i, e.target.value)}
+   525→          onKeyDown={(e) => handleKeyDown(i, e)}
+   526→          onFocus={(e) => e.target.select()}
+   527→          variants={scaleIn}
+   528→          custom={i}
+   529→          className={cn(
+   530→            "size-12 sm:size-14 rounded-xl glass-2 ring-1 text-center text-lg font-bold",
+   531→            "focus:ring-electric/40 focus:ring-2 outline-none transition-all",
+   532→            "tabular-nums",
+   533→            hasError ? "ring-rose-brand/50" : "ring-border",
+   534→            value[i] && !hasError && "ring-electric/40 text-electric"
+   535→          )}
+   536→          aria-label={`Verification code digit ${i + 1}`}
+   537→        />
+   538→      ))}
+   539→    </div>
+   540→  );
+   541→}
+   542→
+   543→/* ============================================================
+   544→   AuthPreview — animated LEFT side of split layout
+   545→   Floating glass widgets showing app preview (NOT screenshots)
+   546→   ============================================================ */
+   547→function AuthPreview() {
+   548→  const widgets = [
+   549→    {
+   550→      // Balance card — top
+   551→      id: "balance",
+   552→      className: "w-[260px] top-[6%] left-[8%]",
+   553→      delay: 0,
+   554→      content: (
+   555→        <>
+   556→          <div className="flex items-center justify-between">
+   557→            <div className="flex items-center gap-2">
+   558→              <IconBadge name="Wallet" accent="electric" size="sm" />
+   559→              <span className="text-xs font-semibold text-muted-foreground">
+   560→                Available Balance
+   561→              </span>
+   562→            </div>
+   563→            <StatusBadge variant="success" dot pulse>
+   564→              Live
+   565→            </StatusBadge>
+   566→          </div>
+   567→          <div className="mt-3 flex items-end gap-1.5">
+   568→            <AnimatedCounter
+   569→              value={12840}
+   570→              className="text-3xl font-bold tracking-tight text-foreground"
+   571→            />
+   572→            <span className="text-xs font-semibold text-muted-foreground mb-1">
+   573→              coins
+   574→            </span>
+   575→          </div>
+   576→          <div className="mt-2 flex items-center gap-1 text-[11px] text-emerald-brand font-semibold">
+   577→            <ArrowRight size={11} className="rotate-[-45deg]" />
+   578→            +145 today
+   579→          </div>
+   580→        </>
+   581→      ),
+   582→    },
+   583→    {
+   584→      // Daily bonus card — middle left
+   585→      id: "daily",
+   586→      className: "w-[210px] top-[42%] left-[2%]",
+   587→      delay: 0.6,
+   588→      content: (
+   589→        <>
+   590→          <div className="flex items-center gap-2">
+   591→            <IconBadge name="CalendarCheck" accent="gold" size="sm" />
+   592→            <span className="text-xs font-semibold text-foreground">Daily Bonus</span>
+   593→          </div>
+   594→          <div className="mt-2 text-2xl font-bold text-foreground">
+   595→            <AnimatedCounter value={50} /> coins
+   596→          </div>
+   597→          <div className="mt-2 h-1.5 rounded-full bg-gold/15 overflow-hidden">
+   598→            <motion.div
+   599→              initial={{ width: 0 }}
+   600→              animate={{ width: "75%" }}
+   601→              transition={{ duration: 1.2, delay: 0.8, ease: [0.4, 0, 0.2, 1] }}
+   602→              className="h-full rounded-full bg-gradient-to-r from-gold to-amber-300"
+   603→            />
+   604→          </div>
+   605→          <p className="mt-1.5 text-[10px] text-muted-foreground">
+   606→            Day 12 streak
+   607→          </p>
+   608→        </>
+   609→      ),
+   610→    },
+   611→    {
+   612→      // Rewards card — middle right
+   613→      id: "rewards",
+   614→      className: "w-[200px] top-[10%] right-[4%]",
+   615→      delay: 0.3,
+   616→      content: (
+   617→        <>
+   618→          <div className="flex items-center gap-2">
+   619→            <IconBadge name="Gift" accent="purple" size="sm" />
+   620→            <span className="text-xs font-semibold text-foreground">Rewards</span>
+   621→          </div>
+   622→          <div className="mt-2 space-y-1.5">
+   623→            {[
+   624→              { name: "₹100 UPI", coins: 1000 },
+   625→              { name: "Amazon ₹50", coins: 800 },
+   626→            ].map((r) => (
+   627→              <div
+   628→                key={r.name}
+   629→                className="flex items-center justify-between text-[11px]"
+   630→              >
+   631→                <span className="text-muted-foreground">{r.name}</span>
+   632→                <span className="font-semibold text-purple-brand">
+   633→                  {r.coins.toLocaleString("en-IN")} ¢
+   634→                </span>
+   635→              </div>
+   636→            ))}
+   637→          </div>
+   638→        </>
+   639→      ),
+   640→    },
+   641→    {
+   642→      // Streak card — bottom right
+   643→      id: "streak",
+   644→      className: "w-[170px] bottom-[8%] right-[6%]",
+   645→      delay: 0.9,
+   646→      content: (
+   647→        <div className="flex flex-col items-center text-center">
+   648→          <IconBadge name="Flame" accent="rose" size="lg" />
+   649→          <div className="mt-2 text-2xl font-bold text-foreground">
+   650→            <AnimatedCounter value={12} /> days
+   651→          </div>
+   652→          <p className="text-[10px] text-muted-foreground font-medium">
+   653→            Active Streak
+   654→          </p>
+   655→        </div>
+   656→      ),
+   657→    },
+   658→    {
+   659→      // Notification toast — bottom left
+   660→      id: "notif",
+   661→      className: "w-[230px] bottom-[10%] left-[6%]",
+   662→      delay: 1.2,
+   663→      content: (
+   664→        <>
+   665→          <div className="flex items-start gap-2">
+   666→            <span className="relative inline-flex">
+   667→              <span className="inline-flex size-2 rounded-full bg-emerald-brand" />
+   668→              <span className="absolute inline-flex size-2 rounded-full opacity-75 animate-ping bg-emerald-brand" />
+   669→            </span>
+   670→            <div className="flex-1 min-w-0">
+   671→              <p className="text-[11px] font-semibold text-foreground">
+   672→                Mission Completed
+   673→              </p>
+   674→              <p className="text-[10px] text-muted-foreground truncate">
+   675→                You earned 120 coins
+   676→              </p>
+   677→            </div>
+   678→            <Bell size={12} className="text-electric" />
+   679→          </div>
+   680→        </>
+   681→      ),
+   682→    },
+   683→  ];
+   684→
+   685→  return (
+   686→    <div className="relative h-full w-full perspective-1000 hidden lg:block">
+   687→      {/* Subtle gradient backdrop inside preview */}
+   688→      <div className="absolute inset-0 rounded-3xl overflow-hidden">
+   689→        <div className="absolute inset-0 mesh-bg opacity-60" />
+   690→        <div className="absolute -top-20 -left-20 size-72 rounded-full bg-electric/15 blur-3xl aurora-drift" />
+   691→        <div className="absolute -bottom-24 -right-16 size-80 rounded-full bg-purple-brand/15 blur-3xl aurora-drift-alt" />
+   692→      </div>
+   693→
+   694→      {/* Headline overlay */}
+   695→      <motion.div
+   696→        initial={{ opacity: 0, y: 18 }}
+   697→        animate={{ opacity: 1, y: 0 }}
+   698→        transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+   699→        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 px-8 w-full max-w-md"
+   700→      >
+   701→        <StatusBadge variant="electric" dot pulse className="mb-4">
+   702→          Premium Rewards Platform
+   703→        </StatusBadge>
+   704→        <h2 className="text-4xl font-bold tracking-tight text-foreground leading-tight">
+   705→          Your rewards journey
+   706→          <br />
+   707→          <span className="text-gradient-electric">starts here.</span>
+   708→        </h2>
+   709→        <p className="mt-3 text-sm text-muted-foreground">
+   710→          Earn coins, complete missions, redeem real rewards — all in one
+   711→          beautifully crafted experience.
+   712→        </p>
+   713→      </motion.div>
+   714→
+   715→      {/* Floating widgets */}
+   716→      {widgets.map((w) => (
+   717→        <motion.div
+   718→          key={w.id}
+   719→          variants={floating}
+   720→          initial="initial"
+   721→          animate="animate"
+   722→          transition={{
+   723→            duration: 6,
+   724→            repeat: Infinity,
+   725→            ease: "easeInOut",
+   726→            delay: w.delay,
+   727→          }}
+   728→          className={cn("absolute z-20", w.className)}
+   729→        >
+   730→          <GlassCard
+   731→            level={3}
+   732→            sheen
+   733→            className="p-4 shadow-[var(--shadow-lg)]"
+   734→          >
+   735→            {w.content}
+   736→          </GlassCard>
+   737→        </motion.div>
+   738→      ))}
+   739→
+   740→      {/* Sparkles accent */}
+   741→      <motion.div
+   742→        variants={floating}
+   743→        animate="animate"
+   744→        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+   745→        className="absolute top-[35%] left-[42%] z-10"
+   746→      >
+   747→        <Sparkles size={20} className="text-gold/70" />
+   748→      </motion.div>
+   749→    </div>
+   750→  );
+   751→}
+   752→
+   753→/* ============================================================
+   754→   Shell — common wrapper for all auth screens
+   755→   ============================================================ */
+   756→function AuthShell({ children }: { children: React.ReactNode }) {
+   757→  const navigate = useNavigationStore((s) => s.navigate);
+   758→  return (
+   759→    <div className="relative min-h-screen w-full flex items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
+   760→      {/* Top-left floating Logo */}
+   761→      <motion.button
+   762→        onClick={() => navigate("home")}
+   763→        initial={{ opacity: 0, x: -10 }}
+   764→        animate={{ opacity: 1, x: 0 }}
+   765→        transition={{ duration: 0.5, delay: 0.1 }}
+   766→        whileHover={{ scale: 1.03 }}
+   767→        whileTap={{ scale: 0.98 }}
+   768→        className="absolute top-5 left-5 sm:top-6 sm:left-6 z-50 inline-flex items-center gap-2 rounded-full glass-2 ring-1 ring-border px-3 py-1.5"
+   769→        aria-label="Back to home"
+   770→      >
+   771→        <Logo size="sm" />
+   772→      </motion.button>
+   773→
+   774→      <motion.div
+   775→        variants={pageTransition}
+   776→        initial="initial"
+   777→        animate="animate"
+   778→        exit="exit"
+   779→        className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 lg:gap-12 items-center"
+   780→      >
+   781→        {/* LEFT: preview (desktop only) */}
+   782→        <div className="hidden lg:block h-[640px] relative">
+   783→          <AuthPreview />
+   784→        </div>
+   785→        {/* RIGHT: form */}
+   786→        <motion.div
+   787→          variants={staggerContainer}
+   788→          initial="hidden"
+   789→          animate="visible"
+   790→          className="w-full max-w-md mx-auto lg:mx-0 lg:ml-auto"
+   791→        >
+   792→          <GlassCard level={3} sheen className="p-6 sm:p-8 shadow-[var(--shadow-xl)]">
+   793→            {children}
+   794→          </GlassCard>
+   795→        </motion.div>
+   796→      </motion.div>
+   797→    </div>
+   798→  );
+   799→}
+   800→
+   801→/* ============================================================
+   802→   Hook: simulate API call
+   803→   ============================================================ */
+   804→function useSimulatedApi() {
+   805→  const [loading, setLoading] = useState(false);
+   806→  const run = (cb: () => void, ms = 1200) => {
+   807→    setLoading(true);
+   808→    window.setTimeout(() => {
+   809→      setLoading(false);
+   810→      cb();
+   811→    }, ms);
+   812→  };
+   813→  return { loading, run };
+   814→}
+   815→
+   816→/* ============================================================
+   817→   Validation helpers
+   818→   ============================================================ */
+   819→const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+   820→const validateEmail = (v: string) => (emailRe.test(v) ? null : "Enter a valid email address");
+   821→
+   822→/* ============================================================
+   823→   SCREEN: Login
+   824→   ============================================================ */
+   825→function LoginScreen() {
+   826→  const navigate = useNavigationStore((s) => s.navigate);
+   827→  const setAuthenticated = useAuthStore((s) => s.setAuthenticated);
+   828→  const [loading, setLoading] = useState(false);
+   829→  const [error, setError] = useState<string | null>(null);
+   830→  const [email, setEmail] = useState("");
+   831→  const [password, setPassword] = useState("");
+   832→  const [remember, setRemember] = useState(true);
+   833→
+   834→  const handleSignIn = async (e: React.FormEvent) => {
+   835→    e.preventDefault();
+   836→    if (!email.trim()) {
+   837→      setError("Please enter your email");
+   838→      return;
+   839→    }
+   840→    if (!password) {
+   841→      setError("Please enter your password");
+   842→      return;
+   843→    }
+   844→    setLoading(true);
+   845→    setError(null);
+   846→    try {
+   847→      const result = await signIn("credentials", {
+   848→        email: email.trim().toLowerCase(),
+   849→        password,
+   850→        redirect: false,
+   851→      });
+   852→
+   853→      if (result?.error) {
+   854→        setError("Invalid email or password. If you don't have an account, please register first.");
+   855→        setLoading(false);
+   856→      } else if (result?.ok) {
+   857→        const sessionResp = await fetch("/api/auth/session");
+   858→        const session = await sessionResp.json();
+   859→        if (session?.user) {
+   860→          setAuthenticated(true);
+   861→          navigate("dashboard");
+   862→        } else {
+   863→          setError("Login failed. Please try again.");
+   864→          setLoading(false);
+   865→        }
+   866→      } else {
+   867→        setError("Login failed. Please try again.");
+   868→        setLoading(false);
+   869→      }
+   870→    } catch {
+   871→      setError("Network error. Please check your connection.");
+   872→      setLoading(false);
+   873→    }
+   874→  };
+   875→
+   876→  const handleGoogleSignIn = async () => {
+   877→    setLoading(true);
+   878→    setError(null);
+   879→    try {
+   880→      await signIn("google", { callbackUrl: window.location.origin, redirect: true });
+   881→    } catch {
+   882→      setError("Google sign-in failed. Please try again.");
+   883→      setLoading(false);
+   884→    }
+   885→  };
+   886→
+   887→  return (
+   888→    <AuthShell>
+   889→      <motion.form
+   890→        variants={slideUp}
+   891→        onSubmit={handleSignIn}
+   892→        className="space-y-5"
+   893→      >
+   894→        <AuthHeader
+   895→          icon={<IconBadge name="KeyRound" accent="electric" size="lg" />}
+   896→          title="Welcome back"
+   897→          subtitle="Sign in to your LootLoom account."
+   898→        />
+   899→
+   900→        {error && (
+   901→          <div className="rounded-xl bg-rose-brand/10 ring-1 ring-rose-brand/20 p-3 text-xs text-rose-brand font-medium">
+   902→            {error}
+   903→          </div>
+   904→        )}
+   905→
+   906→        {/* Google Sign-In */}
+   907→        <LootButton
+   908→          type="button"
+   909→          variant="glass"
+   910→          size="lg"
+   911→          fullWidth
+   912→          loading={loading}
+   913→          onClick={handleGoogleSignIn}
+   914→          leftIcon={
+   915→            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+   916→              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09Z" fill="#4285F4"/>
+   917→              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23Z" fill="#34A853"/>
+   918→              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62Z" fill="#FBBC05"/>
+   919→              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38Z" fill="#EA4335"/>
+   920→            </svg>
+   921→          }
+   922→        >
+   923→          Continue with Google
+   924→        </LootButton>
+   925→
+   926→        <Divider />
+   927→
+   928→        <AuthInput
+   929→          id="login-email"
+   930→          label="Email"
+   931→          type="email"
+   932→          placeholder="you@example.com"
+   933→          value={email}
+   934→          onChange={setEmail}
+   935→          icon={<AtSign size={16} />}
+   936→          error={null}
+   937→          autoComplete="email"
+   938→        />
+   939→
+   940→        <PasswordInput
+   941→          id="login-password"
+   942→          label="Password"
+   943→          value={password}
+   944→          onChange={setPassword}
+   945→          autoComplete="current-password"
+   946→        />
+   947→
+   948→        <div className="flex items-center justify-between gap-3">
+   949→          <PremiumCheckbox
+   950→            id="remember"
+   951→            checked={remember}
+   952→            onChange={setRemember}
+   953→            label={<span className="text-xs font-medium text-foreground/80">Remember me</span>}
+   954→          />
+   955→          <button
+   956→            type="button"
+   957→            onClick={() => navigate("forgot-password")}
+   958→            className="text-xs font-semibold text-electric hover:text-electric/80 transition-colors"
+   959→          >
+   960→            Forgot password?
+   961→          </button>
+   962→        </div>
+   963→
+   964→        <LootButton
+   965→          type="submit"
+   966→          variant="electric"
+   967→          size="lg"
+   968→          fullWidth
+   969→          loading={loading}
+   970→          rightIcon={<ArrowRight size={16} />}
+   971→        >
+   972→          {loading ? "Signing in…" : "Sign In"}
+   973→        </LootButton>
+   974→
+   975→        <AuthFooter
+   976→          text="New to LootLoom?"
+   977→          actionText="Create Account"
+   978→          onAction={() => navigate("register")}
+   979→        />
+   980→      </motion.form>
+   981→    </AuthShell>
+   982→  );
+   983→}
+   984→
+   985→/* ============================================================
+   986→   SCREEN: Register
+   987→   ============================================================ */
+   988→function RegisterScreen() {
+   989→  const navigate = useNavigationStore((s) => s.navigate);
+   990→  const setAuthenticated = useAuthStore((s) => s.setAuthenticated);
+   991→  const [loading, setLoading] = useState(false);
+   992→  const [error, setError] = useState<string | null>(null);
+   993→
+   994→  const [fullName, setFullName] = useState("");
+   995→  const [email, setEmail] = useState("");
+   996→
+   997→  const submit = async (e: React.FormEvent) => {
+   998→    e.preventDefault();
+   999→    if (!fullName.trim()) {
+  1000→      setError("Please enter your name");
+  1001→      return;
+  1002→    }
+  1003→    if (!email.trim() || !validateEmail(email)) {
+  1004→      setError("Please enter a valid email");
+  1005→      return;
+  1006→    }
+  1007→    setLoading(true);
+  1008→    setError(null);
+  1009→    try {
+  1010→      // Get CSRF token
+  1011→      const csrfResp = await fetch("/api/auth/csrf");
+  1012→      const { csrfToken } = await csrfResp.json();
+  1013→
+  1014→      // POST to credentials callback
+  1015→      const formData = new URLSearchParams();
+  1016→      formData.append("name", fullName.trim());
+  1017→      formData.append("email", email.trim().toLowerCase());
+  1018→      formData.append("csrfToken", csrfToken);
+  1019→      formData.append("callbackUrl", window.location.origin);
+  1020→      formData.append("json", "true");
+  1021→
+  1022→      const resp = await fetch("/api/auth/callback/credentials", {
+  1023→        method: "POST",
+  1024→        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  1025→        body: formData.toString(),
+  1026→      });
+  1027→
+  1028→      if (resp.ok) {
+  1029→        const sessionResp = await fetch("/api/auth/session");
+  1030→        const session = await sessionResp.json();
+  1031→        if (session?.user) {
+  1032→          setAuthenticated(true);
+  1033→          navigate("dashboard");
+  1034→        } else {
+  1035→          setError("Registration failed — session not created. Please try again.");
+  1036→          setLoading(false);
+  1037→        }
+  1038→      } else {
+  1039→        setError("Registration failed. Please try again.");
+  1040→        setLoading(false);
+  1041→      }
+  1042→    } catch {
+  1043→      setError("Network error. Please try again.");
+  1044→      setLoading(false);
+  1045→    }
+  1046→  };
+  1047→
+  1048→  return (
+  1049→    <AuthShell>
+  1050→      <motion.form
+  1051→        variants={slideUp}
+  1052→        onSubmit={submit}
+  1053→        className="space-y-4"
+  1054→        noValidate
+  1055→      >
+  1056→        <AuthHeader
+  1057→          icon={<IconBadge name="UserPlus" accent="purple" size="lg" />}
+  1058→          title="Create your account"
+  1059→          subtitle="Join thousands earning rewards every day."
+  1060→          badge={
+  1061→            <StatusBadge variant="purple" dot>
+  1062→              Free
+  1063→            </StatusBadge>
+  1064→          }
+  1065→        />
+  1066→
+  1067→        {error && (
+  1068→          <div className="rounded-xl bg-rose-brand/10 ring-1 ring-rose-brand/20 p-3 text-xs text-rose-brand font-medium">
+  1069→            {error}
+  1070→          </div>
+  1071→        )}
+  1072→
+  1073→        <AuthInput
+  1074→          id="fullName"
+  1075→          label="Full Name"
+  1076→          placeholder="Aarav Sharma"
+  1077→          value={fullName}
+  1078→          onChange={setFullName}
+  1079→          icon={<User size={16} />}
+  1080→          autoComplete="name"
+  1081→        />
+  1082→
+  1083→        <AuthInput
+  1084→          id="email"
+  1085→          label="Email"
+  1086→          type="email"
+  1087→          placeholder="you@example.com"
+  1088→          value={email}
+  1089→          onChange={setEmail}
+  1090→          icon={<Mail size={16} />}
+  1091→          autoComplete="email"
+  1092→        />
+  1093→
+  1094→        <LootButton
+  1095→          type="submit"
+  1096→          variant="electric"
+  1097→          size="lg"
+  1098→          fullWidth
+  1099→          loading={loading}
+  1100→          rightIcon={<ArrowRight size={16} />}
+  1101→        >
+  1102→          {loading ? "Creating account…" : "Create Account"}
+  1103→        </LootButton>
+  1104→
+  1105→        <div className="rounded-xl glass-2 ring-1 ring-border p-4 text-center">
+  1106→          <p className="text-xs text-muted-foreground leading-relaxed">
+  1107→            Your account and wallet will be created automatically.
+  1108→            Start earning coins by watching ads and completing missions.
+  1109→          </p>
+  1110→        </div>
+  1111→
+  1112→        <AuthFooter
+  1113→          text="Already have an account?"
+  1114→          actionText="Sign In"
+  1115→          onAction={() => navigate("login")}
+  1116→        />
+  1117→      </motion.form>
+  1118→    </AuthShell>
+  1119→  );
+  1120→}
+  1121→
+  1122→/* ============================================================
+  1123→   SCREEN: Forgot Password
+  1124→   ============================================================ */
+  1125→function ForgotPasswordScreen() {
+  1126→  const navigate = useNavigationStore((s) => s.navigate);
+  1127→  const { loading, run } = useSimulatedApi();
+  1128→  const [email, setEmail] = useState("");
+  1129→  const [error, setError] = useState<string | null>(null);
+  1130→  const [sent, setSent] = useState(false);
+  1131→
+  1132→  const submit = (e: React.FormEvent) => {
+  1133→    e.preventDefault();
+  1134→    if (!email.trim()) return setError("Email is required");
+  1135→    const ve = validateEmail(email);
+  1136→    if (ve) return setError(ve);
+  1137→    setError(null);
+  1138→    run(() => setSent(true));
+  1139→  };
+  1140→
+  1141→  return (
+  1142→    <AuthShell>
+  1143→      <motion.div variants={slideUp} className="space-y-5">
+  1144→        <AuthHeader
+  1145→          icon={<IconBadge name="MailQuestion" accent="gold" size="lg" />}
+  1146→          title="Forgot password?"
+  1147→          subtitle={
+  1148→            sent
+  1149→              ? undefined
+  1150→              : "Enter your email and we'll send you a reset link."
+  1151→          }
+  1152→        />
+  1153→
+  1154→        <AnimatePresence mode="wait">
+  1155→          {sent ? (
+  1156→            <motion.div
+  1157→              key="success"
+  1158→              variants={modalPop}
+  1159→              initial="initial"
+  1160→              animate="animate"
+  1161→              exit="exit"
+  1162→              className="space-y-5"
+  1163→            >
+  1164→              <GlassCard level={2} className="p-5 space-y-3">
+  1165→                <motion.div
+  1166→                  variants={successCheck}
+  1167→                  initial="initial"
+  1168→                  animate="animate"
+  1169→                  className="size-12 rounded-2xl bg-emerald-brand/15 ring-1 ring-emerald-brand/25 flex items-center justify-center text-emerald-brand"
+  1170→                >
+  1171→                  <CheckCircle2 size={26} />
+  1172→                </motion.div>
+  1173→                <div>
+  1174→                  <h3 className="font-semibold text-foreground">Check your inbox</h3>
+  1175→                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+  1176→                    If an account exists for{" "}
+  1177→                    <span className="font-semibold text-foreground">{email}</span>,
+  1178→                    a reset link has been sent. The link expires in 30 minutes.
+  1179→                  </p>
+  1180→                </div>
+  1181→              </GlassCard>
+  1182→
+  1183→              <LootButton
+  1184→                variant="electric"
+  1185→                size="lg"
+  1186→                fullWidth
+  1187→                onClick={() => navigate("reset-password")}
+  1188→                rightIcon={<ArrowRight size={16} />}
+  1189→              >
+  1190→                Continue to Reset
+  1191→              </LootButton>
+  1192→            </motion.div>
+  1193→          ) : (
+  1194→            <motion.form
+  1195→              key="form"
+  1196→              onSubmit={submit}
+  1197→              className="space-y-5"
+  1198→              noValidate
+  1199→            >
+  1200→              <AuthInput
+  1201→                id="forgotEmail"
+  1202→                label="Email"
+  1203→                type="email"
+  1204→                placeholder="you@lootloom.app"
+  1205→                value={email}
+  1206→                onChange={(v) => {
+  1207→                  setEmail(v);
+  1208→                  if (error) setError(null);
+  1209→                }}
+  1210→                icon={<Mail size={16} />}
+  1211→                error={error}
+  1212→                autoComplete="email"
+  1213→              />
+  1214→              <LootButton
+  1215→                type="submit"
+  1216→                variant="electric"
+  1217→                size="lg"
+  1218→                fullWidth
+  1219→                loading={loading}
+  1220→                leftIcon={<Mail size={16} />}
+  1221→              >
+  1222→                {loading ? "Sending reset link…" : "Send Reset Link"}
+  1223→              </LootButton>
+  1224→            </motion.form>
+  1225→          )}
+  1226→        </AnimatePresence>
+  1227→
+  1228→        <AuthFooter
+  1229→          text="Remembered your password?"
+  1230→          actionText="Back to Sign In"
+  1231→          onAction={() => navigate("login")}
+  1232→        />
+  1233→      </motion.div>
+  1234→    </AuthShell>
+  1235→  );
+  1236→}
+  1237→
+  1238→/* ============================================================
+  1239→   SCREEN: Reset Password
+  1240→   ============================================================ */
+  1241→function ResetPasswordScreen() {
+  1242→  const navigate = useNavigationStore((s) => s.navigate);
+  1243→  const { loading, run } = useSimulatedApi();
+  1244→  const [password, setPassword] = useState("");
+  1245→  const [confirm, setConfirm] = useState("");
+  1246→  const [errors, setErrors] = useState<{ pw?: string | null; confirm?: string | null }>({});
+  1247→
+  1248→  const submit = (e: React.FormEvent) => {
+  1249→    e.preventDefault();
+  1250→    const next: typeof errors = {};
+  1251→    if (!password) next.pw = "Password is required";
+  1252→    else if (password.length < 8) next.pw = "Use 8+ characters";
+  1253→    if (confirm !== password) next.confirm = "Passwords do not match";
+  1254→    setErrors(next);
+  1255→    if (Object.values(next).some(Boolean)) return;
+  1256→    run(() => navigate("login"));
+  1257→  };
+  1258→
+  1259→  return (
+  1260→    <AuthShell>
+  1261→      <motion.form variants={slideUp} onSubmit={submit} className="space-y-5" noValidate>
+  1262→        <AuthHeader
+  1263→          icon={<IconBadge name="LockKeyhole" accent="emerald" size="lg" />}
+  1264→          title="Reset password"
+  1265→          subtitle="Choose a strong new password for your account."
+  1266→        />
+  1267→
+  1268→        <PasswordInput
+  1269→          id="newPassword"
+  1270→          label="New Password"
+  1271→          value={password}
+  1272→          onChange={(v) => {
+  1273→            setPassword(v);
+  1274→            if (errors.pw) setErrors((e) => ({ ...e, pw: null }));
+  1275→          }}
+  1276→          error={errors.pw}
+  1277→          showStrength
+  1278→          autoComplete="new-password"
+  1279→        />
+  1280→
+  1281→        <PasswordInput
+  1282→          id="confirmReset"
+  1283→          label="Confirm Password"
+  1284→          value={confirm}
+  1285→          onChange={(v) => {
+  1286→            setConfirm(v);
+  1287→            if (errors.confirm) setErrors((e) => ({ ...e, confirm: null }));
+  1288→          }}
+  1289→          error={errors.confirm}
+  1290→          autoComplete="new-password"
+  1291→        />
+  1292→
+  1293→        <LootButton
+  1294→          type="submit"
+  1295→          variant="electric"
+  1296→          size="lg"
+  1297→          fullWidth
+  1298→          loading={loading}
+  1299→          leftIcon={<KeyRound size={16} />}
+  1300→        >
+  1301→          {loading ? "Resetting…" : "Reset Password"}
+  1302→        </LootButton>
+  1303→
+  1304→        <AuthFooter
+  1305→          text="Back to"
+  1306→          actionText="Sign In"
+  1307→          onAction={() => navigate("login")}
+  1308→        />
+  1309→      </motion.form>
+  1310→    </AuthShell>
+  1311→  );
+  1312→}
+  1313→
+  1314→/* ============================================================
+  1315→   SCREEN: Verify Email (OTP)
+  1316→   ============================================================ */
+  1317→function VerifyEmailScreen() {
+  1318→  const navigate = useNavigationStore((s) => s.navigate);
+  1319→  const { loading, run } = useSimulatedApi();
+  1320→  const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
+  1321→  const [error, setError] = useState<string | null>(null);
+  1322→  const [resendIn, setResendIn] = useState(0);
+  1323→
+  1324→  useEffect(() => {
+  1325→    if (resendIn <= 0) return;
+  1326→    const t = window.setTimeout(() => setResendIn((s) => s - 1), 1000);
+  1327→    return () => clearTimeout(t);
+  1328→  }, [resendIn]);
+  1329→
+  1330→  const submit = (e: React.FormEvent) => {
+  1331→    e.preventDefault();
+  1332→    if (code.some((c) => !c)) return setError("Enter the 6-digit code");
+  1333→    setError(null);
+  1334→    run(() => {
+  1335→      // Simulated: 50% path — but deterministic for demo: success
+  1336→      navigate("verify-success");
+  1337→    });
+  1338→  };
+  1339→
+  1340→  const handleResend = () => {
+  1341→    setResendIn(30);
+  1342→    setCode(["", "", "", "", "", ""]);
+  1343→    setError(null);
+  1344→  };
+  1345→
+  1346→  const filled = code.filter(Boolean).length;
+  1347→  const progress = (filled / 6) * 100;
+  1348→
+  1349→  return (
+  1350→    <AuthShell>
+  1351→      <motion.div variants={slideUp} className="space-y-5">
+  1352→        <AuthHeader
+  1353→          icon={<IconBadge name="ShieldCheck" accent="electric" size="lg" />}
+  1354→          title="Verify your email"
+  1355→          subtitle={
+  1356→            <>
+  1357→              We sent a 6-digit code to <span className="font-semibold text-foreground">your email</span>. Enter it below.
+  1358→            </>
+  1359→          }
+  1360→          badge={
+  1361→            <StatusBadge variant="info" dot pulse>
+  1362→              Code expires in 9:58
+  1363→            </StatusBadge>
+  1364→          }
+  1365→        />
+  1366→
+  1367→        {/* Progress */}
+  1368→        <div className="space-y-1.5">
+  1369→          <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
+  1370→            <span>Verification progress</span>
+  1371→            <span className="tabular-nums">{filled}/6</span>
+  1372→          </div>
+  1373→          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+  1374→            <motion.div
+  1375→              className="h-full rounded-full bg-[linear-gradient(90deg,var(--electric),var(--cyan-brand),var(--purple-brand))]"
+  1376→              initial={{ width: 0 }}
+  1377→              animate={{ width: `${progress}%` }}
+  1378→              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+  1379→            />
+  1380→          </div>
+  1381→        </div>
+  1382→
+  1383→        <form onSubmit={submit} className="space-y-5" noValidate>
+  1384→          <OtpInput value={code} onChange={setCode} hasError={!!error} />
+  1385→          <AnimatePresence>
+  1386→            {error && (
+  1387→              <motion.p
+  1388→                initial={{ opacity: 0, y: -4 }}
+  1389→                animate={{ opacity: 1, y: 0 }}
+  1390→                exit={{ opacity: 0, y: -4 }}
+  1391→                className="text-xs font-medium text-rose-brand flex items-center gap-1"
+  1392→              >
+  1393→                <XCircle size={12} />
+  1394→                {error}
+  1395→              </motion.p>
+  1396→            )}
+  1397→          </AnimatePresence>
+  1398→
+  1399→          <LootButton
+  1400→            type="submit"
+  1401→            variant="electric"
+  1402→            size="lg"
+  1403→            fullWidth
+  1404→            loading={loading}
+  1405→            rightIcon={<ArrowRight size={16} />}
+  1406→          >
+  1407→            {loading ? "Verifying…" : "Verify"}
+  1408→          </LootButton>
+  1409→        </form>
+  1410→
+  1411→        <div className="flex items-center justify-between text-xs">
+  1412→          <button
+  1413→            type="button"
+  1414→            onClick={() => navigate("register")}
+  1415→            className="font-semibold text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+  1416→          >
+  1417→            <ArrowLeft size={12} />
+  1418→            Change email
+  1419→          </button>
+  1420→          <button
+  1421→            type="button"
+  1422→            disabled={resendIn > 0}
+  1423→            onClick={handleResend}
+  1424→            className={cn(
+  1425→              "font-semibold inline-flex items-center gap-1 transition-colors",
+  1426→              resendIn > 0
+  1427→                ? "text-muted-foreground/60 cursor-not-allowed"
+  1428→                : "text-electric hover:text-electric/80"
+  1429→            )}
+  1430→          >
+  1431→            <RefreshCw size={12} />
+  1432→            {resendIn > 0 ? `Resend in ${resendIn}s` : "Resend code"}
+  1433→          </button>
+  1434→        </div>
+  1435→      </motion.div>
+  1436→    </AuthShell>
+  1437→  );
+  1438→}
+  1439→
+  1440→/* ============================================================
+  1441→   SCREEN: Verify Success
+  1442→   ============================================================ */
+  1443→function VerifySuccessScreen() {
+  1444→  const navigate = useNavigationStore((s) => s.navigate);
+  1445→  const login = useAuthStore((s) => s.login);
+  1446→
+  1447→  return (
+  1448→    <AuthShell>
+  1449→      <motion.div variants={slideUp} className="space-y-6 text-center">
+  1450→        <motion.div
+  1451→          variants={successCheck}
+  1452→          initial="initial"
+  1453→          animate="animate"
+  1454→          className="mx-auto inline-flex"
+  1455→        >
+  1456→          <div className="relative">
+  1457→            <motion.div
+  1458→              animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.2, 0] }}
+  1459→              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+  1460→              className="absolute inset-0 rounded-full bg-emerald-brand/30 blur-xl"
+  1461→            />
+  1462→            <div className="relative size-20 rounded-3xl bg-gradient-to-br from-emerald-brand to-cyan-brand flex items-center justify-center text-white shadow-[var(--shadow-glow)]">
+  1463→              <CheckCircle2 size={42} strokeWidth={2.2} />
+  1464→            </div>
+  1465→          </div>
+  1466→        </motion.div>
+  1467→
+  1468→        <div className="space-y-2">
+  1469→          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+  1470→            Email Verified!
+  1471→          </h1>
+  1472→          <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
+  1473→            Your account is now active. Welcome to LootLoom — your rewards
+  1474→            journey begins now.
+  1475→          </p>
+  1476→        </div>
+  1477→
+  1478→        <StatusBadge variant="success" dot pulse className="mx-auto">
+  1479→          Account Activated
+  1480→        </StatusBadge>
+  1481→
+  1482→        <LootButton
+  1483→          variant="electric"
+  1484→          size="lg"
+  1485→          fullWidth
+  1486→          onClick={() => {
+  1487→            login();
+  1488→            navigate("dashboard");
+  1489→          }}
+  1490→          rightIcon={<ArrowRight size={16} />}
+  1491→        >
+  1492→          Continue to Dashboard
+  1493→        </LootButton>
+  1494→      </motion.div>
+  1495→    </AuthShell>
+  1496→  );
+  1497→}
+  1498→
+  1499→/* ============================================================
+  1500→   SCREEN: Verify Failed
+  1501→   ============================================================ */
+  1502→function VerifyFailedScreen() {
+  1503→  const navigate = useNavigationStore((s) => s.navigate);
+  1504→  return (
+  1505→    <AuthShell>
+  1506→      <motion.div variants={slideUp} className="space-y-6 text-center">
+  1507→        <motion.div
+  1508→          initial={{ scale: 0, rotate: 20 }}
+  1509→          animate={{ scale: 1, rotate: 0 }}
+  1510→          transition={{ type: "spring", stiffness: 280, damping: 16, delay: 0.1 }}
+  1511→          className="mx-auto inline-flex"
+  1512→        >
+  1513→          <div className="relative">
+  1514→            <motion.div
+  1515→              animate={{ scale: [1, 1.18, 1], opacity: [0.4, 0.15, 0] }}
+  1516→              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+  1517→              className="absolute inset-0 rounded-full bg-rose-brand/30 blur-xl"
+  1518→            />
+  1519→            <div className="relative size-20 rounded-3xl bg-gradient-to-br from-rose-brand to-rose-400 flex items-center justify-center text-white shadow-[0_0_40px_-8px_rgb(244_63_94/0.5)]">
+  1520→              <XCircle size={42} strokeWidth={2.2} />
+  1521→            </div>
+  1522→          </div>
+  1523→        </motion.div>
+  1524→
+  1525→        <div className="space-y-2">
+  1526→          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+  1527→            Verification Failed
+  1528→          </h1>
+  1529→          <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
+  1530→            The code you entered is invalid or has expired. Please try again or
+  1531→            request a new code.
+  1532→          </p>
+  1533→        </div>
+  1534→
+  1535→        <StatusBadge variant="error" dot className="mx-auto">
+  1536→          Invalid Code
+  1537→        </StatusBadge>
+  1538→
+  1539→        <div className="space-y-3">
+  1540→          <LootButton
+  1541→            variant="electric"
+  1542→            size="lg"
+  1543→            fullWidth
+  1544→            onClick={() => navigate("verify-email")}
+  1545→            leftIcon={<RefreshCw size={16} />}
+  1546→          >
+  1547→            Try Again
+  1548→          </LootButton>
+  1549→          <button
+  1550→            type="button"
+  1551→            onClick={() => navigate("verify-email")}
+  1552→            className="text-xs font-semibold text-electric hover:text-electric/80 transition-colors inline-flex items-center gap-1 mx-auto"
+  1553→          >
+  1554→            <RefreshCw size={12} />
+  1555→            Resend code
+  1556→          </button>
+  1557→        </div>
+  1558→      </motion.div>
+  1559→    </AuthShell>
+  1560→  );
+  1561→}
+  1562→
+  1563→/* ============================================================
+  1564→   SCREEN: Auth Loading
+  1565→   ============================================================ */
+  1566→function AuthLoadingScreen() {
+  1567→  const navigate = useNavigationStore((s) => s.navigate);
+  1568→
+  1569→  useEffect(() => {
+  1570→    const t = window.setTimeout(() => navigate("dashboard"), 2000);
+  1571→    return () => clearTimeout(t);
+  1572→  }, [navigate]);
+  1573→
+  1574→  // Floating particles
+  1575→  const particles = useMemo(
+  1576→    () =>
+  1577→      Array.from({ length: 18 }).map((_, i) => ({
+  1578→        id: i,
+  1579→        left: Math.random() * 100,
+  1580→        top: Math.random() * 100,
+  1581→        size: 4 + Math.random() * 8,
+  1582→        delay: Math.random() * 3,
+  1583→        duration: 3 + Math.random() * 4,
+  1584→        color:
+  1585→          i % 3 === 0
+  1586→            ? "bg-electric/30"
+  1587→            : i % 3 === 1
+  1588→            ? "bg-cyan-brand/30"
+  1589→            : "bg-purple-brand/30",
+  1590→      })),
+  1591→    []
+  1592→  );
+  1593→
+  1594→  return (
+  1595→    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden">
+  1596→      {/* Floating particles */}
+  1597→      {particles.map((p) => (
+  1598→        <motion.span
+  1599→          key={p.id}
+  1600→          className={cn("absolute rounded-full", p.color)}
+  1601→          style={{
+  1602→            left: `${p.left}%`,
+  1603→            top: `${p.top}%`,
+  1604→            width: p.size,
+  1605→            height: p.size,
+  1606→          }}
+  1607→          animate={{
+  1608→            y: [0, -30, 0],
+  1609→            opacity: [0, 1, 0],
+  1610→            scale: [0.5, 1.2, 0.5],
+  1611→          }}
+  1612→          transition={{
+  1613→            duration: p.duration,
+  1614→            repeat: Infinity,
+  1615→            delay: p.delay,
+  1616→            ease: "easeInOut",
+  1617→          }}
+  1618→        />
+  1619→      ))}
+  1620→
+  1621→      <motion.div
+  1622→        variants={modalPop}
+  1623→        initial="initial"
+  1624→        animate="animate"
+  1625→        className="relative z-10 flex flex-col items-center gap-6"
+  1626→      >
+  1627→        {/* Animated logo with rotating ring */}
+  1628→        <div className="relative size-24 flex items-center justify-center">
+  1629→          <motion.div
+  1630→            animate={{ rotate: 360 }}
+  1631→            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+  1632→            className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-electric border-r-cyan-brand"
+  1633→          />
+  1634→          <motion.div
+  1635→            animate={{ rotate: -360 }}
+  1636→            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+  1637→            className="absolute inset-2 rounded-full border-[2px] border-transparent border-b-purple-brand border-l-gold/60"
+  1638→          />
+  1639→          <motion.div
+  1640→            animate={{ scale: [1, 1.05, 1] }}
+  1641→            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+  1642→            className="relative"
+  1643→          >
+  1644→            <Logo size="lg" withText={false} animated={false} />
+  1645→          </motion.div>
+  1646→        </div>
+  1647→
+  1648→        <div className="text-center space-y-1.5">
+  1649→          <h2 className="text-lg font-bold tracking-tight text-foreground">
+  1650→            Securing your session…
+  1651→          </h2>
+  1652→          <p className="text-sm text-muted-foreground">
+  1653→            Verifying credentials and loading your dashboard
+  1654→          </p>
+  1655→        </div>
+  1656→
+  1657→        {/* Progress dots */}
+  1658→        <div className="flex items-center gap-1.5">
+  1659→          {[0, 1, 2].map((i) => (
+  1660→            <motion.span
+  1661→              key={i}
+  1662→              className="size-2 rounded-full bg-electric"
+  1663→              animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.1, 0.8] }}
+  1664→              transition={{
+  1665→                duration: 1.2,
+  1666→                repeat: Infinity,
+  1667→                delay: i * 0.2,
+  1668→                ease: "easeInOut",
+  1669→              }}
+  1670→            />
+  1671→          ))}
+  1672→        </div>
+  1673→      </motion.div>
+  1674→    </div>
+  1675→  );
+  1676→}
+  1677→
+  1678→/* ============================================================
+  1679→   SCREEN: Session Expired
+  1680→   ============================================================ */
+  1681→function SessionExpiredScreen() {
+  1682→  const navigate = useNavigationStore((s) => s.navigate);
+  1683→  const logout = useAuthStore((s) => s.logout);
+  1684→
+  1685→  return (
+  1686→    <AuthShell>
+  1687→      <motion.div variants={slideUp} className="space-y-6 text-center">
+  1688→        <motion.div
+  1689→          initial={{ scale: 0, rotate: -20 }}
+  1690→          animate={{ scale: 1, rotate: 0 }}
+  1691→          transition={{ type: "spring", stiffness: 280, damping: 18, delay: 0.1 }}
+  1692→          className="mx-auto inline-flex"
+  1693→        >
+  1694→          <div className="size-20 rounded-3xl bg-gold/15 ring-1 ring-gold/30 flex items-center justify-center text-gold shadow-[var(--shadow-glow)]">
+  1695→            <LockKeyhole size={40} strokeWidth={2} />
+  1696→          </div>
+  1697→        </motion.div>
+  1698→
+  1699→        <div className="space-y-2">
+  1700→          <StatusBadge variant="warning" dot pulse className="mx-auto">
+  1701→            Session Expired
+  1702→          </StatusBadge>
+  1703→          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+  1704→            Your session has expired
+  1705→          </h1>
+  1706→          <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
+  1707→            For your security, you've been signed out after a period of
+  1708→            inactivity. Please sign in again to continue.
+  1709→          </p>
+  1710→        </div>
+  1711→
+  1712→        <div className="space-y-3">
+  1713→          <LootButton
+  1714→            variant="electric"
+  1715→            size="lg"
+  1716→            fullWidth
+  1717→            onClick={() => {
+  1718→              logout();
+  1719→              navigate("login");
+  1720→            }}
+  1721→            leftIcon={<ArrowRight size={16} />}
+  1722→          >
+  1723→            Sign In Again
+  1724→          </LootButton>
+  1725→          <button
+  1726→            type="button"
+  1727→            onClick={() => navigate("home")}
+  1728→            className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+  1729→          >
+  1730→            Return to home
+  1731→          </button>
+  1732→        </div>
+  1733→      </motion.div>
+  1734→    </AuthShell>
+  1735→  );
+  1736→}
+  1737→
+  1738→/* ============================================================
+  1739→   SCREEN: Unauthorized
+  1740→   ============================================================ */
+  1741→function UnauthorizedScreen() {
+  1742→  const navigate = useNavigationStore((s) => s.navigate);
+  1743→  return (
+  1744→    <AuthShell>
+  1745→      <motion.div variants={slideUp} className="space-y-6 text-center">
+  1746→        <motion.div
+  1747→          initial={{ scale: 0, rotate: 20 }}
+  1748→          animate={{ scale: 1, rotate: 0 }}
+  1749→          transition={{ type: "spring", stiffness: 280, damping: 18, delay: 0.1 }}
+  1750→          className="mx-auto inline-flex"
+  1751→        >
+  1752→          <div className="size-20 rounded-3xl bg-rose-brand/12 ring-1 ring-rose-brand/25 flex items-center justify-center text-rose-brand">
+  1753→            <ShieldAlert size={42} strokeWidth={2} />
+  1754→          </div>
+  1755→        </motion.div>
+  1756→
+  1757→        <div className="space-y-2">
+  1758→          <StatusBadge variant="error" dot className="mx-auto">
+  1759→            403 — Access Denied
+  1760→          </StatusBadge>
+  1761→          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+  1762→            Access Denied
+  1763→          </h1>
+  1764→          <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
+  1765→            You don't have permission to access this page. If you believe this
+  1766→            is a mistake, contact support or return home.
+  1767→          </p>
+  1768→        </div>
+  1769→
+  1770→        <div className="space-y-3">
+  1771→          <LootButton
+  1772→            variant="electric"
+  1773→            size="lg"
+  1774→            fullWidth
+  1775→            onClick={() => navigate("home")}
+  1776→            leftIcon={<ArrowLeft size={16} />}
+  1777→          >
+  1778→            Return Home
+  1779→          </LootButton>
+  1780→          <button
+  1781→            type="button"
+  1782→            onClick={() => navigate("login")}
+  1783→            className="text-xs font-semibold text-electric hover:text-electric/80 transition-colors"
+  1784→          >
+  1785→            Try signing in
+  1786→          </button>
+  1787→        </div>
+  1788→      </motion.div>
+  1789→    </AuthShell>
+  1790→  );
+  1791→}
+  1792→
+  1793→/* ============================================================
+  1794→   AuthView — main router component
+  1795→   ============================================================ */
+  1796→export function AuthView() {
+  1797→  const current = useNavigationStore((s) => s.current);
+  1798→
+  1799→  return (
+  1800→    <AnimatePresence mode="wait">
+  1801→      <motion.div key={current} className="w-full">
+  1802→        {current === "login" && <LoginScreen />}
+  1803→        {current === "register" && <RegisterScreen />}
+  1804→        {current === "forgot-password" && <ForgotPasswordScreen />}
+  1805→        {current === "reset-password" && <ResetPasswordScreen />}
+  1806→        {current === "verify-email" && <VerifyEmailScreen />}
+  1807→        {current === "verify-success" && <VerifySuccessScreen />}
+  1808→        {current === "verify-failed" && <VerifyFailedScreen />}
+  1809→        {current === "auth-loading" && <AuthLoadingScreen />}
+  1810→        {current === "session-expired" && <SessionExpiredScreen />}
+  1811→        {current === "unauthorized" && <UnauthorizedScreen />}
+  1812→      </motion.div>
+  1813→    </AnimatePresence>
+  1814→  );
+  1815→}
+  1816→

@@ -4,23 +4,31 @@
  * LootLoom — AuthView
  * Renders ALL authentication screens based on `useNavigationStore().current`.
  *
- * Screens handled:
+ * Screens handled (10):
  *   login, register, forgot-password, reset-password,
  *   verify-email, verify-success, verify-failed,
  *   auth-loading, session-expired, unauthorized
  *
- * Split layout on lg+: LEFT = animated application preview (floating glass widgets),
- * RIGHT = auth form in GlassCard. Mobile: single column.
+ * Layout: split on lg+ — LEFT = AuthPreview with floating glass widgets
+ * (decorative marketing visuals, NO real user data), RIGHT = auth form in
+ * GlassCard. Mobile: single column with form only.
+ *
+ * Auth wiring:
+ *   - Login: signIn("credentials", { email, password, redirect: false })
+ *   - Google: signIn("google", { callbackUrl: window.location.origin })
+ *   - Register: CSRF token + POST to /api/auth/callback/credentials
+ *   - Sign-out (session-expired): useAuthStore.logout() + navigate("login")
+ *   - Verify-success: useAuthStore.login() + navigate("dashboard")
+ *
+ * Validation states supported on every form:
+ *   Empty / Loading / Success / Error / Invalid Input / Server Error
  *
  * BackgroundEngine is global and intentionally NOT rendered here.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail,
-  Lock,
-  Eye,
-  EyeOff,
   User,
   AtSign,
   ArrowRight,
@@ -34,6 +42,8 @@ import {
   Sparkles,
   Bell,
   RefreshCw,
+  Phone,
+  AlertCircle,
 } from "lucide-react";
 import {
   GlassCard,
@@ -41,19 +51,23 @@ import {
   Logo,
   IconBadge,
   StatusBadge,
-  GlassLoader,
+  AnimatedCounter,
 } from "@/components/lootloom";
-import { AnimatedCounter } from "@/components/lootloom";
+import {
+  FormInput,
+  PasswordInput,
+  FormButton,
+  GoogleButton,
+  OtpInput,
+  PremiumCheckbox,
+} from "@/components/auth";
 import { useNavigationStore, useAuthStore } from "@/stores";
-import { signIn, signOut } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import type { ViewId } from "@/types";
 import {
   pageTransition,
-  fade,
   slideUp,
-  scaleIn,
   floating,
-  hoverLift,
   staggerContainer,
   modalPop,
   successCheck,
@@ -61,206 +75,51 @@ import {
 import { cn } from "@/lib/utils";
 
 /* ============================================================
-   Premium input base class (shared by all auth inputs)
+   Validation helpers
    ============================================================ */
-const INPUT_CLASS =
-  "h-12 rounded-xl glass-2 ring-1 ring-border px-4 text-sm focus:ring-electric/40 focus:ring-2 outline-none transition-all w-full";
+const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const usernameRe = /^[a-zA-Z0-9_]{3,20}$/;
+
+const required = (v: string, label: string) =>
+  v.trim().length === 0 ? `${label} is required` : null;
+const validateEmail = (v: string) => {
+  if (!v.trim()) return "Email is required";
+  return emailRe.test(v.trim()) ? null : "Enter a valid email address";
+};
+const validatePassword = (v: string) => {
+  if (!v) return "Password is required";
+  return v.length >= 8 ? null : "Use at least 8 characters";
+};
+const validateUsername = (v: string) => {
+  if (!v.trim()) return "Username is required";
+  if (v.trim().length < 3) return "Username must be 3+ characters";
+  return usernameRe.test(v.trim())
+    ? null
+    : "Letters, numbers, underscores only";
+};
+const validatePhone = (v: string) => {
+  if (!v.trim()) return null; // optional
+  const digits = v.replace(/\D/g, "");
+  return digits.length >= 10 ? null : "Enter a valid phone number";
+};
 
 /* ============================================================
-   AuthInput — premium labeled input with leading icon
+   ServerErrorBanner — form-level red glass card
    ============================================================ */
-interface AuthInputProps {
-  id: string;
-  label: string;
-  type?: "text" | "email" | "tel" | "password";
-  placeholder?: string;
-  value: string;
-  onChange: (v: string) => void;
-  icon?: React.ReactNode;
-  error?: string | null;
-  autoComplete?: string;
-  inputMode?: "text" | "email" | "tel" | "numeric";
-  maxLength?: number;
-  rightSlot?: React.ReactNode;
-  disabled?: boolean;
-}
-
-function AuthInput({
-  id,
-  label,
-  type = "text",
-  placeholder,
-  value,
-  onChange,
-  icon,
-  error = null,
-  autoComplete,
-  inputMode,
-  maxLength,
-  rightSlot,
-  disabled = false,
-}: AuthInputProps) {
-  return (
-    <div className="space-y-1.5">
-      <label
-        htmlFor={id}
-        className="text-xs font-semibold text-foreground/70 tracking-wide"
-      >
-        {label}
-      </label>
-      <div className="relative">
-        {icon && (
-          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-            {icon}
-          </span>
-        )}
-        <input
-          id={id}
-          name={id}
-          type={type}
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          autoComplete={autoComplete}
-          inputMode={inputMode}
-          maxLength={maxLength}
-          disabled={disabled}
-          className={cn(
-            INPUT_CLASS,
-            icon && "pl-11",
-            rightSlot && "pr-12",
-            error && "ring-rose-brand/50 focus:ring-rose-brand/40",
-            disabled && "opacity-60 pointer-events-none"
-          )}
-        />
-        {rightSlot && (
-          <span className="absolute right-2 top-1/2 -translate-y-1/2">
-            {rightSlot}
-          </span>
-        )}
-      </div>
-      <AnimatePresence mode="wait">
-        {error && (
-          <motion.p
-            initial={{ opacity: 0, y: -4, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: "auto" }}
-            exit={{ opacity: 0, y: -4, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="text-xs font-medium text-rose-brand flex items-center gap-1"
-          >
-            <XCircle size={12} />
-            {error}
-          </motion.p>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-/* ============================================================
-   PasswordInput — password with eye toggle + optional meter
-   ============================================================ */
-interface PasswordInputProps {
-  id: string;
-  label: string;
-  placeholder?: string;
-  value: string;
-  onChange: (v: string) => void;
-  error?: string | null;
-  showStrength?: boolean;
-  autoComplete?: string;
-}
-
-function PasswordInput({
-  id,
-  label,
-  placeholder = "••••••••",
-  value,
-  onChange,
-  error = null,
-  showStrength = false,
-  autoComplete,
-}: PasswordInputProps) {
-  const [show, setShow] = useState(false);
-  return (
-    <div className="space-y-1.5">
-      <AuthInput
-        id={id}
-        label={label}
-        type={show ? "text" : "password"}
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-        icon={<Lock size={16} />}
-        error={error}
-        autoComplete={autoComplete}
-        rightSlot={
-          <button
-            type="button"
-            onClick={() => setShow((s) => !s)}
-            className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            aria-label={show ? "Hide password" : "Show password"}
-            tabIndex={-1}
-          >
-            {show ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
-        }
-      />
-      {showStrength && <PasswordStrengthMeter password={value} />}
-    </div>
-  );
-}
-
-/* ============================================================
-   PasswordStrengthMeter — weak / medium / strong
-   ============================================================ */
-function PasswordStrengthMeter({ password }: { password: string }) {
-  const { score, label, color, percent } = useMemo(() => {
-    if (!password) return { score: 0, label: "", color: "bg-transparent", percent: 0 };
-    let s = 0;
-    if (password.length >= 8) s++;
-    if (password.length >= 12) s++;
-    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) s++;
-    if (/\d/.test(password)) s++;
-    if (/[^A-Za-z0-9]/.test(password)) s++;
-    const final = Math.min(s, 3);
-    const map = [
-      { label: "Too short", color: "bg-rose-brand", percent: 20 },
-      { label: "Weak", color: "bg-rose-brand", percent: 35 },
-      { label: "Medium", color: "bg-gold", percent: 65 },
-      { label: "Strong", color: "bg-emerald-brand", percent: 100 },
-    ];
-    return { score: final, ...map[final] };
-  }, [password]);
-
-  if (!password) return null;
-
+function ServerErrorBanner({ message }: { message: string }) {
   return (
     <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: "auto" }}
-      exit={{ opacity: 0, height: 0 }}
-      className="flex items-center gap-2"
+      initial={{ opacity: 0, y: -4, height: 0 }}
+      animate={{ opacity: 1, y: 0, height: "auto" }}
+      exit={{ opacity: 0, y: -4, height: 0 }}
+      className="rounded-xl glass-2 ring-1 ring-rose-brand/30 bg-rose-brand/10 p-3 flex items-start gap-2.5"
+      role="alert"
+      aria-live="assertive"
     >
-      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-        <motion.div
-          className={cn("h-full rounded-full", color)}
-          initial={{ width: 0 }}
-          animate={{ width: `${percent}%` }}
-          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        />
-      </div>
-      <span
-        className={cn(
-          "text-[10px] font-semibold w-14 text-right",
-          score === 0 && "text-muted-foreground",
-          score === 1 && "text-rose-brand",
-          score === 2 && "text-gold",
-          score === 3 && "text-emerald-brand"
-        )}
-      >
-        {label}
-      </span>
+      <AlertCircle size={16} className="text-rose-brand shrink-0 mt-0.5" />
+      <p className="text-xs text-rose-brand font-medium leading-relaxed">
+        {message}
+      </p>
     </motion.div>
   );
 }
@@ -276,7 +135,7 @@ function AuthHeader({
 }: {
   icon?: React.ReactNode;
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   badge?: React.ReactNode;
 }) {
   return (
@@ -291,7 +150,7 @@ function AuthHeader({
           {icon}
         </motion.div>
       )}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           {title}
         </h1>
@@ -317,116 +176,6 @@ function Divider({ label = "or continue with" }: { label?: string }) {
         {label}
       </span>
       <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
-    </div>
-  );
-}
-
-/* ============================================================
-   SocialPlaceholders — Google / GitHub / Facebook (disabled look)
-   ============================================================ */
-function SocialPlaceholders() {
-  const socials = [
-    { name: "Google", glyph: "G", color: "text-rose-brand", ring: "hover:ring-rose-brand/30" },
-    { name: "GitHub", glyph: "", icon: "GH", color: "text-foreground", ring: "hover:ring-electric/30" },
-    { name: "Facebook", glyph: "f", color: "text-electric", ring: "hover:ring-electric/30" },
-  ];
-  return (
-    <div className="grid grid-cols-3 gap-2.5">
-      {socials.map((s) => (
-        <motion.button
-          key={s.name}
-          type="button"
-          disabled
-          whileHover={{ y: -2 }}
-          className={cn(
-            "h-11 rounded-xl glass-2 ring-1 ring-border flex items-center justify-center gap-2",
-            "text-sm font-semibold text-muted-foreground cursor-not-allowed",
-            "opacity-70 grayscale"
-          )}
-          aria-label={`Continue with ${s.name} (coming soon)`}
-          title={`${s.name} — coming soon`}
-        >
-          <span className={cn("text-base font-bold", s.color)}>
-            {s.glyph || (
-              <span className="text-xs tracking-tighter font-mono">{s.icon}</span>
-            )}
-          </span>
-          <span className="hidden sm:inline text-xs">{s.name}</span>
-        </motion.button>
-      ))}
-    </div>
-  );
-}
-
-/* ============================================================
-   TermsCheckbox + RememberMe — premium checkbox
-   ============================================================ */
-interface CheckboxProps {
-  id: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: React.ReactNode;
-  error?: string | null;
-}
-
-function PremiumCheckbox({ id, checked, onChange, label, error }: CheckboxProps) {
-  return (
-    <div className="space-y-1">
-      <label
-        htmlFor={id}
-        className="flex items-start gap-2.5 cursor-pointer group select-none"
-      >
-        <button
-          type="button"
-          role="checkbox"
-          id={id}
-          aria-checked={checked}
-          onClick={() => onChange(!checked)}
-          className={cn(
-            "mt-0.5 size-5 rounded-md ring-1 flex items-center justify-center transition-all shrink-0",
-            checked
-              ? "bg-electric ring-electric text-white"
-              : "bg-transparent ring-border text-transparent group-hover:ring-electric/40"
-          )}
-        >
-          <AnimatePresence>
-            {checked && (
-              <motion.svg
-                initial={{ scale: 0, rotate: -30 }}
-                animate={{ scale: 1, rotate: 0 }}
-                exit={{ scale: 0 }}
-                transition={{ type: "spring", stiffness: 320, damping: 16 }}
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M20 6 9 17l-5-5" />
-              </motion.svg>
-            )}
-          </AnimatePresence>
-        </button>
-        <span className="text-xs text-muted-foreground leading-relaxed">
-          {label}
-        </span>
-      </label>
-      <AnimatePresence>
-        {error && (
-          <motion.p
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="text-xs font-medium text-rose-brand flex items-center gap-1 pl-7"
-          >
-            <XCircle size={12} />
-            {error}
-          </motion.p>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -465,84 +214,9 @@ function AuthFooter({
 }
 
 /* ============================================================
-   OtpInput — 6-box verification code
-   ============================================================ */
-function OtpInput({
-  value,
-  onChange,
-  hasError = false,
-}: {
-  value: string[];
-  onChange: (v: string[]) => void;
-  hasError?: boolean;
-}) {
-  const refs = useRef<(HTMLInputElement | null)[]>([]);
-
-  const handleChange = (idx: number, raw: string) => {
-    const char = raw.replace(/\D/g, "").slice(-1);
-    const next = [...value];
-    next[idx] = char;
-    onChange(next);
-    if (char && idx < 5) {
-      refs.current[idx + 1]?.focus();
-    }
-  };
-
-  const handleKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !value[idx] && idx > 0) {
-      refs.current[idx - 1]?.focus();
-    }
-    if (e.key === "ArrowLeft" && idx > 0) refs.current[idx - 1]?.focus();
-    if (e.key === "ArrowRight" && idx < 5) refs.current[idx + 1]?.focus();
-  };
-
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (!text) return;
-    const next = ["", "", "", "", "", ""];
-    for (let i = 0; i < text.length; i++) next[i] = text[i];
-    onChange(next);
-    refs.current[Math.min(text.length, 5)]?.focus();
-  };
-
-  return (
-    <div
-      className="flex justify-between gap-2"
-      onPaste={handlePaste}
-    >
-      {Array.from({ length: 6 }).map((_, i) => (
-        <motion.input
-          key={i}
-          ref={(el) => {
-            refs.current[i] = el;
-          }}
-          type="text"
-          inputMode="numeric"
-          maxLength={1}
-          value={value[i] || ""}
-          onChange={(e) => handleChange(i, e.target.value)}
-          onKeyDown={(e) => handleKeyDown(i, e)}
-          onFocus={(e) => e.target.select()}
-          variants={scaleIn}
-          custom={i}
-          className={cn(
-            "size-12 sm:size-14 rounded-xl glass-2 ring-1 text-center text-lg font-bold",
-            "focus:ring-electric/40 focus:ring-2 outline-none transition-all",
-            "tabular-nums",
-            hasError ? "ring-rose-brand/50" : "ring-border",
-            value[i] && !hasError && "ring-electric/40 text-electric"
-          )}
-          aria-label={`Verification code digit ${i + 1}`}
-        />
-      ))}
-    </div>
-  );
-}
-
-/* ============================================================
    AuthPreview — animated LEFT side of split layout
-   Floating glass widgets showing app preview (NOT screenshots)
+   Floating glass widgets showing app preview (DECORATIVE marketing
+   visuals — NO real user data, all counters at 0 / neutral placeholders).
    ============================================================ */
 function AuthPreview() {
   const widgets = [
@@ -566,16 +240,16 @@ function AuthPreview() {
           </div>
           <div className="mt-3 flex items-end gap-1.5">
             <AnimatedCounter
-              value={12840}
+              value={0}
               className="text-3xl font-bold tracking-tight text-foreground"
             />
             <span className="text-xs font-semibold text-muted-foreground mb-1">
               coins
             </span>
           </div>
-          <div className="mt-2 flex items-center gap-1 text-[11px] text-emerald-brand font-semibold">
+          <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground font-semibold">
             <ArrowRight size={11} className="rotate-[-45deg]" />
-            +145 today
+            Earn as you go
           </div>
         </>
       ),
@@ -592,18 +266,18 @@ function AuthPreview() {
             <span className="text-xs font-semibold text-foreground">Daily Bonus</span>
           </div>
           <div className="mt-2 text-2xl font-bold text-foreground">
-            <AnimatedCounter value={50} /> coins
+            <AnimatedCounter value={0} /> coins
           </div>
           <div className="mt-2 h-1.5 rounded-full bg-gold/15 overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: "75%" }}
+              animate={{ width: "0%" }}
               transition={{ duration: 1.2, delay: 0.8, ease: [0.4, 0, 0.2, 1] }}
               className="h-full rounded-full bg-gradient-to-r from-gold to-amber-300"
             />
           </div>
           <p className="mt-1.5 text-[10px] text-muted-foreground">
-            Day 12 streak
+            Claim every day
           </p>
         </>
       ),
@@ -620,18 +294,13 @@ function AuthPreview() {
             <span className="text-xs font-semibold text-foreground">Rewards</span>
           </div>
           <div className="mt-2 space-y-1.5">
-            {[
-              { name: "₹100 UPI", coins: 1000 },
-              { name: "Amazon ₹50", coins: 800 },
-            ].map((r) => (
+            {["UPI cashout", "Gift cards", "Vouchers"].map((r) => (
               <div
-                key={r.name}
+                key={r}
                 className="flex items-center justify-between text-[11px]"
               >
-                <span className="text-muted-foreground">{r.name}</span>
-                <span className="font-semibold text-purple-brand">
-                  {r.coins.toLocaleString("en-IN")} ¢
-                </span>
+                <span className="text-muted-foreground">{r}</span>
+                <span className="font-semibold text-purple-brand">•••</span>
               </div>
             ))}
           </div>
@@ -647,7 +316,7 @@ function AuthPreview() {
         <div className="flex flex-col items-center text-center">
           <IconBadge name="Flame" accent="rose" size="lg" />
           <div className="mt-2 text-2xl font-bold text-foreground">
-            <AnimatedCounter value={12} /> days
+            <AnimatedCounter value={0} /> days
           </div>
           <p className="text-[10px] text-muted-foreground font-medium">
             Active Streak
@@ -669,10 +338,10 @@ function AuthPreview() {
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-semibold text-foreground">
-                Mission Completed
+                Stay on track
               </p>
               <p className="text-[10px] text-muted-foreground truncate">
-                You earned 120 coins
+                Mission updates appear here
               </p>
             </div>
             <Bell size={12} className="text-electric" />
@@ -727,11 +396,7 @@ function AuthPreview() {
           }}
           className={cn("absolute z-20", w.className)}
         >
-          <GlassCard
-            level={3}
-            sheen
-            className="p-4 shadow-[var(--shadow-lg)]"
-          >
+          <GlassCard level={3} sheen className="p-4 shadow-[var(--shadow-lg)]">
             {w.content}
           </GlassCard>
         </motion.div>
@@ -751,7 +416,7 @@ function AuthPreview() {
 }
 
 /* ============================================================
-   Shell — common wrapper for all auth screens
+   AuthShell — common wrapper for all auth screens
    ============================================================ */
 function AuthShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigationStore((s) => s.navigate);
@@ -799,7 +464,7 @@ function AuthShell({ children }: { children: React.ReactNode }) {
 }
 
 /* ============================================================
-   Hook: simulate API call
+   Hook: simulate API call (used by non-backend-wired screens)
    ============================================================ */
 function useSimulatedApi() {
   const [loading, setLoading] = useState(false);
@@ -814,35 +479,44 @@ function useSimulatedApi() {
 }
 
 /* ============================================================
-   Validation helpers
-   ============================================================ */
-const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const validateEmail = (v: string) => (emailRe.test(v) ? null : "Enter a valid email address");
-
-/* ============================================================
    SCREEN: Login
    ============================================================ */
 function LoginScreen() {
   const navigate = useNavigationStore((s) => s.navigate);
   const setAuthenticated = useAuthStore((s) => s.setAuthenticated);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
+  const [errors, setErrors] = useState<{ email?: string | null; password?: string | null }>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const onEmailChange = (v: string) => {
+    setEmail(v);
+    if (errors.email) setErrors((e) => ({ ...e, email: null }));
+    if (serverError) setServerError(null);
+  };
+  const onPasswordChange = (v: string) => {
+    setPassword(v);
+    if (errors.password) setErrors((e) => ({ ...e, password: null }));
+    if (serverError) setServerError(null);
+  };
+
+  const validate = () => {
+    const next: typeof errors = {};
+    next.email = validateEmail(email);
+    next.password = required(password, "Password");
+    setErrors(next);
+    return !next.email && !next.password;
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) {
-      setError("Please enter your email");
-      return;
-    }
-    if (!password) {
-      setError("Please enter your password");
-      return;
-    }
+    if (!validate()) return;
     setLoading(true);
-    setError(null);
+    setServerError(null);
     try {
       const result = await signIn("credentials", {
         email: email.trim().toLowerCase(),
@@ -851,7 +525,9 @@ function LoginScreen() {
       });
 
       if (result?.error) {
-        setError("Invalid email or password. If you don't have an account, please register first.");
+        setServerError(
+          "Invalid email or password. If you don't have an account, please register first."
+        );
         setLoading(false);
       } else if (result?.ok) {
         const sessionResp = await fetch("/api/auth/session");
@@ -860,29 +536,35 @@ function LoginScreen() {
           setAuthenticated(true);
           navigate("dashboard");
         } else {
-          setError("Login failed. Please try again.");
+          setServerError("Login failed. Please try again.");
           setLoading(false);
         }
       } else {
-        setError("Login failed. Please try again.");
+        setServerError("Login failed. Please try again.");
         setLoading(false);
       }
     } catch {
-      setError("Network error. Please check your connection.");
+      setServerError("Network error. Please check your connection.");
       setLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setError(null);
+    setGoogleLoading(true);
+    setServerError(null);
     try {
-      await signIn("google", { callbackUrl: window.location.origin, redirect: true });
+      // Full-page redirect — NextAuth handles the rest
+      await signIn("google", {
+        callbackUrl: window.location.origin,
+        redirect: true,
+      });
     } catch {
-      setError("Google sign-in failed. Please try again.");
-      setLoading(false);
+      setServerError("Google sign-in failed. Please try again.");
+      setGoogleLoading(false);
     }
   };
+
+  const busy = loading || googleLoading;
 
   return (
     <AuthShell>
@@ -890,6 +572,7 @@ function LoginScreen() {
         variants={slideUp}
         onSubmit={handleSignIn}
         className="space-y-5"
+        noValidate
       >
         <AuthHeader
           icon={<IconBadge name="KeyRound" accent="electric" size="lg" />}
@@ -897,60 +580,52 @@ function LoginScreen() {
           subtitle="Sign in to your LootLoom account."
         />
 
-        {error && (
-          <div className="rounded-xl bg-rose-brand/10 ring-1 ring-rose-brand/20 p-3 text-xs text-rose-brand font-medium">
-            {error}
-          </div>
-        )}
+        <AnimatePresence>
+          {serverError && <ServerErrorBanner message={serverError} />}
+        </AnimatePresence>
 
         {/* Google Sign-In */}
-        <LootButton
-          type="button"
-          variant="glass"
-          size="lg"
-          fullWidth
-          loading={loading}
+        <GoogleButton
           onClick={handleGoogleSignIn}
-          leftIcon={
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09Z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23Z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62Z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38Z" fill="#EA4335"/>
-            </svg>
-          }
-        >
-          Continue with Google
-        </LootButton>
+          loading={googleLoading}
+          fullWidth
+        />
 
         <Divider />
 
-        <AuthInput
+        <FormInput
           id="login-email"
           label="Email"
           type="email"
           placeholder="you@example.com"
           value={email}
-          onChange={setEmail}
+          onChange={onEmailChange}
           icon={<AtSign size={16} />}
-          error={null}
+          error={errors.email ?? null}
           autoComplete="email"
+          disabled={busy}
         />
 
         <PasswordInput
           id="login-password"
           label="Password"
           value={password}
-          onChange={setPassword}
+          onChange={onPasswordChange}
+          error={errors.password ?? null}
           autoComplete="current-password"
+          disabled={busy}
         />
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <PremiumCheckbox
             id="remember"
             checked={remember}
             onChange={setRemember}
-            label={<span className="text-xs font-medium text-foreground/80">Remember me</span>}
+            label={
+              <span className="text-xs font-medium text-foreground/80">
+                Remember me
+              </span>
+            }
           />
           <button
             type="button"
@@ -961,16 +636,16 @@ function LoginScreen() {
           </button>
         </div>
 
-        <LootButton
+        <FormButton
           type="submit"
           variant="electric"
           size="lg"
-          fullWidth
           loading={loading}
+          disabled={busy}
           rightIcon={<ArrowRight size={16} />}
         >
           {loading ? "Signing in…" : "Sign In"}
-        </LootButton>
+        </FormButton>
 
         <AuthFooter
           text="New to LootLoom?"
@@ -988,33 +663,91 @@ function LoginScreen() {
 function RegisterScreen() {
   const navigate = useNavigationStore((s) => s.navigate);
   const setAuthenticated = useAuthStore((s) => s.setAuthenticated);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
+  const [form, setForm] = useState({
+    fullName: "",
+    username: "",
+    email: "",
+    password: "",
+    confirm: "",
+    phone: "",
+  });
+  const [terms, setTerms] = useState(false);
+  const [errors, setErrors] = useState<{
+    fullName?: string | null;
+    username?: string | null;
+    email?: string | null;
+    password?: string | null;
+    confirm?: string | null;
+    phone?: string | null;
+    terms?: string | null;
+  }>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const update =
+    (field: keyof typeof form) =>
+    (v: string) => {
+      setForm((s) => ({ ...s, [field]: v }));
+      if (errors[field]) setErrors((e) => ({ ...e, [field]: null }));
+      if (serverError) setServerError(null);
+      // Confirm-match should re-validate when either field changes
+      if (field === "password" && errors.confirm) {
+        setErrors((e) => ({
+          ...e,
+          confirm:
+            v && form.confirm && form.confirm !== v
+              ? "Passwords do not match"
+              : null,
+        }));
+      }
+      if (field === "confirm" && errors.confirm) {
+        setErrors((e) => ({
+          ...e,
+          confirm: v !== form.password ? "Passwords do not match" : null,
+        }));
+      }
+    };
+
+  const onTermsChange = (v: boolean) => {
+    setTerms(v);
+    if (errors.terms) setErrors((e) => ({ ...e, terms: null }));
+  };
+
+  const validate = () => {
+    const next: typeof errors = {};
+    next.fullName = required(form.fullName, "Full name");
+    next.username = validateUsername(form.username);
+    next.email = validateEmail(form.email);
+    next.password = validatePassword(form.password);
+    next.confirm = !form.confirm
+      ? "Please confirm your password"
+      : form.confirm !== form.password
+      ? "Passwords do not match"
+      : null;
+    next.phone = validatePhone(form.phone);
+    next.terms = !terms ? "You must accept the Terms to continue" : null;
+    setErrors(next);
+    return Object.values(next).every((v) => !v);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim()) {
-      setError("Please enter your name");
-      return;
-    }
-    if (!email.trim() || !validateEmail(email)) {
-      setError("Please enter a valid email");
-      return;
-    }
+    if (!validate()) return;
     setLoading(true);
-    setError(null);
+    setServerError(null);
     try {
       // Get CSRF token
       const csrfResp = await fetch("/api/auth/csrf");
       const { csrfToken } = await csrfResp.json();
 
-      // POST to credentials callback
+      // POST to credentials callback — backend authorize() handles registration
       const formData = new URLSearchParams();
-      formData.append("name", fullName.trim());
-      formData.append("email", email.trim().toLowerCase());
+      formData.append("name", form.fullName.trim());
+      formData.append("username", form.username.trim().toLowerCase());
+      formData.append("email", form.email.trim().toLowerCase());
+      formData.append("password", form.password);
+      if (form.phone.trim()) formData.append("phone", form.phone.trim());
       formData.append("csrfToken", csrfToken);
       formData.append("callbackUrl", window.location.origin);
       formData.append("json", "true");
@@ -1032,15 +765,20 @@ function RegisterScreen() {
           setAuthenticated(true);
           navigate("dashboard");
         } else {
-          setError("Registration failed — session not created. Please try again.");
+          setServerError(
+            "Registration failed — session not created. Please try again."
+          );
           setLoading(false);
         }
       } else {
-        setError("Registration failed. Please try again.");
+        const errText = await resp.text().catch(() => "");
+        setServerError(
+          errText || "Registration failed. Please try a different email or username."
+        );
         setLoading(false);
       }
     } catch {
-      setError("Network error. Please try again.");
+      setServerError("Network error. Please try again.");
       setLoading(false);
     }
   };
@@ -1064,48 +802,132 @@ function RegisterScreen() {
           }
         />
 
-        {error && (
-          <div className="rounded-xl bg-rose-brand/10 ring-1 ring-rose-brand/20 p-3 text-xs text-rose-brand font-medium">
-            {error}
-          </div>
-        )}
+        <AnimatePresence>
+          {serverError && <ServerErrorBanner message={serverError} />}
+        </AnimatePresence>
 
-        <AuthInput
+        <FormInput
           id="fullName"
           label="Full Name"
           placeholder="Aarav Sharma"
-          value={fullName}
-          onChange={setFullName}
+          value={form.fullName}
+          onChange={update("fullName")}
           icon={<User size={16} />}
+          error={errors.fullName ?? null}
           autoComplete="name"
+          disabled={loading}
         />
 
-        <AuthInput
+        <FormInput
+          id="username"
+          label="Username"
+          placeholder="aarav_s"
+          value={form.username}
+          onChange={update("username")}
+          icon={<AtSign size={16} />}
+          error={errors.username ?? null}
+          autoComplete="username"
+          maxLength={20}
+          disabled={loading}
+        />
+
+        <FormInput
           id="email"
           label="Email"
           type="email"
           placeholder="you@example.com"
-          value={email}
-          onChange={setEmail}
+          value={form.email}
+          onChange={update("email")}
           icon={<Mail size={16} />}
+          error={errors.email ?? null}
           autoComplete="email"
+          disabled={loading}
         />
 
-        <LootButton
+        <PasswordInput
+          id="register-password"
+          label="Password"
+          value={form.password}
+          onChange={update("password")}
+          error={errors.password ?? null}
+          showStrength
+          autoComplete="new-password"
+          disabled={loading}
+        />
+
+        <PasswordInput
+          id="register-confirm"
+          label="Confirm Password"
+          value={form.confirm}
+          onChange={update("confirm")}
+          error={errors.confirm ?? null}
+          autoComplete="new-password"
+          disabled={loading}
+        />
+
+        <FormInput
+          id="phone"
+          label="Phone Number (optional)"
+          type="tel"
+          placeholder="+91 98765 43210"
+          value={form.phone}
+          onChange={update("phone")}
+          icon={<Phone size={16} />}
+          error={errors.phone ?? null}
+          autoComplete="tel"
+          inputMode="tel"
+          maxLength={20}
+          disabled={loading}
+        />
+
+        <PremiumCheckbox
+          id="terms"
+          checked={terms}
+          onChange={onTermsChange}
+          label={
+            <span className="text-xs text-muted-foreground leading-relaxed">
+              I agree to the{" "}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("terms");
+                }}
+                className="font-semibold text-electric hover:text-electric/80 transition-colors"
+              >
+                Terms of Service
+              </button>{" "}
+              and{" "}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("privacy");
+                }}
+                className="font-semibold text-electric hover:text-electric/80 transition-colors"
+              >
+                Privacy Policy
+              </button>
+            </span>
+          }
+          error={errors.terms ?? null}
+        />
+
+        <FormButton
           type="submit"
           variant="electric"
           size="lg"
-          fullWidth
           loading={loading}
+          disabled={loading}
           rightIcon={<ArrowRight size={16} />}
         >
           {loading ? "Creating account…" : "Create Account"}
-        </LootButton>
+        </FormButton>
 
         <div className="rounded-xl glass-2 ring-1 ring-border p-4 text-center">
           <p className="text-xs text-muted-foreground leading-relaxed">
             Your account and wallet will be created automatically.
-            Start earning coins by watching ads and completing missions.
+            Start earning coins by completing missions.
           </p>
         </div>
 
@@ -1131,7 +953,6 @@ function ForgotPasswordScreen() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return setError("Email is required");
     const ve = validateEmail(email);
     if (ve) return setError(ve);
     setError(null);
@@ -1144,11 +965,7 @@ function ForgotPasswordScreen() {
         <AuthHeader
           icon={<IconBadge name="MailQuestion" accent="gold" size="lg" />}
           title="Forgot password?"
-          subtitle={
-            sent
-              ? undefined
-              : "Enter your email and we'll send you a reset link."
-          }
+          subtitle={sent ? undefined : "Enter your email and we'll send you a reset link."}
         />
 
         <AnimatePresence mode="wait">
@@ -1180,15 +997,14 @@ function ForgotPasswordScreen() {
                 </div>
               </GlassCard>
 
-              <LootButton
+              <FormButton
                 variant="electric"
                 size="lg"
-                fullWidth
                 onClick={() => navigate("reset-password")}
                 rightIcon={<ArrowRight size={16} />}
               >
                 Continue to Reset
-              </LootButton>
+              </FormButton>
             </motion.div>
           ) : (
             <motion.form
@@ -1197,7 +1013,7 @@ function ForgotPasswordScreen() {
               className="space-y-5"
               noValidate
             >
-              <AuthInput
+              <FormInput
                 id="forgotEmail"
                 label="Email"
                 type="email"
@@ -1210,17 +1026,18 @@ function ForgotPasswordScreen() {
                 icon={<Mail size={16} />}
                 error={error}
                 autoComplete="email"
+                disabled={loading}
               />
-              <LootButton
+              <FormButton
                 type="submit"
                 variant="electric"
                 size="lg"
-                fullWidth
                 loading={loading}
+                disabled={loading}
                 leftIcon={<Mail size={16} />}
               >
                 {loading ? "Sending reset link…" : "Send Reset Link"}
-              </LootButton>
+              </FormButton>
             </motion.form>
           )}
         </AnimatePresence>
@@ -1243,14 +1060,43 @@ function ResetPasswordScreen() {
   const { loading, run } = useSimulatedApi();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [errors, setErrors] = useState<{ pw?: string | null; confirm?: string | null }>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{
+    password?: string | null;
+    confirm?: string | null;
+  }>({});
+
+  const onPasswordChange = (v: string) => {
+    setPassword(v);
+    if (errors.password) setErrors((e) => ({ ...e, password: null }));
+    if (errors.confirm && confirm && confirm !== v) {
+      setErrors((e) => ({ ...e, confirm: "Passwords do not match" }));
+    } else if (errors.confirm && confirm === v) {
+      setErrors((e) => ({ ...e, confirm: null }));
+    }
+    if (serverError) setServerError(null);
+  };
+
+  const onConfirmChange = (v: string) => {
+    setConfirm(v);
+    if (errors.confirm) {
+      setErrors((e) => ({
+        ...e,
+        confirm: v !== password ? "Passwords do not match" : null,
+      }));
+    }
+    if (serverError) setServerError(null);
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const next: typeof errors = {};
-    if (!password) next.pw = "Password is required";
-    else if (password.length < 8) next.pw = "Use 8+ characters";
-    if (confirm !== password) next.confirm = "Passwords do not match";
+    next.password = validatePassword(password);
+    next.confirm = !confirm
+      ? "Please confirm your password"
+      : confirm !== password
+      ? "Passwords do not match"
+      : null;
     setErrors(next);
     if (Object.values(next).some(Boolean)) return;
     run(() => navigate("login"));
@@ -1258,48 +1104,53 @@ function ResetPasswordScreen() {
 
   return (
     <AuthShell>
-      <motion.form variants={slideUp} onSubmit={submit} className="space-y-5" noValidate>
+      <motion.form
+        variants={slideUp}
+        onSubmit={submit}
+        className="space-y-5"
+        noValidate
+      >
         <AuthHeader
           icon={<IconBadge name="LockKeyhole" accent="emerald" size="lg" />}
           title="Reset password"
           subtitle="Choose a strong new password for your account."
         />
 
+        <AnimatePresence>
+          {serverError && <ServerErrorBanner message={serverError} />}
+        </AnimatePresence>
+
         <PasswordInput
           id="newPassword"
           label="New Password"
           value={password}
-          onChange={(v) => {
-            setPassword(v);
-            if (errors.pw) setErrors((e) => ({ ...e, pw: null }));
-          }}
-          error={errors.pw}
+          onChange={onPasswordChange}
+          error={errors.password ?? null}
           showStrength
           autoComplete="new-password"
+          disabled={loading}
         />
 
         <PasswordInput
           id="confirmReset"
           label="Confirm Password"
           value={confirm}
-          onChange={(v) => {
-            setConfirm(v);
-            if (errors.confirm) setErrors((e) => ({ ...e, confirm: null }));
-          }}
-          error={errors.confirm}
+          onChange={onConfirmChange}
+          error={errors.confirm ?? null}
           autoComplete="new-password"
+          disabled={loading}
         />
 
-        <LootButton
+        <FormButton
           type="submit"
           variant="electric"
           size="lg"
-          fullWidth
           loading={loading}
+          disabled={loading}
           leftIcon={<KeyRound size={16} />}
         >
           {loading ? "Resetting…" : "Reset Password"}
-        </LootButton>
+        </FormButton>
 
         <AuthFooter
           text="Back to"
@@ -1329,10 +1180,13 @@ function VerifyEmailScreen() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (code.some((c) => !c)) return setError("Enter the 6-digit code");
+    if (code.some((c) => !c)) {
+      setError("Enter the 6-digit code");
+      return;
+    }
     setError(null);
     run(() => {
-      // Simulated: 50% path — but deterministic for demo: success
+      // Demo: deterministic success path. Backend wiring will validate the OTP.
       navigate("verify-success");
     });
   };
@@ -1354,7 +1208,9 @@ function VerifyEmailScreen() {
           title="Verify your email"
           subtitle={
             <>
-              We sent a 6-digit code to <span className="font-semibold text-foreground">your email</span>. Enter it below.
+              We sent a 6-digit code to{" "}
+              <span className="font-semibold text-foreground">your email</span>.
+              Enter it below.
             </>
           }
           badge={
@@ -1396,16 +1252,16 @@ function VerifyEmailScreen() {
             )}
           </AnimatePresence>
 
-          <LootButton
+          <FormButton
             type="submit"
             variant="electric"
             size="lg"
-            fullWidth
             loading={loading}
+            disabled={loading}
             rightIcon={<ArrowRight size={16} />}
           >
             {loading ? "Verifying…" : "Verify"}
-          </LootButton>
+          </FormButton>
         </form>
 
         <div className="flex items-center justify-between text-xs">
@@ -1479,10 +1335,9 @@ function VerifySuccessScreen() {
           Account Activated
         </StatusBadge>
 
-        <LootButton
+        <FormButton
           variant="electric"
           size="lg"
-          fullWidth
           onClick={() => {
             login();
             navigate("dashboard");
@@ -1490,7 +1345,7 @@ function VerifySuccessScreen() {
           rightIcon={<ArrowRight size={16} />}
         >
           Continue to Dashboard
-        </LootButton>
+        </FormButton>
       </motion.div>
     </AuthShell>
   );
@@ -1537,15 +1392,14 @@ function VerifyFailedScreen() {
         </StatusBadge>
 
         <div className="space-y-3">
-          <LootButton
+          <FormButton
             variant="electric"
             size="lg"
-            fullWidth
             onClick={() => navigate("verify-email")}
             leftIcon={<RefreshCw size={16} />}
           >
             Try Again
-          </LootButton>
+          </FormButton>
           <button
             type="button"
             onClick={() => navigate("verify-email")}
@@ -1704,16 +1558,15 @@ function SessionExpiredScreen() {
             Your session has expired
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-            For your security, you've been signed out after a period of
+            For your security, you&apos;ve been signed out after a period of
             inactivity. Please sign in again to continue.
           </p>
         </div>
 
         <div className="space-y-3">
-          <LootButton
+          <FormButton
             variant="electric"
             size="lg"
-            fullWidth
             onClick={() => {
               logout();
               navigate("login");
@@ -1721,7 +1574,7 @@ function SessionExpiredScreen() {
             leftIcon={<ArrowRight size={16} />}
           >
             Sign In Again
-          </LootButton>
+          </FormButton>
           <button
             type="button"
             onClick={() => navigate("home")}
@@ -1762,21 +1615,20 @@ function UnauthorizedScreen() {
             Access Denied
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-            You don't have permission to access this page. If you believe this
+            You don&apos;t have permission to access this page. If you believe this
             is a mistake, contact support or return home.
           </p>
         </div>
 
         <div className="space-y-3">
-          <LootButton
+          <FormButton
             variant="electric"
             size="lg"
-            fullWidth
             onClick={() => navigate("home")}
             leftIcon={<ArrowLeft size={16} />}
           >
             Return Home
-          </LootButton>
+          </FormButton>
           <button
             type="button"
             onClick={() => navigate("login")}

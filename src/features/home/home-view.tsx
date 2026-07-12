@@ -6,65 +6,27 @@ import {
   Sparkles,
   ArrowRight,
   LogIn,
-  UserPlus,
-  PlayCircle,
-  Wallet,
-  Gift,
-  CalendarCheck,
-  Users,
-  Trophy,
-  Award,
-  LifeBuoy,
-  ShieldCheck,
-  Lock,
-  Eye,
-  Shield,
-  Coins,
-  Bell,
-  TrendingUp,
-  Flame,
-  Star,
-  ChevronDown,
-  QrCode,
-  Apple,
-  Smartphone,
   HelpCircle,
-  Mail,
-  MessageCircle,
-  Ticket,
-  BookOpen,
-  Target,
-  Crown,
-  Medal,
-  Zap,
+  ChevronDown,
+  Shield,
+  ShieldCheck,
+  Coins,
   Check,
   Twitter,
   Github,
   Linkedin,
   Youtube,
   Send,
-  Rocket,
-  HandCoins,
-  PiggyBank,
-  Fingerprint,
-  BadgeCheck,
 } from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  ResponsiveContainer,
-  XAxis,
-  Tooltip,
-} from "recharts";
 import {
   GlassCard,
   LootButton,
   Logo,
   IconBadge,
   AnimatedCounter,
-  ProgressRing,
   StatusBadge,
 } from "@/components/lootloom";
+import { Navbar } from "@/components/navbar";
 import {
   pageTransition,
   slideUp,
@@ -74,32 +36,21 @@ import {
   cardReveal,
   staggerContainer,
 } from "@/lib/animations";
-import { useNavigationStore, useWalletStore, useUserStore } from "@/stores";
+import { useNavigationStore, useAuthStore } from "@/stores";
 import type { ViewId } from "@/types";
 
 /* ============================================================
    Static content data — kept local to the home view
+   All values below are marketing copy, NOT user data.
    ============================================================ */
 
-const QUICK_ACTIONS: {
-  title: string;
-  desc: string;
-  icon: string;
-  accent: "electric" | "cyan" | "purple" | "gold";
-  view?: ViewId;
-  scroll?: string;
-}[] = [
-  { title: "Start Earning", desc: "Watch ads, complete missions", icon: "PlayCircle", accent: "electric", view: "earn" },
-  { title: "Register", desc: "Create your free account", icon: "UserPlus", accent: "cyan", view: "register" },
-  { title: "Login", desc: "Welcome back, member", icon: "LogIn", accent: "purple", view: "login" },
-  { title: "Explore Features", desc: "See everything you can do", icon: "Sparkles", accent: "gold", scroll: "overview" },
-];
+type Accent = "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy";
 
 const WHAT_YOU_CAN_DO: {
   title: string;
   desc: string;
   icon: string;
-  accent: "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy";
+  accent: Accent;
   view: ViewId;
 }[] = [
   { title: "Earn Coins", desc: "Watch rewarded ads, complete offerwalls, finish missions.", icon: "Coins", accent: "electric", view: "earn" },
@@ -116,7 +67,7 @@ const TIMELINE_STEPS: {
   title: string;
   desc: string;
   icon: string;
-  accent: "electric" | "cyan" | "purple" | "gold" | "emerald";
+  accent: Accent;
 }[] = [
   { title: "Create Account", desc: "Sign up free in under 60 seconds.", icon: "UserPlus", accent: "electric" },
   { title: "Verify Account", desc: "Confirm your email to unlock earning.", icon: "BadgeCheck", accent: "cyan" },
@@ -125,54 +76,23 @@ const TIMELINE_STEPS: {
   { title: "Redeem Rewards", desc: "Cash out via UPI, vouchers or gift cards.", icon: "Gift", accent: "emerald" },
 ];
 
-const WALLET_CHART_DATA = [
-  { day: "Mon", v: 120 },
-  { day: "Tue", v: 180 },
-  { day: "Wed", v: 140 },
-  { day: "Thu", v: 220 },
-  { day: "Fri", v: 280 },
-  { day: "Sat", v: 320 },
-  { day: "Sun", v: 380 },
-];
-
-const EARN_ACTIVITIES: {
-  title: string;
-  desc: string;
-  reward: number;
-  icon: string;
-  accent: "electric" | "cyan" | "purple" | "gold";
-  time: string;
-}[] = [
-  { title: "Rewarded Ads", desc: "Watch short ads and earn coins instantly.", reward: 25, icon: "PlayCircle", accent: "electric", time: "~30s" },
-  { title: "Offerwall", desc: "Complete offers from partner brands.", reward: 150, icon: "Target", accent: "purple", time: "~5 min" },
-  { title: "Daily Bonus", desc: "Claim your free daily login reward.", reward: 50, icon: "CalendarCheck", accent: "gold", time: "Daily" },
-  { title: "Missions", desc: "Finish multi-step missions for big payouts.", reward: 320, icon: "Rocket", accent: "cyan", time: "~15 min" },
-];
-
-const LEADERBOARD_TOP3: {
-  rank: number;
+// Static marketing catalog of reward tiers — shown to all visitors.
+// Coin costs are reference values used everywhere rewards are marketed.
+const REWARD_TIERS: {
   name: string;
-  xp: number;
+  category: "UPI" | "Voucher";
   coins: number;
-  level: number;
-  medal: "gold" | "silver" | "bronze";
-}[] = [
-  { rank: 2, name: "Aarav S.", xp: 18420, coins: 92400, level: 24, medal: "silver" },
-  { rank: 1, name: "Priya K.", xp: 24180, coins: 128500, level: 28, medal: "gold" },
-  { rank: 3, name: "Rohan M.", xp: 16240, coins: 81200, level: 22, medal: "bronze" },
-];
-
-const ACHIEVEMENTS: {
-  name: string;
-  desc: string;
   icon: string;
-  progress: number;
-  rarity: "common" | "rare" | "epic" | "legendary";
+  accent: Accent;
 }[] = [
-  { name: "First Steps", desc: "Complete your first mission", icon: "Footprints", progress: 100, rarity: "common" },
-  { name: "Streak Keeper", desc: "Maintain a 7-day streak", icon: "Flame", progress: 71, rarity: "rare" },
-  { name: "Coin Collector", desc: "Earn 50,000 lifetime coins", icon: "PiggyBank", progress: 92, rarity: "epic" },
-  { name: "Legendary Earner", desc: "Reach the global top 10", icon: "Crown", progress: 28, rarity: "legendary" },
+  { name: "₹10 UPI", category: "UPI", coins: 1000, icon: "HandCoins", accent: "electric" },
+  { name: "₹20 UPI", category: "UPI", coins: 2000, icon: "HandCoins", accent: "cyan" },
+  { name: "₹50 UPI", category: "UPI", coins: 5000, icon: "HandCoins", accent: "purple" },
+  { name: "₹100 UPI", category: "UPI", coins: 10000, icon: "HandCoins", accent: "gold" },
+  { name: "₹200 UPI", category: "UPI", coins: 20000, icon: "HandCoins", accent: "emerald" },
+  { name: "₹500 UPI", category: "UPI", coins: 50000, icon: "HandCoins", accent: "rose" },
+  { name: "Amazon Voucher", category: "Voucher", coins: 5000, icon: "Gift", accent: "cyan" },
+  { name: "Flipkart Voucher", category: "Voucher", coins: 5000, icon: "Gift", accent: "purple" },
 ];
 
 const SECURITY_FEATURES: {
@@ -190,7 +110,7 @@ const FAQS: { q: string; a: string }[] = [
   { q: "Is LootLoom free to use?", a: "Yes. Creating an account and earning coins is completely free. We only require a verified email address to unlock redemptions." },
   { q: "How do I redeem coins?", a: "Head to the Redeem page, choose a reward (UPI, voucher or gift card), enter the amount, and we'll process your request within the stated timeframe." },
   { q: "When do coins get credited?", a: "Coins from rewarded ads and missions are credited instantly. Referral bonuses appear as soon as your friend verifies their email." },
-  { q: "Can I use LootLoom on mobile?", a: "Our web app is fully responsive. Native Android and iOS apps are on the roadmap and will be available soon via the Download section." },
+  { q: "Can I use LootLoom on mobile?", a: "Our web app is fully responsive. Native Android and iOS apps are on the roadmap and will be available soon." },
   { q: "What if I run into issues?", a: "Open a ticket from the Support page and our team will respond within 24 hours. Premium members get priority handling." },
 ];
 
@@ -198,7 +118,7 @@ const SUPPORT_OPTIONS: {
   title: string;
   desc: string;
   icon: string;
-  accent: "electric" | "cyan" | "purple" | "gold" | "emerald";
+  accent: Accent;
 }[] = [
   { title: "Support Center", desc: "Browse help articles", icon: "LifeBuoy", accent: "electric" },
   { title: "Help Center", desc: "Guides & tutorials", icon: "BookOpen", accent: "cyan" },
@@ -206,13 +126,6 @@ const SUPPORT_OPTIONS: {
   { title: "Open a Ticket", desc: "Get personalized help", icon: "Ticket", accent: "gold" },
   { title: "Live Chat", desc: "Coming soon", icon: "MessageCircle", accent: "emerald" },
 ];
-
-const RARITY_COLOR: Record<string, "gold" | "electric" | "purple" | "cyan"> = {
-  common: "cyan",
-  rare: "electric",
-  epic: "purple",
-  legendary: "gold",
-};
 
 /* ============================================================
    Small presentational helpers
@@ -282,69 +195,6 @@ function FloatingCoin({ className, delay = 0 }: { className?: string; delay?: nu
 }
 
 /* ============================================================
-   Section: Sticky top bar
-   ============================================================ */
-function TopBar() {
-  const navigate = useNavigationStore((s) => s.navigate);
-  return (
-    <motion.header
-      variants={pageTransition}
-      initial="initial"
-      animate="animate"
-      className="sticky top-0 z-50 px-3 sm:px-4 lg:px-6 pt-3"
-    >
-      <GlassCard
-        level="nav"
-        sheen
-        className="px-4 sm:px-5 py-2.5 flex items-center justify-between gap-3 shadow-[var(--shadow-md)]"
-      >
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
-          aria-label="LootLoom home"
-        >
-          <Logo size="md" />
-        </button>
-        <nav className="hidden md:flex items-center gap-1 text-sm">
-          {[
-            { label: "Overview", target: "overview" },
-            { label: "How it Works", target: "how" },
-            { label: "Rewards", view: "rewards" as ViewId },
-            { label: "Support", view: "support" as ViewId },
-          ].map((item) =>
-            item.view ? (
-              <button
-                key={item.label}
-                onClick={() => navigate(item.view!)}
-                className="px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors font-medium"
-              >
-                {item.label}
-              </button>
-            ) : (
-              <button
-                key={item.label}
-                onClick={() => document.getElementById(item.target!)?.scrollIntoView({ behavior: "smooth" })}
-                className="px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors font-medium"
-              >
-                {item.label}
-              </button>
-            )
-          )}
-        </nav>
-        <div className="flex items-center gap-2">
-          <LootButton size="sm" variant="glass" onClick={() => navigate("login")} leftIcon={<LogIn size={14} />}>
-            <span className="hidden sm:inline">Sign In</span>
-          </LootButton>
-          <LootButton size="sm" variant="electric" onClick={() => navigate("register")} leftIcon={<UserPlus size={14} />}>
-            Get Started
-          </LootButton>
-        </div>
-      </GlassCard>
-    </motion.header>
-  );
-}
-
-/* ============================================================
    Section 1: Premium Hero
    ============================================================ */
 function Hero() {
@@ -361,14 +211,15 @@ function Hero() {
       .then((json) => {
         if (json.success && json.data) {
           setStats([
-            { value: json.data.activeMembers, suffix: "+", label: "Active Members" },
-            { value: json.data.coinsRedeemed, suffix: "+", label: "Coins Redeemed" },
-            { value: json.data.rewardsAvailable, suffix: "+", label: "Rewards Available" },
+            { value: Number(json.data.activeMembers) || 0, suffix: "+", label: "Active Members" },
+            { value: Number(json.data.coinsRedeemed) || 0, suffix: "+", label: "Coins Redeemed" },
+            { value: Number(json.data.rewardsAvailable) || 0, suffix: "+", label: "Rewards Available" },
           ]);
         }
       })
       .catch(() => {});
   }, []);
+
   return (
     <section className="relative px-3 sm:px-6 lg:px-8 pt-8 lg:pt-12 pb-10">
       <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
@@ -409,16 +260,18 @@ function Hero() {
           <motion.div variants={cardReveal} custom={4} className="flex flex-wrap items-center gap-x-8 gap-y-3 pt-2">
             {stats.map((s) => (
               <div key={s.label} className="space-y-0.5">
-                <span className="text-xl sm:text-2xl font-bold text-foreground tabular-nums tracking-tight">
-                  {s.value.toLocaleString("en-IN")}{s.suffix}
-                </span>
+                <AnimatedCounter
+                  value={s.value}
+                  suffix={s.suffix}
+                  className="text-xl sm:text-2xl font-bold text-foreground tracking-tight"
+                />
                 <p className="text-xs text-muted-foreground font-medium">{s.label}</p>
               </div>
             ))}
           </motion.div>
         </motion.div>
 
-        {/* Right: floating glass widget composition */}
+        {/* Right: floating glass widget composition — purely decorative */}
         <motion.div
           variants={scaleIn}
           initial="initial"
@@ -431,7 +284,7 @@ function Hero() {
             transition={{ type: "spring", stiffness: 200, damping: 20 }}
             className="relative w-full h-full preserve-3d"
           >
-            {/* Dashboard widget */}
+            {/* Dashboard widget — decorative only, balance shown as 0 */}
             <motion.div
               variants={floating}
               initial="initial"
@@ -448,10 +301,7 @@ function Hero() {
                   <StatusBadge variant="success" dot pulse className="text-[10px]">Live</StatusBadge>
                 </div>
                 <div className="flex items-end gap-2">
-                  <AnimatedCounter
-                    value={0}
-                    className="text-3xl font-bold text-foreground"
-                  />
+                  <AnimatedCounter value={0} className="text-3xl font-bold text-foreground" />
                   <Coins size={18} className="text-gold mb-1.5" />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Available balance</p>
@@ -466,7 +316,7 @@ function Hero() {
               </GlassCard>
             </motion.div>
 
-            {/* Wallet widget */}
+            {/* Wallet widget — decorative gradient bar, no fake weekly numbers */}
             <motion.div
               variants={floatingSmall}
               initial="initial"
@@ -479,33 +329,23 @@ function Hero() {
                   <IconBadge name="Wallet" accent="cyan" size="sm" />
                   <span className="text-xs font-semibold text-foreground">Wallet</span>
                 </div>
-                <div className="flex items-baseline gap-1">
-                  <AnimatedCounter value={980} prefix="+" className="text-xl font-bold text-cyan-brand" />
-                  <span className="text-[10px] text-muted-foreground">this week</span>
-                </div>
-                <div className="mt-2 h-8">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={WALLET_CHART_DATA}>
-                      <defs>
-                        <linearGradient id="heroWallet" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="oklch(0.72 0.15 200)" stopOpacity={0.5} />
-                          <stop offset="100%" stopColor="oklch(0.72 0.15 200)" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <Area
-                        type="monotone"
-                        dataKey="v"
-                        stroke="oklch(0.72 0.15 200)"
-                        strokeWidth={2}
-                        fill="url(#heroWallet)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                <p className="text-[10px] text-muted-foreground">Track earnings</p>
+                <div className="mt-2 flex items-end gap-1 h-8">
+                  {[0.4, 0.6, 0.45, 0.75, 0.55, 0.85, 1].map((h, i) => (
+                    <motion.span
+                      key={i}
+                      initial={{ height: 0 }}
+                      whileInView={{ height: `${h * 100}%` }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.6, delay: 0.2 + i * 0.06, ease: "easeOut" }}
+                      className="flex-1 rounded-sm bg-[linear-gradient(180deg,var(--cyan-brand),oklch(0.72_0.15_200/0.4))]"
+                    />
+                  ))}
                 </div>
               </GlassCard>
             </motion.div>
 
-            {/* Earn widget */}
+            {/* Earn widget — decorative, no specific reward amounts */}
             <motion.div
               variants={floatingSmall}
               initial="initial"
@@ -521,7 +361,7 @@ function Hero() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs text-muted-foreground">Rewarded Ad</p>
-                    <p className="text-lg font-bold text-purple-brand">+25</p>
+                    <p className="text-lg font-bold text-purple-brand">+Coins</p>
                   </div>
                   <LootButton size="sm" variant="purple" className="h-7 px-2.5 text-[10px]">
                     Start
@@ -530,7 +370,7 @@ function Hero() {
               </GlassCard>
             </motion.div>
 
-            {/* Rewards widget */}
+            {/* Rewards widget — decorative reward names only */}
             <motion.div
               variants={floating}
               initial="initial"
@@ -545,19 +385,19 @@ function Hero() {
                 </div>
                 <div className="space-y-1.5">
                   {[
-                    { label: "₹100 UPI", cost: "10,000" },
-                    { label: "Amazon Voucher", cost: "5,000" },
+                    { label: "UPI Cashout" },
+                    { label: "Amazon Voucher" },
                   ].map((r) => (
                     <div key={r.label} className="flex items-center justify-between text-xs">
                       <span className="text-foreground font-medium">{r.label}</span>
-                      <span className="text-muted-foreground">{r.cost} coins</span>
+                      <span className="text-muted-foreground">Redeem</span>
                     </div>
                   ))}
                 </div>
               </GlassCard>
             </motion.div>
 
-            {/* Notification toast */}
+            {/* Welcome toast — marketing copy, no fake numbers */}
             <motion.div
               variants={floatingSmall}
               initial="initial"
@@ -570,8 +410,8 @@ function Hero() {
                   <Check size={16} className="text-emerald-brand" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-foreground truncate">Coins earned!</p>
-                  <p className="text-[10px] text-muted-foreground truncate">+50 daily bonus added</p>
+                  <p className="text-xs font-semibold text-foreground truncate">Welcome to LootLoom</p>
+                  <p className="text-[10px] text-muted-foreground truncate">Join thousands of earners</p>
                 </div>
               </GlassCard>
             </motion.div>
@@ -586,103 +426,7 @@ function Hero() {
 }
 
 /* ============================================================
-   Section 2: Quick Action Cards
-   ============================================================ */
-function QuickActions() {
-  const navigate = useNavigationStore((s) => s.navigate);
-  return (
-    <section className="px-3 sm:px-6 lg:px-8 py-8">
-      <motion.div
-        variants={staggerContainer}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-60px" }}
-        className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
-      >
-        {QUICK_ACTIONS.map((a) => (
-          <motion.div key={a.title} variants={cardReveal}>
-            <GlassCard
-              level={2}
-              hover
-              sheen
-              glow={a.accent === "gold" ? "none" : a.accent}
-              className="p-4 sm:p-5 h-full flex flex-col gap-3 shadow-[var(--shadow-md)]"
-              onClick={() =>
-                a.view ? navigate(a.view) : document.getElementById(a.scroll!)?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              <IconBadge name={a.icon} accent={a.accent} />
-              <div>
-                <h3 className="text-sm sm:text-base font-semibold text-foreground">{a.title}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{a.desc}</p>
-              </div>
-              <div className="mt-auto inline-flex items-center gap-1 text-xs font-semibold text-electric">
-                Continue <ArrowRight size={12} />
-              </div>
-            </GlassCard>
-          </motion.div>
-        ))}
-      </motion.div>
-    </section>
-  );
-}
-
-/* ============================================================
-   Section 3: What You Can Do
-   ============================================================ */
-function WhatYouCanDo() {
-  const navigate = useNavigationStore((s) => s.navigate);
-  return (
-    <section id="overview" className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16 scroll-mt-24">
-      <div className="max-w-7xl mx-auto">
-        <SectionHeading
-          eyebrow="Features"
-          title="What You Can Do"
-          description="Everything you need to earn, track, redeem and grow your rewards — in one premium platform."
-        />
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-60px" }}
-          className="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"
-        >
-          {WHAT_YOU_CAN_DO.map((item) => (
-            <motion.div key={item.title} variants={cardReveal}>
-              <motion.div
-                variants={floatingSmall}
-                animate="animate"
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                className="h-full"
-              >
-                <GlassCard
-                  level={2}
-                  hover
-                  sheen
-                  glow={item.accent === "navy" ? "none" : (item.accent as "electric" | "cyan" | "purple")}
-                  className="p-5 h-full flex flex-col gap-3 shadow-[var(--shadow-md)]"
-                  onClick={() => navigate(item.view)}
-                >
-                  <IconBadge name={item.icon} accent={item.accent} size="lg" />
-                  <div>
-                    <h3 className="text-sm sm:text-base font-semibold text-foreground">{item.title}</h3>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
-                  </div>
-                  <div className="mt-auto inline-flex items-center gap-1 text-xs font-semibold text-electric">
-                    Open <ArrowRight size={12} />
-                  </div>
-                </GlassCard>
-              </motion.div>
-            </motion.div>
-          ))}
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ============================================================
-   Section 4: How LootLoom Works
+   Section 2: How LootLoom Works
    ============================================================ */
 function HowItWorks() {
   return (
@@ -755,317 +499,52 @@ function HowItWorks() {
 }
 
 /* ============================================================
-   Section 5: Live Dashboard Preview
+   Section 3: What You Can Do (Features grid)
    ============================================================ */
-function DashboardPreview() {
+function WhatYouCanDo() {
   const navigate = useNavigationStore((s) => s.navigate);
-  const { dailyStreak, xp, xpToNext } = useUserStore();
-  const xpPct = Math.round((xp / xpToNext) * 100);
-  const recentRewards = [
-    { name: "₹100 UPI", date: "2 hours ago", coins: 10000, icon: "HandCoins", accent: "emerald" as const },
-    { name: "Amazon Voucher", date: "Yesterday", coins: 5000, icon: "Gift", accent: "purple" as const },
-    { name: "Spotify Premium", date: "3 days ago", coins: 7500, icon: "Gift", accent: "cyan" as const },
-  ];
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return (
-    <section className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16">
+    <section id="overview" className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16 scroll-mt-24">
       <div className="max-w-7xl mx-auto">
         <SectionHeading
-          eyebrow="Live Preview"
-          title="Your Dashboard, Alive"
-          description="A premium command center for your rewards — balances, streaks, XP, notifications and recent activity in one place."
-        />
-        <motion.div
-          variants={cardReveal}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-60px" }}
-          className="mt-10"
-        >
-          <GlassCard level={3} sheen className="p-5 sm:p-7 shadow-[var(--shadow-lg)]">
-            {/* Top row */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-              <div className="flex items-center gap-2.5">
-                <IconBadge name="LayoutDashboard" accent="electric" size="lg" />
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-foreground">Member Dashboard</h3>
-                  <p className="text-xs text-muted-foreground">Welcome back, ready to earn?</p>
-                </div>
-              </div>
-              <LootButton size="sm" variant="electric" onClick={() => navigate("dashboard")} rightIcon={<ArrowRight size={14} />}>
-                Open Dashboard
-              </LootButton>
-            </div>
-
-            <div className="grid lg:grid-cols-3 gap-4">
-              {/* Balance + XP card */}
-              <GlassCard level={2} sheen className="p-5 lg:col-span-1 flex flex-col gap-4 shadow-[var(--shadow-sm)]">
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Available Balance</p>
-                  <div className="flex items-end gap-2 mt-1">
-                    <AnimatedCounter value={0} className="text-3xl font-bold text-foreground" />
-                    <Coins size={18} className="text-gold mb-1.5" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <ProgressRing value={xpPct} size={92} strokeWidth={9} gradient="electric" />
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Level Progress</p>
-                    <p className="text-lg font-bold text-foreground">
-                      <AnimatedCounter value={xp} /> / <AnimatedCounter value={xpToNext} /> XP
-                    </p>
-                    <StatusBadge variant="electric" className="text-[10px]">Level 7</StatusBadge>
-                  </div>
-                </div>
-              </GlassCard>
-
-              {/* Streak + stats */}
-              <GlassCard level={2} sheen className="p-5 grid grid-cols-2 gap-4 shadow-[var(--shadow-sm)]">
-                <div className="col-span-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <IconBadge name="Flame" accent="gold" />
-                    <span className="text-sm font-semibold text-foreground">Daily Streak</span>
-                  </div>
-                  <StatusBadge variant="gold" dot pulse>{dailyStreak} days</StatusBadge>
-                </div>
-                {[
-                  { label: "Today", value: 145, accent: "text-electric", icon: "TrendingUp" },
-                  { label: "This Week", value: 980, accent: "text-cyan-brand", icon: "TrendingUp" },
-                  { label: "This Month", value: 4280, accent: "text-purple-brand", icon: "TrendingUp" },
-                  { label: "Lifetime", value: 0, accent: "text-gold", icon: "Award" },
-                ].map((s) => (
-                  <div key={s.label} className="rounded-xl bg-accent/40 p-3">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{s.label}</p>
-                    <AnimatedCounter value={s.value} className={`text-xl font-bold ${s.accent}`} />
-                  </div>
-                ))}
-              </GlassCard>
-
-              {/* Recent rewards */}
-              <GlassCard level={2} sheen className="p-5 shadow-[var(--shadow-sm)]">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-semibold text-foreground">Recent Rewards</span>
-                  <Bell size={14} className="text-muted-foreground" />
-                </div>
-                <ul className="space-y-2.5 max-h-[180px] overflow-y-auto no-scrollbar">
-                  {recentRewards.map((r) => (
-                    <li key={r.name} className="flex items-center gap-2.5">
-                      <IconBadge name={r.icon} accent={r.accent} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-foreground truncate">{r.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{r.date}</p>
-                      </div>
-                      <span className="text-xs font-bold text-gold inline-flex items-center gap-0.5">
-                        <Coins size={11} />
-                        {r.coins.toLocaleString("en-IN")}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </GlassCard>
-            </div>
-          </GlassCard>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ============================================================
-   Section 6: Wallet Preview
-   ============================================================ */
-function WalletPreview() {
-  const navigate = useNavigationStore((s) => s.navigate);
-  const { availableCoins, lifetimeEarned, todayEarnings } = useWalletStore();
-  const transactions = [
-    { title: "Daily Bonus", time: "2h ago", amount: 50, positive: true },
-    { title: "UPI Redemption", time: "Yesterday", amount: -10000, positive: false },
-    { title: "Mission Reward", time: "2 days ago", amount: 320, positive: true },
-  ];
-  return (
-    <section className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16">
-      <div className="max-w-7xl mx-auto">
-        <SectionHeading
-          eyebrow="Wallet"
-          title="Track Every Coin"
-          description="A transparent, real-time view of your earnings, redemptions and lifetime totals."
-        />
-        <motion.div
-          variants={cardReveal}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-60px" }}
-          className="mt-10"
-        >
-          <GlassCard level={3} sheen className="p-5 sm:p-7 shadow-[var(--shadow-lg)] relative overflow-hidden">
-            <FloatingCoin className="top-4 right-8" delay={0.2} />
-            <FloatingCoin className="bottom-6 right-1/4" delay={0.9} />
-            <div className="grid lg:grid-cols-5 gap-5 relative z-10">
-              {/* Left: balance */}
-              <div className="lg:col-span-2 space-y-4">
-                <div className="flex items-center gap-2">
-                  <IconBadge name="Wallet" accent="cyan" size="lg" />
-                  <span className="text-sm font-semibold text-foreground">Wallet Balance</span>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Available Coins</p>
-                  <div className="flex items-end gap-2 mt-1">
-                    <AnimatedCounter value={availableCoins} className="text-4xl font-bold text-foreground" />
-                    <Coins size={20} className="text-gold mb-1.5" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div className="rounded-xl bg-accent/50 p-3">
-                    <p className="text-[10px] text-muted-foreground uppercase">Today</p>
-                    <AnimatedCounter value={todayEarnings} prefix="+" className="text-lg font-bold text-emerald-brand" />
-                  </div>
-                  <div className="rounded-xl bg-accent/50 p-3">
-                    <p className="text-[10px] text-muted-foreground uppercase">Lifetime</p>
-                    <AnimatedCounter value={lifetimeEarned} className="text-lg font-bold text-electric" />
-                  </div>
-                </div>
-                <LootButton size="sm" variant="cyan" onClick={() => navigate("wallet")} rightIcon={<ArrowRight size={14} />} className="mt-1">
-                  Open Wallet
-                </LootButton>
-              </div>
-
-              {/* Right: chart + transactions */}
-              <div className="lg:col-span-3 space-y-4">
-                <div className="rounded-xl bg-accent/30 p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-foreground">Weekly Earnings</span>
-                    <StatusBadge variant="success" className="text-[10px]">
-                      <TrendingUp size={11} /> +28%
-                    </StatusBadge>
-                  </div>
-                  <div className="h-32">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={WALLET_CHART_DATA} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="walletArea" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="oklch(0.62 0.22 255)" stopOpacity={0.45} />
-                            <stop offset="100%" stopColor="oklch(0.62 0.22 255)" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <XAxis
-                          dataKey="day"
-                          tick={{ fontSize: 10, fill: "oklch(0.52 0.02 256)" }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            background: "oklch(1 0 0 / 0.92)",
-                            border: "1px solid oklch(0.92 0.01 250)",
-                            borderRadius: 12,
-                            fontSize: 12,
-                            boxShadow: "0 8px 24px -6px rgb(15 23 42 / 0.12)",
-                          }}
-                          labelStyle={{ color: "oklch(0.21 0.04 256)" }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="v"
-                          stroke="oklch(0.62 0.22 255)"
-                          strokeWidth={2.5}
-                          fill="url(#walletArea)"
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-foreground">Recent Transactions</span>
-                    <button
-                      onClick={() => navigate("wallet")}
-                      className="text-[11px] font-semibold text-electric hover:underline"
-                    >
-                      View all
-                    </button>
-                  </div>
-                  <ul className="space-y-1.5">
-                    {transactions.map((t) => (
-                      <li
-                        key={t.title}
-                        className="flex items-center gap-3 rounded-xl bg-accent/30 px-3 py-2.5"
-                      >
-                        <div
-                          className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${
-                            t.positive ? "bg-emerald-brand/15 text-emerald-brand" : "bg-rose-brand/12 text-rose-brand"
-                          }`}
-                        >
-                          {t.positive ? <ArrowRight size={14} className="rotate-[270deg]" /> : <ArrowRight size={14} className="rotate-90" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-foreground truncate">{t.title}</p>
-                          <p className="text-[10px] text-muted-foreground">{t.time}</p>
-                        </div>
-                        <span className={`text-xs font-bold tabular-nums ${t.positive ? "text-emerald-brand" : "text-rose-brand"}`}>
-                          {t.positive ? "+" : "-"}
-                          {Math.abs(t.amount).toLocaleString("en-IN")}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </GlassCard>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ============================================================
-   Section 7: Earn Preview
-   ============================================================ */
-function EarnPreview() {
-  const navigate = useNavigationStore((s) => s.navigate);
-  return (
-    <section className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16">
-      <div className="max-w-7xl mx-auto">
-        <SectionHeading
-          eyebrow="Earning"
-          title="Multiple Ways to Earn"
-          description="Pick what fits your time — quick ads, deeper missions, daily bonuses or offerwall deals."
+          eyebrow="Features"
+          title="What You Can Do"
+          description="Everything you need to earn, track, redeem and grow your rewards — in one premium platform."
         />
         <motion.div
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-60px" }}
-          className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+          className="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"
         >
-          {EARN_ACTIVITIES.map((a, i) => (
-            <motion.div key={a.title} variants={cardReveal} custom={i}>
-              <GlassCard
-                level={2}
-                hover
-                sheen
-                glow={a.accent === "gold" ? "none" : a.accent}
-                className="p-5 h-full flex flex-col gap-3 shadow-[var(--shadow-md)]"
-                onClick={() => navigate("earn")}
+          {WHAT_YOU_CAN_DO.map((item) => (
+            <motion.div key={item.title} variants={cardReveal}>
+              <motion.div
+                variants={floatingSmall}
+                animate="animate"
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                className="h-full"
               >
-                <div className="flex items-center justify-between">
-                  <IconBadge name={a.icon} accent={a.accent} size="lg" />
-                  <StatusBadge variant="gold" className="text-[10px]">
-                    <Coins size={11} /> +{a.reward}
-                  </StatusBadge>
-                </div>
-                <div>
-                  <h3 className="text-sm sm:text-base font-semibold text-foreground">{a.title}</h3>
-                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{a.desc}</p>
-                </div>
-                <div className="mt-auto flex items-center justify-between pt-1">
-                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <Zap size={10} /> {a.time}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-electric">
-                    Start <ArrowRight size={12} />
-                  </span>
-                </div>
-              </GlassCard>
+                <GlassCard
+                  level={2}
+                  hover
+                  sheen
+                  glow={item.accent === "navy" ? "none" : (item.accent as "electric" | "cyan" | "purple")}
+                  className="p-5 h-full flex flex-col gap-3 shadow-[var(--shadow-md)]"
+                  onClick={() => navigate(isAuthenticated ? item.view : "register")}
+                >
+                  <IconBadge name={item.icon} accent={item.accent} size="lg" />
+                  <div>
+                    <h3 className="text-sm sm:text-base font-semibold text-foreground">{item.title}</h3>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
+                  </div>
+                  <div className="mt-auto inline-flex items-center gap-1 text-xs font-semibold text-electric">
+                    {isAuthenticated ? "Open" : "Sign up"} <ArrowRight size={12} />
+                  </div>
+                </GlassCard>
+              </motion.div>
             </motion.div>
           ))}
         </motion.div>
@@ -1075,180 +554,85 @@ function EarnPreview() {
 }
 
 /* ============================================================
-   Section 8: Referral Preview
+   Section 4: Rewards Preview (marketing catalog)
    ============================================================ */
-function ReferralPreview() {
+function RewardsPreview() {
   const navigate = useNavigationStore((s) => s.navigate);
-  const { referralCode } = useUserStore();
-  const friendsJoined = 8;
-  const referralEarnings = 2400;
-  const goalFriends = 25;
-  const progressPct = Math.round((friendsJoined / goalFriends) * 100);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  const handleRedeem = () => navigate(isAuthenticated ? "redeem" : "register");
 
   return (
-    <section className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16">
+    <section id="rewards" className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16 scroll-mt-24">
       <div className="max-w-7xl mx-auto">
         <SectionHeading
-          eyebrow="Referrals"
-          title="Invite Friends, Earn Together"
-          description="Share your code — earn bonus coins for every friend who verifies their account."
+          eyebrow="Rewards"
+          title="Redeem Your Coins"
+          description="A transparent catalog of rewards available to every member — UPI cash, vouchers and gift cards."
         />
         <motion.div
-          variants={cardReveal}
+          variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-60px" }}
-          className="mt-10"
+          className="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"
         >
-          <GlassCard level={3} sheen glow="purple" className="p-5 sm:p-7 shadow-[var(--shadow-lg)]">
-            <div className="grid lg:grid-cols-2 gap-6 items-center">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2.5">
-                  <IconBadge name="Users" accent="emerald" size="lg" />
-                  <div>
-                    <h3 className="text-base sm:text-lg font-bold text-foreground">Your Referral Code</h3>
-                    <p className="text-xs text-muted-foreground">Share and earn 200 coins per verified friend</p>
+          {REWARD_TIERS.map((reward, i) => (
+            <motion.div key={reward.name} variants={cardReveal} custom={i}>
+              <GlassCard
+                level={2}
+                hover
+                sheen
+                glow={reward.accent === "gold" || reward.accent === "emerald" || reward.accent === "rose" || reward.accent === "navy" ? "none" : (reward.accent as "electric" | "cyan" | "purple")}
+                className="p-4 sm:p-5 h-full flex flex-col gap-3 shadow-[var(--shadow-md)]"
+              >
+                <div className="flex items-center justify-between">
+                  <IconBadge name={reward.icon} accent={reward.accent} size="lg" />
+                  <StatusBadge
+                    variant={reward.category === "UPI" ? "emerald" : "purple"}
+                    className="text-[10px]"
+                  >
+                    {reward.category}
+                  </StatusBadge>
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-semibold text-foreground">{reward.name}</h3>
+                  <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                    <Coins size={11} className="text-gold" />
+                    <span className="font-semibold text-gold tabular-nums">
+                      {reward.coins.toLocaleString("en-IN")}
+                    </span>
+                    <span>coins</span>
                   </div>
                 </div>
-                <div className="rounded-2xl border-2 border-dashed border-electric/30 bg-electric/5 px-4 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Code</p>
-                    <p className="text-xl font-bold tracking-wider text-gradient-electric">{referralCode}</p>
-                  </div>
+                <div className="mt-auto pt-1">
                   <LootButton
                     size="sm"
-                    variant="outline"
-                    onClick={() => navigator.clipboard?.writeText(referralCode)}
-                    leftIcon={<HandCoins size={14} />}
+                    variant={isAuthenticated ? "electric" : "outline"}
+                    fullWidth
+                    onClick={handleRedeem}
+                    rightIcon={<ArrowRight size={12} />}
                   >
-                    Copy
+                    {isAuthenticated ? "Redeem" : "Sign up to Redeem"}
                   </LootButton>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-accent/40 p-4">
-                    <p className="text-[10px] text-muted-foreground uppercase">Friends Joined</p>
-                    <AnimatedCounter value={friendsJoined} className="text-2xl font-bold text-emerald-brand" />
-                  </div>
-                  <div className="rounded-xl bg-accent/40 p-4">
-                    <p className="text-[10px] text-muted-foreground uppercase">Referral Earnings</p>
-                    <div className="flex items-center gap-1">
-                      <AnimatedCounter value={referralEarnings} className="text-2xl font-bold text-gold" />
-                      <Coins size={14} className="text-gold" />
-                    </div>
-                  </div>
-                </div>
-                <LootButton size="md" variant="purple" onClick={() => navigate("referral")} rightIcon={<ArrowRight size={15} />}>
-                  Open Referral Hub
-                </LootButton>
-              </div>
-
-              {/* Progress to next milestone */}
-              <GlassCard level={2} sheen className="p-5 shadow-[var(--shadow-sm)]">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Next Milestone</p>
-                    <p className="text-xs text-muted-foreground">Reach {goalFriends} friends for a 5,000 coin bonus</p>
-                  </div>
-                  <Trophy size={20} className="text-gold" />
-                </div>
-                <div className="flex items-center justify-center py-3">
-                  <ProgressRing value={progressPct} size={140} strokeWidth={12} gradient="purple" label={`${progressPct}%`} />
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">{friendsJoined} friends</span>
-                  <span className="text-muted-foreground">{goalFriends} goal</span>
-                </div>
-                <div className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-brand/10 px-3 py-2">
-                  <Check size={14} className="text-emerald-brand" />
-                  <span className="text-xs text-emerald-brand font-semibold">+200 coins per verified friend</span>
-                </div>
               </GlassCard>
-            </div>
-          </GlassCard>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ============================================================
-   Section 9: Leaderboard Preview
-   ============================================================ */
-function LeaderboardPreview() {
-  const navigate = useNavigationStore((s) => s.navigate);
-  const medalStyle: Record<string, { text: string; ring: string; bg: string; icon: typeof Crown }> = {
-    gold: { text: "text-gold", ring: "ring-gold/30", bg: "bg-gold/10", icon: Crown },
-    silver: { text: "text-foreground/80", ring: "ring-foreground/20", bg: "bg-muted", icon: Medal },
-    bronze: { text: "text-rose-brand", ring: "ring-rose-brand/30", bg: "bg-rose-brand/10", icon: Medal },
-  };
-  const podiumOrder = [1, 0, 2]; // silver, gold, bronze for podium visual
-  return (
-    <section className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16">
-      <div className="max-w-7xl mx-auto">
-        <SectionHeading
-          eyebrow="Leaderboard"
-          title="Climb the Ranks"
-          description="Top earners this week. Earn XP, level up and compete with members worldwide."
-        />
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-60px" }}
-          className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:items-end"
-        >
-          {podiumOrder.map((idx, podiumIdx) => {
-            const user = LEADERBOARD_TOP3[idx];
-            const m = medalStyle[user.medal];
-            const MedalIcon = m.icon;
-            const isWinner = user.medal === "gold";
-            return (
-              <motion.div key={user.name} variants={cardReveal} custom={podiumIdx} className={isWinner ? "sm:-translate-y-4" : ""}>
-                <GlassCard
-                  level={isWinner ? 3 : 2}
-                  sheen
-                  glow={isWinner ? "electric" : "none"}
-                  className={`p-5 text-center shadow-[var(--shadow-lg)] ${isWinner ? "ring-2 ring-gold/30" : ""}`}
-                >
-                  <div className="relative inline-block">
-                    <div
-                      className={`size-16 sm:size-20 mx-auto rounded-full bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))] flex items-center justify-center text-white font-bold text-xl ring-4 ${m.ring} ${m.bg}`}
-                    >
-                      {user.name.charAt(0)}
-                    </div>
-                    <span className={`absolute -top-1 -right-1 size-7 rounded-full flex items-center justify-center shadow-sm ${m.bg} ring-2 ring-background`}>
-                      <MedalIcon size={14} className={m.text} />
-                    </span>
-                  </div>
-                  <h3 className="mt-3 text-sm sm:text-base font-bold text-foreground">{user.name}</h3>
-                  <div className="mt-1 flex items-center justify-center gap-2">
-                    <StatusBadge variant="electric" className="text-[10px]">Level {user.level}</StatusBadge>
-                    {isWinner && <StatusBadge variant="gold" dot pulse className="text-[10px]">Champion</StatusBadge>}
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-center">
-                    <div className="rounded-lg bg-accent/50 py-2">
-                      <p className="text-[9px] text-muted-foreground uppercase">XP</p>
-                      <p className="text-sm font-bold text-foreground tabular-nums">{user.xp.toLocaleString("en-IN")}</p>
-                    </div>
-                    <div className="rounded-lg bg-accent/50 py-2">
-                      <p className="text-[9px] text-muted-foreground uppercase">Coins</p>
-                      <p className="text-sm font-bold text-gold tabular-nums">{user.coins.toLocaleString("en-IN")}</p>
-                    </div>
-                  </div>
-                </GlassCard>
-              </motion.div>
-            );
-          })}
+            </motion.div>
+          ))}
         </motion.div>
         <motion.div
           variants={cardReveal}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="mt-6 text-center"
+          className="mt-8 text-center"
         >
-          <LootButton variant="glass" onClick={() => navigate("leaderboard")} rightIcon={<ArrowRight size={15} />}>
-            View Full Leaderboard
+          <LootButton
+            variant="glass"
+            onClick={() => navigate(isAuthenticated ? "redeem" : "register")}
+            rightIcon={<ArrowRight size={15} />}
+          >
+            {isAuthenticated ? "Open Redeem Page" : "Get Started to Redeem"}
           </LootButton>
         </motion.div>
       </div>
@@ -1257,78 +641,7 @@ function LeaderboardPreview() {
 }
 
 /* ============================================================
-   Section 10: Achievement Preview
-   ============================================================ */
-function AchievementsPreview() {
-  const navigate = useNavigationStore((s) => s.navigate);
-  return (
-    <section className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16">
-      <div className="max-w-7xl mx-auto">
-        <SectionHeading
-          eyebrow="Achievements"
-          title="Unlock Your Badges"
-          description="Earn progression across four rarity tiers — from common milestones to legendary feats."
-        />
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-60px" }}
-          className="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-4"
-        >
-          {ACHIEVEMENTS.map((a, i) => {
-            const grad = RARITY_COLOR[a.rarity];
-            return (
-              <motion.div key={a.name} variants={cardReveal} custom={i}>
-                <GlassCard level={2} hover sheen className="p-5 h-full flex flex-col items-center text-center gap-3 shadow-[var(--shadow-md)]">
-                  <div className="relative">
-                    <ProgressRing
-                      value={a.progress}
-                      size={92}
-                      strokeWidth={8}
-                      gradient={grad}
-                      showLabel={false}
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <IconBadge name={a.icon} accent={grad === "gold" ? "gold" : grad === "electric" ? "electric" : grad === "purple" ? "purple" : "cyan"} size="md" />
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">{a.name}</h3>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{a.desc}</p>
-                  </div>
-                  <div className="flex items-center justify-between w-full">
-                    <StatusBadge
-                      variant={a.rarity === "legendary" ? "gold" : a.rarity === "epic" ? "purple" : a.rarity === "rare" ? "electric" : "cyan"}
-                      className="text-[10px] uppercase"
-                    >
-                      {a.rarity}
-                    </StatusBadge>
-                    <span className="text-xs font-bold text-foreground tabular-nums">{a.progress}%</span>
-                  </div>
-                </GlassCard>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-        <motion.div
-          variants={cardReveal}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="mt-6 text-center"
-        >
-          <LootButton variant="glass" onClick={() => navigate("achievements")} rightIcon={<ArrowRight size={15} />}>
-            See All Achievements
-          </LootButton>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ============================================================
-   Section 11: Security Preview
+   Section 5: Security
    ============================================================ */
 function SecurityPreview() {
   return (
@@ -1369,90 +682,9 @@ function SecurityPreview() {
 }
 
 /* ============================================================
-   Section 12: Download App
-   ============================================================ */
-function DownloadApp() {
-  return (
-    <section className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16">
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          variants={cardReveal}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-60px" }}
-        >
-          <GlassCard level={3} sheen glow="electric" className="p-6 sm:p-10 shadow-[var(--shadow-lg)] overflow-hidden relative">
-            <FloatingCoin className="top-6 right-10" delay={0.4} />
-            <FloatingCoin className="bottom-8 right-1/3" delay={1.2} />
-            <div className="grid lg:grid-cols-2 gap-8 items-center relative z-10">
-              <div className="space-y-4">
-                <StatusBadge variant="purple" dot pulse>
-                  <Rocket size={12} /> Coming Soon
-                </StatusBadge>
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
-                  Take LootLoom <span className="text-gradient-electric">Anywhere</span>
-                </h2>
-                <p className="text-sm sm:text-base text-muted-foreground max-w-lg">
-                  Native apps for Android and iOS are on the roadmap. Earn on the go, get instant
-                  push notifications for rewards and never miss a daily bonus.
-                </p>
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    disabled
-                    className="inline-flex items-center gap-2 rounded-xl glass-2 px-4 py-2.5 text-sm font-semibold text-muted-foreground cursor-not-allowed ring-1 ring-border opacity-70"
-                    aria-label="Download on App Store (coming soon)"
-                  >
-                    <Apple size={18} />
-                    <span className="text-left leading-tight">
-                      <span className="block text-[9px] font-medium">Download on the</span>
-                      App Store
-                    </span>
-                  </button>
-                  <button
-                    disabled
-                    className="inline-flex items-center gap-2 rounded-xl glass-2 px-4 py-2.5 text-sm font-semibold text-muted-foreground cursor-not-allowed ring-1 ring-border opacity-70"
-                    aria-label="Get it on Google Play (coming soon)"
-                  >
-                    <Smartphone size={18} />
-                    <span className="text-left leading-tight">
-                      <span className="block text-[9px] font-medium">Get it on</span>
-                      Google Play
-                    </span>
-                  </button>
-                </div>
-              </div>
-              <div className="flex justify-center">
-                <GlassCard level={2} sheen className="p-5 shadow-[var(--shadow-md)] flex flex-col items-center gap-3">
-                  <div className="size-40 rounded-2xl bg-white ring-1 ring-border p-3 flex items-center justify-center shadow-inner">
-                    <div className="grid grid-cols-7 gap-1 w-full h-full">
-                      {Array.from({ length: 49 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className={`rounded-sm ${i % 3 === 0 ? "bg-foreground" : i % 5 === 0 ? "bg-foreground/40" : "bg-foreground/10"}`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <QrCode size={14} />
-                    Scan to get notified
-                  </div>
-                  <StatusBadge variant="info" className="text-[10px]">Placeholder QR · Not active</StatusBadge>
-                </GlassCard>
-              </div>
-            </div>
-          </GlassCard>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ============================================================
-   Section 13: FAQ Preview
+   Section 6: FAQ
    ============================================================ */
 function FAQPreview() {
-  const navigate = useNavigationStore((s) => s.navigate);
   const [open, setOpen] = useState<number | null>(0);
   return (
     <section className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16">
@@ -1511,29 +743,19 @@ function FAQPreview() {
             );
           })}
         </motion.div>
-        <motion.div
-          variants={cardReveal}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="mt-6 text-center"
-        >
-          <LootButton variant="glass" onClick={() => navigate("support")} rightIcon={<ArrowRight size={15} />}>
-            View all FAQs
-          </LootButton>
-        </motion.div>
       </div>
     </section>
   );
 }
 
 /* ============================================================
-   Section 14: Support Preview
+   Section 7: Support
    ============================================================ */
 function SupportPreview() {
   const navigate = useNavigationStore((s) => s.navigate);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return (
-    <section className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16">
+    <section id="support" className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16 scroll-mt-24">
       <div className="max-w-7xl mx-auto">
         <SectionHeading
           eyebrow="Support"
@@ -1549,6 +771,7 @@ function SupportPreview() {
         >
           {SUPPORT_OPTIONS.map((s, i) => {
             const isLiveChat = s.title === "Live Chat";
+            const target: ViewId = isAuthenticated ? "support" : "register";
             return (
               <motion.div key={s.title} variants={cardReveal} custom={i}>
                 <GlassCard
@@ -1557,7 +780,7 @@ function SupportPreview() {
                   sheen
                   glow={s.accent === "gold" || s.accent === "emerald" ? "none" : s.accent}
                   className={`p-4 sm:p-5 h-full flex flex-col gap-3 shadow-[var(--shadow-md)] ${isLiveChat ? "opacity-70" : ""}`}
-                  onClick={() => !isLiveChat && navigate("support")}
+                  onClick={() => !isLiveChat && navigate(target)}
                 >
                   <IconBadge name={s.icon} accent={s.accent} />
                   <div>
@@ -1568,7 +791,11 @@ function SupportPreview() {
                     <p className="text-xs text-muted-foreground mt-0.5">{s.desc}</p>
                   </div>
                   <div className="mt-auto inline-flex items-center gap-1 text-xs font-semibold text-electric">
-                    {!isLiveChat && <>Open <ArrowRight size={12} /></>}
+                    {!isLiveChat && (
+                      <>
+                        {isAuthenticated ? "Open" : "Sign up"} <ArrowRight size={12} />
+                      </>
+                    )}
                     {isLiveChat && <>Coming soon</>}
                   </div>
                 </GlassCard>
@@ -1582,10 +809,11 @@ function SupportPreview() {
 }
 
 /* ============================================================
-   Section 15: Footer
+   Section 8: Footer
    ============================================================ */
 function Footer() {
   const navigate = useNavigationStore((s) => s.navigate);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const quickLinks: { label: string; view: ViewId }[] = [
     { label: "Dashboard", view: "dashboard" },
     { label: "Earn Coins", view: "earn" },
@@ -1612,6 +840,7 @@ function Footer() {
     { icon: Youtube, label: "YouTube" },
     { icon: Send, label: "Telegram" },
   ];
+  const handleQuickLink = (view: ViewId) => navigate(isAuthenticated ? view : "register");
   return (
     <footer className="px-3 sm:px-6 lg:px-8 pb-6 pt-12 mt-auto">
       <div className="max-w-7xl mx-auto">
@@ -1619,7 +848,16 @@ function Footer() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
             {/* Brand */}
             <div className="col-span-2 md:col-span-1 space-y-3">
-              <Logo size="md" />
+              <button
+                onClick={() => {
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  navigate("home");
+                }}
+                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+                aria-label="LootLoom home"
+              >
+                <Logo size="md" />
+              </button>
               <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
                 LootLoom is a premium rewards platform that turns your time into real value —
                 watch, complete, invite and redeem.
@@ -1644,8 +882,8 @@ function Footer() {
                 {quickLinks.map((l) => (
                   <li key={l.label}>
                     <button
-                      onClick={() => navigate(l.view)}
-                      className="text-xs text-muted-foreground hover:text-electric transition-colors"
+                      onClick={() => handleQuickLink(l.view)}
+                      className="text-xs text-muted-foreground hover:text-electric transition-colors text-left"
                     >
                       {l.label}
                     </button>
@@ -1678,8 +916,8 @@ function Footer() {
                 {supportLinks.map((l) => (
                   <li key={l.label}>
                     <button
-                      onClick={() => navigate(l.view)}
-                      className="text-xs text-muted-foreground hover:text-electric transition-colors"
+                      onClick={() => navigate(isAuthenticated ? l.view : "register")}
+                      className="text-xs text-muted-foreground hover:text-electric transition-colors text-left"
                     >
                       {l.label}
                     </button>
@@ -1715,29 +953,27 @@ function Footer() {
 }
 
 /* ============================================================
-   Main: HomeView
+   Main: HomeView — marketing-only homepage
    ============================================================ */
 export function HomeView() {
   return (
-    <div className="relative min-h-screen flex flex-col">
-      <TopBar />
+    <motion.div
+      variants={pageTransition}
+      initial="initial"
+      animate="animate"
+      className="relative min-h-screen flex flex-col"
+    >
+      <Navbar />
       <main className="flex-1">
         <Hero />
-        <QuickActions />
-        <WhatYouCanDo />
         <HowItWorks />
-        <DashboardPreview />
-        <WalletPreview />
-        <EarnPreview />
-        <ReferralPreview />
-        <LeaderboardPreview />
-        <AchievementsPreview />
+        <WhatYouCanDo />
+        <RewardsPreview />
         <SecurityPreview />
-        <DownloadApp />
         <FAQPreview />
         <SupportPreview />
       </main>
       <Footer />
-    </div>
+    </motion.div>
   );
 }

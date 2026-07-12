@@ -1,0 +1,502 @@
+   500→   500→                        fill="url(#heroWallet)"
+   501→   501→                      />
+   502→   502→                    </AreaChart>
+   503→   503→                  </ResponsiveContainer>
+   504→   504→                </div>
+   505→   505→              </GlassCard>
+   506→   506→            </motion.div>
+   507→   507→
+   508→   508→            {/* Earn widget */}
+   509→   509→            <motion.div
+   510→   510→              variants={floatingSmall}
+   511→   511→              initial="initial"
+   512→   512→              animate="animate"
+   513→   513→              transition={{ delay: 0.4, duration: 5, repeat: Infinity, ease: "easeInOut" }}
+   514→   514→              className="absolute bottom-20 left-0 sm:bottom-24 sm:left-0 w-[46%] z-20"
+   515→   515→            >
+   516→   516→              <GlassCard level={3} sheen glow="purple" className="p-3.5 shadow-[var(--shadow-lg)]">
+   517→   517→                <div className="flex items-center gap-2 mb-2">
+   518→   518→                  <IconBadge name="PlayCircle" accent="purple" size="sm" />
+   519→   519→                  <span className="text-xs font-semibold text-foreground">Earn</span>
+   520→   520→                </div>
+   521→   521→                <div className="flex items-center justify-between">
+   522→   522→                  <div>
+   523→   523→                    <p className="text-xs text-muted-foreground">Rewarded Ad</p>
+   524→   524→                    <p className="text-lg font-bold text-purple-brand">+25</p>
+   525→   525→                  </div>
+   526→   526→                  <LootButton size="sm" variant="purple" className="h-7 px-2.5 text-[10px]">
+   527→   527→                    Start
+   528→   528→                  </LootButton>
+   529→   529→                </div>
+   530→   530→              </GlassCard>
+   531→   531→            </motion.div>
+   532→   532→
+   533→   533→            {/* Rewards widget */}
+   534→   534→            <motion.div
+   535→   535→              variants={floating}
+   536→   536→              initial="initial"
+   537→   537→              animate="animate"
+   538→   538→              transition={{ delay: 0.8, duration: 6.5, repeat: Infinity, ease: "easeInOut" }}
+   539→   539→              className="absolute bottom-4 right-2 sm:bottom-6 sm:right-4 w-[50%] z-30"
+   540→   540→            >
+   541→   541→              <GlassCard level={3} sheen glow="electric" className="p-3.5 shadow-[var(--shadow-lg)]">
+   542→   542→                <div className="flex items-center gap-2 mb-2">
+   543→   543→                  <IconBadge name="Gift" accent="gold" size="sm" />
+   544→   544→                  <span className="text-xs font-semibold text-foreground">Rewards</span>
+   545→   545→                </div>
+   546→   546→                <div className="space-y-1.5">
+   547→   547→                  {[
+   548→   548→                    { label: "₹100 UPI", cost: "10,000" },
+   549→   549→                    { label: "Amazon Voucher", cost: "5,000" },
+   550→   550→                  ].map((r) => (
+   551→   551→                    <div key={r.label} className="flex items-center justify-between text-xs">
+   552→   552→                      <span className="text-foreground font-medium">{r.label}</span>
+   553→   553→                      <span className="text-muted-foreground">{r.cost} coins</span>
+   554→   554→                    </div>
+   555→   555→                  ))}
+   556→   556→                </div>
+   557→   557→              </GlassCard>
+   558→   558→            </motion.div>
+   559→   559→
+   560→   560→            {/* Notification toast */}
+   561→   561→            <motion.div
+   562→   562→              variants={floatingSmall}
+   563→   563→              initial="initial"
+   564→   564→              animate="animate"
+   565→   565→              transition={{ delay: 1, duration: 4, repeat: Infinity, ease: "easeInOut" }}
+   566→   566→              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[64%] z-40"
+   567→   567→            >
+   568→   568→              <GlassCard level={4} sheen className="p-3 shadow-[var(--shadow-xl)] flex items-center gap-2.5">
+   569→   569→                <div className="size-8 rounded-lg bg-emerald-brand/15 flex items-center justify-center shrink-0">
+   570→   570→                  <Check size={16} className="text-emerald-brand" />
+   571→   571→                </div>
+   572→   572→                <div className="min-w-0 flex-1">
+   573→   573→                  <p className="text-xs font-semibold text-foreground truncate">Coins earned!</p>
+   574→   574→                  <p className="text-[10px] text-muted-foreground truncate">+50 daily bonus added</p>
+   575→   575→                </div>
+   576→   576→              </GlassCard>
+   577→   577→            </motion.div>
+   578→   578→
+   579→   579→            <FloatingCoin className="top-0 right-1/3" delay={0.3} />
+   580→   580→            <FloatingCoin className="bottom-8 left-1/3" delay={1.1} />
+   581→   581→          </motion.div>
+   582→   582→        </motion.div>
+   583→   583→      </div>
+   584→   584→    </section>
+   585→   585→  );
+   586→   586→}
+   587→   587→
+   588→   588→/* ============================================================
+   589→   589→   Section 2: Quick Action Cards
+   590→   590→   ============================================================ */
+   591→   591→function QuickActions() {
+   592→   592→  const navigate = useNavigationStore((s) => s.navigate);
+   593→   593→  return (
+   594→   594→    <section className="px-3 sm:px-6 lg:px-8 py-8">
+   595→   595→      <motion.div
+   596→   596→        variants={staggerContainer}
+   597→   597→        initial="hidden"
+   598→   598→        whileInView="visible"
+   599→   599→        viewport={{ once: true, margin: "-60px" }}
+   600→   600→        className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
+   601→   601→      >
+   602→   602→        {QUICK_ACTIONS.map((a) => (
+   603→   603→          <motion.div key={a.title} variants={cardReveal}>
+   604→   604→            <GlassCard
+   605→   605→              level={2}
+   606→   606→              hover
+   607→   607→              sheen
+   608→   608→              glow={a.accent === "gold" ? "none" : a.accent}
+   609→   609→              className="p-4 sm:p-5 h-full flex flex-col gap-3 shadow-[var(--shadow-md)]"
+   610→   610→              onClick={() =>
+   611→   611→                a.view ? navigate(a.view) : document.getElementById(a.scroll!)?.scrollIntoView({ behavior: "smooth" })
+   612→   612→              }
+   613→   613→            >
+   614→   614→              <IconBadge name={a.icon} accent={a.accent} />
+   615→   615→              <div>
+   616→   616→                <h3 className="text-sm sm:text-base font-semibold text-foreground">{a.title}</h3>
+   617→   617→                <p className="text-xs text-muted-foreground mt-0.5">{a.desc}</p>
+   618→   618→              </div>
+   619→   619→              <div className="mt-auto inline-flex items-center gap-1 text-xs font-semibold text-electric">
+   620→   620→                Continue <ArrowRight size={12} />
+   621→   621→              </div>
+   622→   622→            </GlassCard>
+   623→   623→          </motion.div>
+   624→   624→        ))}
+   625→   625→      </motion.div>
+   626→   626→    </section>
+   627→   627→  );
+   628→   628→}
+   629→   629→
+   630→   630→/* ============================================================
+   631→   631→   Section 3: What You Can Do
+   632→   632→   ============================================================ */
+   633→   633→function WhatYouCanDo() {
+   634→   634→  const navigate = useNavigationStore((s) => s.navigate);
+   635→   635→  return (
+   636→   636→    <section id="overview" className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16 scroll-mt-24">
+   637→   637→      <div className="max-w-7xl mx-auto">
+   638→   638→        <SectionHeading
+   639→   639→          eyebrow="Features"
+   640→   640→          title="What You Can Do"
+   641→   641→          description="Everything you need to earn, track, redeem and grow your rewards — in one premium platform."
+   642→   642→        />
+   643→   643→        <motion.div
+   644→   644→          variants={staggerContainer}
+   645→   645→          initial="hidden"
+   646→   646→          whileInView="visible"
+   647→   647→          viewport={{ once: true, margin: "-60px" }}
+   648→   648→          className="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"
+   649→   649→        >
+   650→   650→          {WHAT_YOU_CAN_DO.map((item) => (
+   651→   651→            <motion.div key={item.title} variants={cardReveal}>
+   652→   652→              <motion.div
+   653→   653→                variants={floatingSmall}
+   654→   654→                animate="animate"
+   655→   655→                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+   656→   656→                className="h-full"
+   657→   657→              >
+   658→   658→                <GlassCard
+   659→   659→                  level={2}
+   660→   660→                  hover
+   661→   661→                  sheen
+   662→   662→                  glow={item.accent === "navy" ? "none" : (item.accent as "electric" | "cyan" | "purple")}
+   663→   663→                  className="p-5 h-full flex flex-col gap-3 shadow-[var(--shadow-md)]"
+   664→   664→                  onClick={() => navigate(item.view)}
+   665→   665→                >
+   666→   666→                  <IconBadge name={item.icon} accent={item.accent} size="lg" />
+   667→   667→                  <div>
+   668→   668→                    <h3 className="text-sm sm:text-base font-semibold text-foreground">{item.title}</h3>
+   669→   669→                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
+   670→   670→                  </div>
+   671→   671→                  <div className="mt-auto inline-flex items-center gap-1 text-xs font-semibold text-electric">
+   672→   672→                    Open <ArrowRight size={12} />
+   673→   673→                  </div>
+   674→   674→                </GlassCard>
+   675→   675→              </motion.div>
+   676→   676→            </motion.div>
+   677→   677→          ))}
+   678→   678→        </motion.div>
+   679→   679→      </div>
+   680→   680→    </section>
+   681→   681→  );
+   682→   682→}
+   683→   683→
+   684→   684→/* ============================================================
+   685→   685→   Section 4: How LootLoom Works
+   686→   686→   ============================================================ */
+   687→   687→function HowItWorks() {
+   688→   688→  return (
+   689→   689→    <section id="how" className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16 scroll-mt-24">
+   690→   690→      <div className="max-w-7xl mx-auto">
+   691→   691→        <SectionHeading
+   692→   692→          eyebrow="Process"
+   693→   693→          title="How LootLoom Works"
+   694→   694→          description="From sign-up to redeem in five simple steps. No hidden catches, no complexity."
+   695→   695→        />
+   696→   696→        <motion.div
+   697→   697→          variants={staggerContainer}
+   698→   698→          initial="hidden"
+   699→   699→          whileInView="visible"
+   700→   700→          viewport={{ once: true, margin: "-60px" }}
+   701→   701→          className="mt-12"
+   702→   702→        >
+   703→   703→          {/* Desktop: horizontal timeline */}
+   704→   704→          <div className="hidden lg:block relative">
+   705→   705→            <div className="absolute top-9 left-[10%] right-[10%] h-0.5 bg-gradient-to-r from-electric/30 via-purple-brand/40 to-emerald-brand/30 rounded-full" />
+   706→   706→            <motion.div
+   707→   707→              initial={{ scaleX: 0 }}
+   708→   708→              whileInView={{ scaleX: 1 }}
+   709→   709→              viewport={{ once: true }}
+   710→   710→              transition={{ duration: 1.8, ease: "easeInOut" }}
+   711→   711→              className="absolute top-9 left-[10%] right-[10%] h-0.5 bg-[linear-gradient(90deg,var(--electric),var(--cyan-brand),var(--purple-brand),var(--gold),var(--emerald-brand))] origin-left rounded-full"
+   712→   712→            />
+   713→   713→            <div className="grid grid-cols-5 gap-4">
+   714→   714→              {TIMELINE_STEPS.map((step, i) => (
+   715→   715→                <motion.div key={step.title} variants={cardReveal} custom={i} className="flex flex-col items-center text-center">
+   716→   716→                  <GlassCard level={3} sheen className="size-18 w-18 h-18 rounded-full flex items-center justify-center shadow-[var(--shadow-md)] relative">
+   717→   717→                    <IconBadge name={step.icon} accent={step.accent} size="lg" />
+   718→   718→                    <span className="absolute -top-2 -right-2 size-6 rounded-full bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))] text-white text-xs font-bold flex items-center justify-center shadow-sm">
+   719→   719→                      {i + 1}
+   720→   720→                    </span>
+   721→   721→                  </GlassCard>
+   722→   722→                  <h3 className="mt-4 text-sm font-semibold text-foreground">{step.title}</h3>
+   723→   723→                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
+   724→   724→                </motion.div>
+   725→   725→              ))}
+   726→   726→            </div>
+   727→   727→          </div>
+   728→   728→
+   729→   729→          {/* Mobile: vertical timeline */}
+   730→   730→          <div className="lg:hidden relative pl-6">
+   731→   731→            <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-electric via-purple-brand to-emerald-brand rounded-full opacity-40" />
+   732→   732→            <div className="space-y-5">
+   733→   733→              {TIMELINE_STEPS.map((step, i) => (
+   734→   734→                <motion.div key={step.title} variants={cardReveal} custom={i} className="relative flex items-start gap-3">
+   735→   735→                  <GlassCard level={3} sheen className="size-10 rounded-full flex items-center justify-center shadow-[var(--shadow-sm)] shrink-0 z-10">
+   736→   736→                    <IconBadge name={step.icon} accent={step.accent} size="sm" />
+   737→   737→                  </GlassCard>
+   738→   738→                  <GlassCard level={2} sheen className="flex-1 p-3.5 shadow-[var(--shadow-sm)]">
+   739→   739→                    <div className="flex items-center gap-2">
+   740→   740→                      <span className="size-5 rounded-full bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))] text-white text-[10px] font-bold flex items-center justify-center">
+   741→   741→                        {i + 1}
+   742→   742→                      </span>
+   743→   743→                      <h3 className="text-sm font-semibold text-foreground">{step.title}</h3>
+   744→   744→                    </div>
+   745→   745→                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
+   746→   746→                  </GlassCard>
+   747→   747→                </motion.div>
+   748→   748→              ))}
+   749→   749→            </div>
+   750→   750→          </div>
+   751→   751→        </motion.div>
+   752→   752→      </div>
+   753→   753→    </section>
+   754→   754→  );
+   755→   755→}
+   756→   756→
+   757→   757→/* ============================================================
+   758→   758→   Section 5: Live Dashboard Preview
+   759→   759→   ============================================================ */
+   760→   760→function DashboardPreview() {
+   761→   761→  const navigate = useNavigationStore((s) => s.navigate);
+   762→   762→  const { dailyStreak, xp, xpToNext } = useUserStore();
+   763→   763→  const xpPct = Math.round((xp / xpToNext) * 100);
+   764→   764→  const recentRewards = [
+   765→   765→    { name: "₹100 UPI", date: "2 hours ago", coins: 10000, icon: "HandCoins", accent: "emerald" as const },
+   766→   766→    { name: "Amazon Voucher", date: "Yesterday", coins: 5000, icon: "Gift", accent: "purple" as const },
+   767→   767→    { name: "Spotify Premium", date: "3 days ago", coins: 7500, icon: "Gift", accent: "cyan" as const },
+   768→   768→  ];
+   769→   769→  return (
+   770→   770→    <section className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16">
+   771→   771→      <div className="max-w-7xl mx-auto">
+   772→   772→        <SectionHeading
+   773→   773→          eyebrow="Live Preview"
+   774→   774→          title="Your Dashboard, Alive"
+   775→   775→          description="A premium command center for your rewards — balances, streaks, XP, notifications and recent activity in one place."
+   776→   776→        />
+   777→   777→        <motion.div
+   778→   778→          variants={cardReveal}
+   779→   779→          initial="hidden"
+   780→   780→          whileInView="visible"
+   781→   781→          viewport={{ once: true, margin: "-60px" }}
+   782→   782→          className="mt-10"
+   783→   783→        >
+   784→   784→          <GlassCard level={3} sheen className="p-5 sm:p-7 shadow-[var(--shadow-lg)]">
+   785→   785→            {/* Top row */}
+   786→   786→            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+   787→   787→              <div className="flex items-center gap-2.5">
+   788→   788→                <IconBadge name="LayoutDashboard" accent="electric" size="lg" />
+   789→   789→                <div>
+   790→   790→                  <h3 className="text-base sm:text-lg font-bold text-foreground">Member Dashboard</h3>
+   791→   791→                  <p className="text-xs text-muted-foreground">Welcome back, ready to earn?</p>
+   792→   792→                </div>
+   793→   793→              </div>
+   794→   794→              <LootButton size="sm" variant="electric" onClick={() => navigate("dashboard")} rightIcon={<ArrowRight size={14} />}>
+   795→   795→                Open Dashboard
+   796→   796→              </LootButton>
+   797→   797→            </div>
+   798→   798→
+   799→   799→            <div className="grid lg:grid-cols-3 gap-4">
+   800→   800→              {/* Balance + XP card */}
+   801→   801→              <GlassCard level={2} sheen className="p-5 lg:col-span-1 flex flex-col gap-4 shadow-[var(--shadow-sm)]">
+   802→   802→                <div>
+   803→   803→                  <p className="text-xs text-muted-foreground font-medium">Available Balance</p>
+   804→   804→                  <div className="flex items-end gap-2 mt-1">
+   805→   805→                    <AnimatedCounter value={0} className="text-3xl font-bold text-foreground" />
+   806→   806→                    <Coins size={18} className="text-gold mb-1.5" />
+   807→   807→                  </div>
+   808→   808→                </div>
+   809→   809→                <div className="flex items-center gap-4">
+   810→   810→                  <ProgressRing value={xpPct} size={92} strokeWidth={9} gradient="electric" />
+   811→   811→                  <div className="space-y-1">
+   812→   812→                    <p className="text-xs text-muted-foreground">Level Progress</p>
+   813→   813→                    <p className="text-lg font-bold text-foreground">
+   814→   814→                      <AnimatedCounter value={xp} /> / <AnimatedCounter value={xpToNext} /> XP
+   815→   815→                    </p>
+   816→   816→                    <StatusBadge variant="electric" className="text-[10px]">Level 7</StatusBadge>
+   817→   817→                  </div>
+   818→   818→                </div>
+   819→   819→              </GlassCard>
+   820→   820→
+   821→   821→              {/* Streak + stats */}
+   822→   822→              <GlassCard level={2} sheen className="p-5 grid grid-cols-2 gap-4 shadow-[var(--shadow-sm)]">
+   823→   823→                <div className="col-span-2 flex items-center justify-between">
+   824→   824→                  <div className="flex items-center gap-2">
+   825→   825→                    <IconBadge name="Flame" accent="gold" />
+   826→   826→                    <span className="text-sm font-semibold text-foreground">Daily Streak</span>
+   827→   827→                  </div>
+   828→   828→                  <StatusBadge variant="gold" dot pulse>{dailyStreak} days</StatusBadge>
+   829→   829→                </div>
+   830→   830→                {[
+   831→   831→                  { label: "Today", value: 145, accent: "text-electric", icon: "TrendingUp" },
+   832→   832→                  { label: "This Week", value: 980, accent: "text-cyan-brand", icon: "TrendingUp" },
+   833→   833→                  { label: "This Month", value: 4280, accent: "text-purple-brand", icon: "TrendingUp" },
+   834→   834→                  { label: "Lifetime", value: 0, accent: "text-gold", icon: "Award" },
+   835→   835→                ].map((s) => (
+   836→   836→                  <div key={s.label} className="rounded-xl bg-accent/40 p-3">
+   837→   837→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{s.label}</p>
+   838→   838→                    <AnimatedCounter value={s.value} className={`text-xl font-bold ${s.accent}`} />
+   839→   839→                  </div>
+   840→   840→                ))}
+   841→   841→              </GlassCard>
+   842→   842→
+   843→   843→              {/* Recent rewards */}
+   844→   844→              <GlassCard level={2} sheen className="p-5 shadow-[var(--shadow-sm)]">
+   845→   845→                <div className="flex items-center justify-between mb-3">
+   846→   846→                  <span className="text-sm font-semibold text-foreground">Recent Rewards</span>
+   847→   847→                  <Bell size={14} className="text-muted-foreground" />
+   848→   848→                </div>
+   849→   849→                <ul className="space-y-2.5 max-h-[180px] overflow-y-auto no-scrollbar">
+   850→   850→                  {recentRewards.map((r) => (
+   851→   851→                    <li key={r.name} className="flex items-center gap-2.5">
+   852→   852→                      <IconBadge name={r.icon} accent={r.accent} size="sm" />
+   853→   853→                      <div className="flex-1 min-w-0">
+   854→   854→                        <p className="text-xs font-semibold text-foreground truncate">{r.name}</p>
+   855→   855→                        <p className="text-[10px] text-muted-foreground">{r.date}</p>
+   856→   856→                      </div>
+   857→   857→                      <span className="text-xs font-bold text-gold inline-flex items-center gap-0.5">
+   858→   858→                        <Coins size={11} />
+   859→   859→                        {r.coins.toLocaleString("en-IN")}
+   860→   860→                      </span>
+   861→   861→                    </li>
+   862→   862→                  ))}
+   863→   863→                </ul>
+   864→   864→              </GlassCard>
+   865→   865→            </div>
+   866→   866→          </GlassCard>
+   867→   867→        </motion.div>
+   868→   868→      </div>
+   869→   869→    </section>
+   870→   870→  );
+   871→   871→}
+   872→   872→
+   873→   873→/* ============================================================
+   874→   874→   Section 6: Wallet Preview
+   875→   875→   ============================================================ */
+   876→   876→function WalletPreview() {
+   877→   877→  const navigate = useNavigationStore((s) => s.navigate);
+   878→   878→  const { availableCoins, lifetimeEarned, todayEarnings } = useWalletStore();
+   879→   879→  const transactions = [
+   880→   880→    { title: "Daily Bonus", time: "2h ago", amount: 50, positive: true },
+   881→   881→    { title: "UPI Redemption", time: "Yesterday", amount: -10000, positive: false },
+   882→   882→    { title: "Mission Reward", time: "2 days ago", amount: 320, positive: true },
+   883→   883→  ];
+   884→   884→  return (
+   885→   885→    <section className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16">
+   886→   886→      <div className="max-w-7xl mx-auto">
+   887→   887→        <SectionHeading
+   888→   888→          eyebrow="Wallet"
+   889→   889→          title="Track Every Coin"
+   890→   890→          description="A transparent, real-time view of your earnings, redemptions and lifetime totals."
+   891→   891→        />
+   892→   892→        <motion.div
+   893→   893→          variants={cardReveal}
+   894→   894→          initial="hidden"
+   895→   895→          whileInView="visible"
+   896→   896→          viewport={{ once: true, margin: "-60px" }}
+   897→   897→          className="mt-10"
+   898→   898→        >
+   899→   899→          <GlassCard level={3} sheen className="p-5 sm:p-7 shadow-[var(--shadow-lg)] relative overflow-hidden">
+   900→   900→            <FloatingCoin className="top-4 right-8" delay={0.2} />
+   901→   901→            <FloatingCoin className="bottom-6 right-1/4" delay={0.9} />
+   902→   902→            <div className="grid lg:grid-cols-5 gap-5 relative z-10">
+   903→   903→              {/* Left: balance */}
+   904→   904→              <div className="lg:col-span-2 space-y-4">
+   905→   905→                <div className="flex items-center gap-2">
+   906→   906→                  <IconBadge name="Wallet" accent="cyan" size="lg" />
+   907→   907→                  <span className="text-sm font-semibold text-foreground">Wallet Balance</span>
+   908→   908→                </div>
+   909→   909→                <div>
+   910→   910→                  <p className="text-xs text-muted-foreground">Available Coins</p>
+   911→   911→                  <div className="flex items-end gap-2 mt-1">
+   912→   912→                    <AnimatedCounter value={availableCoins} className="text-4xl font-bold text-foreground" />
+   913→   913→                    <Coins size={20} className="text-gold mb-1.5" />
+   914→   914→                  </div>
+   915→   915→                </div>
+   916→   916→                <div className="grid grid-cols-2 gap-3 pt-1">
+   917→   917→                  <div className="rounded-xl bg-accent/50 p-3">
+   918→   918→                    <p className="text-[10px] text-muted-foreground uppercase">Today</p>
+   919→   919→                    <AnimatedCounter value={todayEarnings} prefix="+" className="text-lg font-bold text-emerald-brand" />
+   920→   920→                  </div>
+   921→   921→                  <div className="rounded-xl bg-accent/50 p-3">
+   922→   922→                    <p className="text-[10px] text-muted-foreground uppercase">Lifetime</p>
+   923→   923→                    <AnimatedCounter value={lifetimeEarned} className="text-lg font-bold text-electric" />
+   924→   924→                  </div>
+   925→   925→                </div>
+   926→   926→                <LootButton size="sm" variant="cyan" onClick={() => navigate("wallet")} rightIcon={<ArrowRight size={14} />} className="mt-1">
+   927→   927→                  Open Wallet
+   928→   928→                </LootButton>
+   929→   929→              </div>
+   930→   930→
+   931→   931→              {/* Right: chart + transactions */}
+   932→   932→              <div className="lg:col-span-3 space-y-4">
+   933→   933→                <div className="rounded-xl bg-accent/30 p-4">
+   934→   934→                  <div className="flex items-center justify-between mb-2">
+   935→   935→                    <span className="text-xs font-semibold text-foreground">Weekly Earnings</span>
+   936→   936→                    <StatusBadge variant="success" className="text-[10px]">
+   937→   937→                      <TrendingUp size={11} /> +28%
+   938→   938→                    </StatusBadge>
+   939→   939→                  </div>
+   940→   940→                  <div className="h-32">
+   941→   941→                    <ResponsiveContainer width="100%" height="100%">
+   942→   942→                      <AreaChart data={WALLET_CHART_DATA} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+   943→   943→                        <defs>
+   944→   944→                          <linearGradient id="walletArea" x1="0" y1="0" x2="0" y2="1">
+   945→   945→                            <stop offset="0%" stopColor="oklch(0.62 0.22 255)" stopOpacity={0.45} />
+   946→   946→                            <stop offset="100%" stopColor="oklch(0.62 0.22 255)" stopOpacity={0} />
+   947→   947→                          </linearGradient>
+   948→   948→                        </defs>
+   949→   949→                        <XAxis
+   950→   950→                          dataKey="day"
+   951→   951→                          tick={{ fontSize: 10, fill: "oklch(0.52 0.02 256)" }}
+   952→   952→                          axisLine={false}
+   953→   953→                          tickLine={false}
+   954→   954→                        />
+   955→   955→                        <Tooltip
+   956→   956→                          contentStyle={{
+   957→   957→                            background: "oklch(1 0 0 / 0.92)",
+   958→   958→                            border: "1px solid oklch(0.92 0.01 250)",
+   959→   959→                            borderRadius: 12,
+   960→   960→                            fontSize: 12,
+   961→   961→                            boxShadow: "0 8px 24px -6px rgb(15 23 42 / 0.12)",
+   962→   962→                          }}
+   963→   963→                          labelStyle={{ color: "oklch(0.21 0.04 256)" }}
+   964→   964→                        />
+   965→   965→                        <Area
+   966→   966→                          type="monotone"
+   967→   967→                          dataKey="v"
+   968→   968→                          stroke="oklch(0.62 0.22 255)"
+   969→   969→                          strokeWidth={2.5}
+   970→   970→                          fill="url(#walletArea)"
+   971→   971→                        />
+   972→   972→                      </AreaChart>
+   973→   973→                    </ResponsiveContainer>
+   974→   974→                  </div>
+   975→   975→                </div>
+   976→   976→                <div className="space-y-2">
+   977→   977→                  <div className="flex items-center justify-between">
+   978→   978→                    <span className="text-xs font-semibold text-foreground">Recent Transactions</span>
+   979→   979→                    <button
+   980→   980→                      onClick={() => navigate("wallet")}
+   981→   981→                      className="text-[11px] font-semibold text-electric hover:underline"
+   982→   982→                    >
+   983→   983→                      View all
+   984→   984→                    </button>
+   985→   985→                  </div>
+   986→   986→                  <ul className="space-y-1.5">
+   987→   987→                    {transactions.map((t) => (
+   988→   988→                      <li
+   989→   989→                        key={t.title}
+   990→   990→                        className="flex items-center gap-3 rounded-xl bg-accent/30 px-3 py-2.5"
+   991→   991→                      >
+   992→   992→                        <div
+   993→   993→                          className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${
+   994→   994→                            t.positive ? "bg-emerald-brand/15 text-emerald-brand" : "bg-rose-brand/12 text-rose-brand"
+   995→   995→                          }`}
+   996→   996→                        >
+   997→   997→                          {t.positive ? <ArrowRight size={14} className="rotate-[270deg]" /> : <ArrowRight size={14} className="rotate-90" />}
+   998→   998→                        </div>
+   999→   999→                        <div className="flex-1 min-w-0">
+
+[showing lines 500-999 of 1744; use offset=1000 with limit to continue reading]

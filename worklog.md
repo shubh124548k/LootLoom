@@ -2010,3 +2010,198 @@ Stage Summary:
 - ESLint passes (0 errors); TypeScript passes for all new/changed files
 - Home page + Sign In page verified in browser (render correctly, premium UI preserved)
 - CEO route browser verification limited by sandbox OOM constraint (environmental, not code issue)
+
+---
+Task ID: p7-foundation
+Agent: main
+Task: Prompt 7 foundation — fix auth store, create reusable auth + navbar components
+
+Work Log:
+- Fixed src/stores/index.ts: added missing `login()` and `logout()` methods to AuthState interface + implementation (referenced by auth-view.tsx SessionExpiredScreen and VerifySuccessScreen but didn't exist)
+- Created src/components/auth/ folder with 9 reusable auth components:
+  * form-input.tsx — FormInput (labeled input with icon + error state, forwardRef)
+  * password-input.tsx — PasswordInput (wraps FormInput with eye toggle + optional strength meter)
+  * form-button.tsx — FormButton (wraps LootButton with submit/fullWidth defaults)
+  * google-button.tsx — GoogleButton (Continue with Google UI integration point — calls onClick, does NOT fake auth)
+  * otp-input.tsx — OtpInput (6-digit code input with paste support + arrow key navigation)
+  * premium-checkbox.tsx — PremiumCheckbox (custom checkbox with check animation — for Remember Me + Terms)
+  * auth-modal.tsx — AuthModal (Dialog wrapper for login/register forms with top accent bar)
+  * user-menu.tsx — UserMenu (dropdown for authenticated users: Avatar + Username + Dashboard/Profile/Settings/Logout; calls signOut() from next-auth)
+  * route-guard.tsx — RouteGuard (frontend route guard — redirects to login/ceo-login when unauthenticated, shows GlassLoader while verifying)
+  * index.ts — barrel exports
+- Created src/components/navbar/ folder:
+  * navbar.tsx — Navbar (session-aware: desktop = Logo + Overview/How It Works/Rewards/Support nav + [Sign In + Get Started when guest] OR [UserMenu when authenticated]; mobile = Logo + hamburger Sheet drawer with same nav + auth actions)
+  * index.ts — barrel export
+- Navbar uses useAuthStore.isAuthenticated (driven by real NextAuth session via AuthDataSync) — NO hardcoded login state
+
+Stage Summary:
+- Auth store fixed (login/logout methods added)
+- 9 reusable auth components available at @/components/auth
+- Session-aware Navbar available at @/components/navbar
+- Foundation ready for home-view + auth-view rewrite by subagents
+- Lint passes (0 errors)
+
+---
+Task ID: 7a
+Agent: full-stack-developer
+Task: Rewrite home-view as marketing-only page
+
+Work Log:
+- Read /home/z/my-project/worklog.md to understand prior work — especially Task p7-foundation (created session-aware Navbar at @/components/navbar, fixed auth store with login()/logout() methods, built @/components/auth/* components including UserMenu used by Navbar)
+- Read full 1743-line src/features/home/home-view.tsx to catalog existing sections and identify all fake-data sources
+- Read /home/z/my-project/src/components/navbar/navbar.tsx — confirmed new Navbar API (no props, session-aware, desktop + mobile Sheet drawer)
+- Verified /api/stats route exists and returns { activeMembers, coinsRedeemed, coinsEarned, rewardsAvailable, completedRedeems }
+- Verified @/components/lootloom exports GlassCard, LootButton, Logo, IconBadge, AnimatedCounter, StatusBadge (all used by new home)
+- Verified @/stores exports useNavigationStore, useAuthStore (isAuthenticated flag drives guest-vs-auth CTA routing)
+- Verified ViewId type covers all navigation targets used (home, login, register, dashboard, earn, wallet, rewards, redeem, daily-bonus, referral, leaderboard, achievements, support, privacy, terms, cookies, community-guidelines, security-policy)
+
+- Wrote new src/features/home/home-view.tsx (979 lines, down from 1743 — ~44% reduction):
+  * Imports cleaned: removed recharts (AreaChart/Area/ResponsiveContainer/XAxis/Tooltip); removed 30+ unused lucide icons (PlayCircle, Wallet, Gift, CalendarCheck, Users, Trophy, Award, LifeBuoy, Bell, TrendingUp, Flame, Star, QrCode, Apple, Smartphone, Target, Crown, Medal, Zap, Rocket, HandCoins, PiggyBank, Fingerprint, BadgeCheck, UserPlus as JSX). Kept only the icons actually used as JSX: Sparkles, ArrowRight, LogIn, HelpCircle, ChevronDown, Shield, ShieldCheck, Coins, Check, Twitter, Github, Linkedin, Youtube, Send
+  * Removed useWalletStore + useUserStore imports (no longer needed — fake user data eliminated). Added useAuthStore for guest-vs-authenticated CTA routing
+  * Kept TIMELINE_STEPS, WHAT_YOU_CAN_DO, SECURITY_FEATURES, FAQS, SUPPORT_OPTIONS content unchanged
+  * Added new REWARD_TIERS constant (8 entries: ₹10/₹20/₹50/₹100/₹200/₹500 UPI + Amazon/Flipkart vouchers) — static marketing catalog with reference coin costs
+  * Removed WALLET_CHART_DATA, EARN_ACTIVITIES, LEADERBOARD_TOP3, ACHIEVEMENTS, RARITY_COLOR constants
+  * Removed inline TopBar component — replaced with `<Navbar />` from @/components/navbar
+  * Removed QUICK_ACTIONS constant + QuickActions section
+  * Removed DashboardPreview, WalletPreview, EarnPreview, ReferralPreview, LeaderboardPreview, AchievementsPreview, DownloadApp sections entirely
+  * Kept FloatingCoin + SectionHeading helpers unchanged
+
+  Section 1 — Hero (kept premium aesthetic):
+    * Big headline "Earn Rewards. Redeem Joy." + subheading + Get Started/Sign In CTAs (unchanged)
+    * 3 stat counters below CTAs now fetch real data from /api/stats via fetch+useEffect (activeMembers, coinsRedeemed, rewardsAvailable) — AnimatedCounter animates from 0 to real value when in view
+    * Floating glass widget composition kept (Dashboard, Wallet, Earn, Rewards, Welcome toast, 2 FloatingCoins) but ALL hardcoded numbers removed/replaced with decorative equivalents:
+      - Dashboard widget: AnimatedCounter value={0} (was 0 already — kept)
+      - Wallet widget: removed recharts AreaChart + "+980 this week" — replaced with 7-bar decorative gradient mini-bar chart (animated heights, no data labels)
+      - Earn widget: removed "+25" — replaced with "+Coins" decorative text
+      - Rewards widget: removed coin costs ("10,000 coins") — kept reward names as "UPI Cashout" / "Amazon Voucher" marketing labels with "Redeem" decorative text
+      - Notification toast: removed "+50 daily bonus added" fake data — replaced with "Welcome to LootLoom" / "Join thousands of earners" marketing copy
+
+  Section 2 — HowItWorks: kept 5-step TIMELINE_STEPS, horizontal desktop timeline + vertical mobile timeline, all animations preserved
+
+  Section 3 — WhatYouCanDo (Features grid): kept 8-card grid with WHAT_YOU_CAN_DO content. Clicking a card now navigates to register (guest) or the actual view (authenticated) — does NOT preview dashboard content. CTA label changes "Sign up" vs "Open" based on auth state
+
+  Section 4 — RewardsPreview (NEW section replacing the dashboard-preview stack): clean 8-card grid showing REWARD_TIERS marketing catalog. Each card shows reward name, category badge (UPI/Voucher), coin cost with Coins icon, and a "Redeem" CTA that navigates to register (guests) or redeem view (authenticated). Bottom CTA button "Open Redeem Page" (auth) or "Get Started to Redeem" (guest)
+
+  Section 5 — SecurityPreview: kept 4 SECURITY_FEATURES cards with Shield icon, ShieldCheck "Protected" footer — unchanged
+
+  Section 6 — FAQPreview: kept FAQS accordion with AnimatePresence height/opacity animation — unchanged (removed "View all FAQs" bottom CTA to keep section self-contained)
+
+  Section 7 — SupportPreview: kept 5 SUPPORT_OPTIONS cards. Click handler now navigates to register (guest) or support (auth). CTA label adapts to auth state. Live Chat card stays disabled with "Coming soon" status
+
+  Section 8 — Footer: kept brand block + socials (Twitter/GitHub/LinkedIn/YouTube/Telegram) + Quick Links + Legal + Support columns. Logo is now a button that scrolls to top + navigates home. Quick Links navigate to register (guest) or the actual view (auth). Legal links always navigate (privacy/terms/etc are public policy pages). Support links navigate to register (guest) or support (auth)
+
+  Main HomeView export: wraps content in motion.div with pageTransition variants; renders <Navbar />, <main> with 7 sections, <Footer />
+
+- Responsive design preserved:
+  * Hero: single column on mobile, 2-col grid on lg+ (gap-10/gap-12)
+  * Features/Rewards grids: 2 cols mobile, 3 cols md, 4 cols lg
+  * Security grid: 1 col mobile, 2 cols sm, 4 cols lg
+  * Support grid: 2 cols mobile, 3 cols md, 5 cols lg
+  * FAQ: single column max-w-3xl
+  * Footer: 2 cols mobile, 4 cols md
+  * All touch targets ≥ size-8 (32px) for icon buttons, full LootButton sizes for primary CTAs
+
+- Premium UI fully preserved:
+  * Glass cards (levels 1-4) with sheen + glow effects
+  * Gradients: electric/cyan/purple/gold/emerald/rose — NO indigo or blue
+  * Framer-motion: staggerContainer, cardReveal, slideUp, scaleIn, floating, floatingSmall, pageTransition all used
+  * AnimatedCounter for real platform stats + Hero decorative widget
+  * StatusBadge with dot+pulse on Live badges, 24/7 Available footer chip
+  * FloatingCoin decorations in Hero
+  * IconBadge (resolves lucide icons by string name) for all data-driven icons
+  * Mesh/aurora background provided by parent BackgroundEngine (unchanged)
+
+- Backend-authentication ready:
+  * NO hardcoded login state — uses useAuthStore.isAuthenticated (driven by real NextAuth session via AuthDataSync, established in p7-foundation)
+  * NO fake user data, balances, XP, levels, notifications, activity feed, leaderboard users, achievements, earnings, referral stats, wallet chart data
+  * All "open dashboard/wallet/redeem/etc" CTAs gracefully degrade to "Sign up" CTA when unauthenticated
+  * Navbar handles its own auth-aware rendering (Sign In / Get Started for guests, UserMenu for authenticated users)
+
+Verification:
+- bun run lint: 0 errors, 1 warning (warning is in src/components/auth/user-menu.tsx — NOT my file, belongs to p7-foundation)
+- Dev server: ✓ Compiled successfully (76ms compile, 496ms render, 200 response) — no errors in dev.log
+- File line count: 979 lines (down from 1743 — 44% reduction; target was ~900)
+- /api/stats endpoint hit successfully (200, ~13-20ms) — real platform stats flowing into Hero stat counters
+- All 8 required sections present (Hero, HowItWorks, WhatYouCanDo/Features, RewardsPreview, SecurityPreview, FAQPreview, SupportPreview, Footer)
+- All 7 must-remove sections confirmed removed (DashboardPreview, WalletPreview, EarnPreview, ReferralPreview, LeaderboardPreview, AchievementsPreview, DownloadApp)
+- recharts imports confirmed removed
+- Inline TopBar confirmed replaced with <Navbar />
+
+Stage Summary:
+- home-view.tsx: 1743 lines → 979 lines (clean marketing-only homepage)
+- Removed 7 fake-data preview sections (Dashboard, Wallet with AreaChart, Earn with hardcoded rewards, Referral with fake stats, Leaderboard with fake users "Aarav/Priya/Rohan", Achievements with fake progress, DownloadApp)
+- Added 1 new marketing section (RewardsPreview with static REWARD_TIERS catalog)
+- Replaced inline TopBar with reusable session-aware <Navbar /> from @/components/navbar
+- Hero stat counters now fetch REAL platform stats from /api/stats (activeMembers, coinsRedeemed, rewardsAvailable) — AnimatedCounter animates from 0 to real value
+- All hero floating widgets made decorative (no hardcoded numbers — AreaChart replaced with animated mini-bar chart, fake "+980/+25/+50" removed, replaced with marketing text)
+- All CTAs adapt to auth state via useAuthStore (guests → register, authenticated → actual view)
+- Premium UI fully preserved: glass cards, gradients, framer-motion reveals, floating coins, sheen cards, mesh background
+- No fake user/balance/XP/level/achievement/leaderboard/notification data anywhere
+- ESLint passes (0 errors, 1 unrelated warning in user-menu.tsx); dev server compiles successfully
+
+---
+Task ID: 7b
+Agent: full-stack-developer
+Task: Rewrite auth-view with Login + Signup + Forgot Password + full validation states
+
+Work Log:
+- Read prior work: p7-foundation created reusable auth components at @/components/auth/ (FormInput, PasswordInput, FormButton, GoogleButton, OtpInput, PremiumCheckbox, AuthModal, UserMenu, RouteGuard); auth store has login()/logout() methods
+- Read original 1816-line auth-view.tsx — identified inline AuthInput, PasswordInput, PasswordStrengthMeter, OtpInput, PremiumCheckbox, SocialPlaceholders that needed replacing
+- Rewrote src/features/auth/auth-view.tsx end-to-end using reusable components
+- Removed ~345 lines of inline component definitions (AuthInput, PasswordInput, PasswordStrengthMeter, OtpInput, PremiumCheckbox, SocialPlaceholders)
+- Added shared validation helpers: required(), validateEmail(), validatePassword() (8+ chars), validateUsername() (3-20 alphanumeric/underscore), validatePhone() (optional, 10+ digits)
+- Added ServerErrorBanner helper (red glass card with AlertCircle icon, role=alert, aria-live=assertive) for form-level errors
+- LoginScreen rewrite: FormInput + PasswordInput + PremiumCheckbox (remember me) + GoogleButton (real signIn("google")) + FormButton. Field-level validation (email format, password required). Server-error banner via setServerError. Loading disables inputs + button. signIn("credentials", {redirect:false}) → on success setAuthenticated(true)+navigate("dashboard")
+- RegisterScreen rewrite: ADDED Username + Phone Number (optional) fields per spec. Fields: Full Name, Username, Email, Password (with strength meter), Confirm Password, Phone (optional), Terms checkbox (PremiumCheckbox with links to terms/privacy pages). Field-level validation on all fields. Confirm-password re-validates live when either password or confirm changes. CSRF + POST /api/auth/callback/credentials flow preserved (now passes username, password, phone too). On success → setAuthenticated(true) + navigate("dashboard")
+- ForgotPasswordScreen: FormInput + FormButton with email validation, success state preserved
+- ResetPasswordScreen: PasswordInput (with strength meter) + PasswordInput (confirm). Field-level validation (8+ chars, must match). Live re-validation when either field changes
+- VerifyEmailScreen: OtpInput (6-digit) + progress bar (filled/6) + resend countdown (30s) + change-email link. FormButton for submit
+- VerifySuccessScreen: success animation + FormButton "Continue to Dashboard" → useAuthStore.login() + navigate("dashboard")
+- VerifyFailedScreen: error animation + FormButton "Try Again" + resend-code link
+- AuthLoadingScreen: animated logo (rotating rings) + "Securing your session…" + 3 progress dots + 18 floating particles. Auto-navigates to dashboard after 2s (kept existing flow)
+- SessionExpiredScreen: warning badge + FormButton "Sign In Again" → useAuthStore.logout() + navigate("login")
+- UnauthorizedScreen: 403 badge + FormButton "Return Home" + "Try signing in" link
+- AuthPreview: removed ALL hardcoded fake numbers per spec — Balance (12840→0), Daily bonus (50→0, "Day 12 streak"→"Claim every day"), Rewards ("₹100 UPI / 1000 coins"→neutral placeholders "UPI cashout / Gift cards / Vouchers" with ••• values), Streak (12→0 days), Notification ("You earned 120 coins"→"Mission updates appear here"). Widgets are now decorative marketing visuals with no fake user data
+- Kept AuthShell, AuthPreview, AuthHeader, Divider, AuthFooter as local helpers (presentation-only)
+- All 10 screens preserved, premium UI (glass cards, split layout, framer-motion animations) untouched
+- NO hardcoded login state, NO fake users — Google button calls onClick which wires to signIn("google"); credentials flow uses real NextAuth; verify-success/session-expired use real useAuthStore.login()/logout()
+
+Stage Summary:
+- File written: src/features/auth/auth-view.tsx (1667 lines, down from 1816)
+- 10 screens implemented: Login, Register, ForgotPassword, ResetPassword, VerifyEmail, VerifySuccess, VerifyFailed, AuthLoading, SessionExpired, Unauthorized
+- Reusable components used from @/components/auth: FormInput, PasswordInput, FormButton, GoogleButton, OtpInput, PremiumCheckbox
+- Validation states on every form: Empty (field-level "X is required"), Loading (button spinner + inputs disabled), Success (navigate to next screen), Error (inline red message under field), Invalid Input (email format / password length / confirm match / username pattern / phone pattern / terms checked), Server Error (red glass banner with AlertCircle, role=alert)
+- Lint: 0 errors (only pre-existing warning in user-menu.tsx — unrelated)
+- TypeScript check: 0 errors in auth-view.tsx
+- Dev server compiles cleanly (GET / 200)
+- Backend-authentication ready: real signIn("credentials") and signIn("google") from next-auth/react; no fake users or hardcoded login state
+- AuthPreview is now purely decorative — no hardcoded fake numbers (all counters at 0 or replaced with neutral placeholder text)
+
+---
+Task ID: p7-verification
+Agent: main
+Task: Prompt 7 final verification + browser check
+
+Work Log:
+- Integrated RouteGuard into app-router: wrapped all protected app views (dashboard, wallet, earn, redeem, history, notifications, profile, leaderboard, support, default/pages) with <RouteGuard> — redirects unauthenticated users to login view
+- Fixed user-menu.tsx unused eslint-disable warning (removed directive)
+- Ran bun run lint: 0 errors, 0 warnings (exit 0)
+- Browser verification with Agent Browser:
+  * Home page (http://localhost:3000/) at 1440px: renders correctly with new session-aware Navbar (Logo, Overview, How It Works, Rewards, Support, Sign In, Get Started buttons). Hero section shows "Earn Rewards. Redeem Joy." headline, description, CTAs, and 3 stat counters (0 — real fetch from /api/stats on empty DB)
+  * Home page at 375px (iPhone X): mobile navbar shows Logo + "Open menu" hamburger. Clicking hamburger opens Sheet drawer with Overview, How It Works, Rewards, Support, Sign In, Get Started, Close buttons — matches spec exactly
+  * Home page at 320px (smallest): no horizontal overflow (verified via document.documentElement.scrollWidth check), navbar renders correctly
+  * Sign In page: renders with "Welcome back" heading, "Continue with Google" button, "OR CONTINUE WITH" divider, Email/Password textboxes (with show/hide toggle), Remember me checkbox (checked by default), Forgot password link, Sign In button, Create Account link, Back to home Logo button, left-side preview "Your rewards journey starts here"
+  * Form validation: clicking Sign In with empty fields shows inline "Email is required" + "Password is required" errors
+  * Register page: renders with "Create your account" heading, Free badge, Full Name, Username, Email, Password (with show/hide), Confirm Password (with show/hide), Phone Number (optional), Terms checkbox fields — all required fields per spec
+  * Server stable throughout testing (NextAuth session API returns 200)
+
+Stage Summary:
+- Home page: 1743 lines → 979 lines (removed 7 fake-data sections: DashboardPreview, WalletPreview, EarnPreview, ReferralPreview, LeaderboardPreview, AchievementsPreview, DownloadApp; kept 8 marketing sections: Hero, How It Works, Features, Rewards Preview, Security, FAQ, Support, Footer)
+- Auth view: 1816 lines → 1667 lines (replaced inline components with reusable @/components/auth/*, added Username + Phone + Terms fields to Register, full validation states on all 10 screens)
+- 9 reusable auth components created (FormInput, PasswordInput, FormButton, GoogleButton, OtpInput, PremiumCheckbox, AuthModal, UserMenu, RouteGuard)
+- 1 session-aware Navbar component created (desktop + mobile Sheet drawer)
+- Auth store fixed (added login()/logout() methods)
+- RouteGuard integrated into app-router for all 10 protected app views
+- ESLint passes (0 errors, 0 warnings)
+- Browser-verified: home page renders at 320px/375px/1440px with no overflow, mobile drawer works, Sign In + Register pages render with full validation
+- All values backend-ready (real /api/stats fetch, NextAuth signIn/signOut, no hardcoded login state)
