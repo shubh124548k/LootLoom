@@ -1,0 +1,2002 @@
+     1→"use client";
+     2→
+     3→import { useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  User,
+     7→  Mail,
+     8→  Phone,
+     9→  Calendar,
+    10→  MapPin,
+    11→  Globe,
+    12→  Clock,
+    13→  Camera,
+    14→  Shield,
+    15→  Lock,
+    16→  Eye,
+    17→  Bell,
+    18→  Palette,
+    19→  Smartphone,
+    20→  Download,
+    21→  AlertTriangle,
+    22→  Trash2,
+    23→  LogOut,
+    24→  KeyRound,
+    25→  Fingerprint,
+    26→  Monitor,
+    27→  CheckCircle2,
+    28→  Flame,
+    29→  Crown,
+    30→  Trophy,
+    31→  Gift,
+    32→  Coins,
+    33→  Users,
+    34→  Target,
+    35→  TrendingUp,
+    36→  History,
+    37→  Sparkles,
+    38→  ChevronRight,
+    39→  Sun,
+    40→  Moon,
+    41→  Type,
+    42→  Zap,
+    43→  Languages,
+    44→  Wallet,
+    45→  HardDrive,
+    46→  Laptop,
+    47→  Tablet,
+    48→  Chrome,
+    49→  Apple,
+    50→  Github,
+    51→  Facebook,
+    52→  MessageCircle,
+    53→  RefreshCw,
+    54→  FileText,
+    55→  UserX,
+    56→  Power,
+    57→  Save,
+    58→  Copy,
+    59→  ExternalLink,
+    60→  Info,
+    61→  Award,
+    62→  Star,
+    63→  Hexagon,
+    64→} from "lucide-react";
+    65→
+    66→import {
+    67→  PageContainer,
+    68→  PageHeader,
+    69→  SectionHeader,
+    70→  Grid,
+    71→  GlassCard,
+    72→  LootButton,
+    73→  IconBadge,
+    74→  AnimatedCounter,
+    75→  ProgressRing,
+    76→  StatCard,
+    77→  StatusBadge,
+    78→  WidgetCard,
+    79→  EmptyState,
+    80→  ErrorState,
+    81→  SkeletonRow,
+    82→} from "@/components/lootloom";
+    83→import { useNavigationStore, useUserStore, useWalletStore, useUIStore } from "@/stores";
+    84→import { cardReveal, staggerContainer, hoverLift, floating } from "@/lib/animations";
+    85→import { toast } from "@/hooks/use-toast";
+    86→import { Switch } from "@/components/ui/switch";
+    87→import { Input } from "@/components/ui/input";
+    88→import {
+    89→  Dialog,
+    90→  DialogContent,
+    91→  DialogHeader,
+    92→  DialogTitle,
+    93→  DialogDescription,
+    94→  DialogFooter,
+    95→} from "@/components/ui/dialog";
+    96→import { cn } from "@/lib/utils";
+    97→
+    98→/* ============================================================
+    99→   Types & utilities
+   100→   ============================================================ */
+   101→
+   102→type Accent = "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy";
+   103→
+   104→function getInitials(name: string): string {
+   105→  if (!name) return "LL";
+   106→  const parts = name.trim().split(/\s+/);
+   107→  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+   108→  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+   109→}
+   110→
+   111→function showToast(title: string, description?: string) {
+   112→  toast({ title, description });
+   113→}
+   114→
+   115→/* ============================================================
+   116→   Reusable helpers
+   117→   ============================================================ */
+   118→
+   119→/** SettingRow — a labelled row with trailing control element. */
+   120→function SettingRow({
+   121→  icon,
+   122→  label,
+   123→  description,
+   124→  children,
+   125→  accent = "electric",
+   126→  locked = false,
+   127→}: {
+   128→  icon?: React.ReactNode;
+   129→  label: string;
+   130→  description?: string;
+   131→  children?: React.ReactNode;
+   132→  accent?: Accent;
+   133→  locked?: boolean;
+   134→}) {
+   135→  const accentText: Record<Accent, string> = {
+   136→    electric: "text-electric",
+   137→    cyan: "text-cyan-brand",
+   138→    purple: "text-purple-brand",
+   139→    gold: "text-gold",
+   140→    emerald: "text-emerald-brand",
+   141→    rose: "text-rose-brand",
+   142→    navy: "text-navy",
+   143→  };
+   144→  return (
+   145→    <div className="flex items-center justify-between gap-3 py-3.5 border-b border-border/60 last:border-0">
+   146→      <div className="flex items-start gap-3 min-w-0">
+   147→        {icon && (
+   148→          <span className={cn("shrink-0 mt-0.5", accentText[accent])}>{icon}</span>
+   149→        )}
+   150→        <div className="min-w-0">
+   151→          <div className="flex items-center gap-2">
+   152→            <p className="text-sm font-semibold text-foreground truncate">{label}</p>
+   153→            {locked && (
+   154→              <Lock size={11} className="text-muted-foreground/60 shrink-0" />
+   155→            )}
+   156→          </div>
+   157→          {description && (
+   158→            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{description}</p>
+   159→          )}
+   160→        </div>
+   161→      </div>
+   162→      {children && <div className="shrink-0">{children}</div>}
+   163→    </div>
+   164→  );
+   165→}
+   166→
+   167→/** ToggleCard — a compact glass card with a Switch. */
+   168→function ToggleCard({
+   169→  icon,
+   170→  label,
+   171→  description,
+   172→  checked,
+   173→  onChange,
+   174→  accent = "electric",
+   175→  locked = false,
+   176→}: {
+   177→  icon: React.ReactNode;
+   178→  label: string;
+   179→  description?: string;
+   180→  checked: boolean;
+   181→  onChange: (v: boolean) => void;
+   182→  accent?: Accent;
+   183→  locked?: boolean;
+   184→}) {
+   185→  const accentBg: Record<Accent, string> = {
+   186→    electric: "bg-electric/10 text-electric ring-electric/20",
+   187→    cyan: "bg-cyan/10 text-cyan-brand ring-cyan-brand/20",
+   188→    purple: "bg-purple/10 text-purple-brand ring-purple-brand/20",
+   189→    gold: "bg-gold/15 text-gold ring-gold/25",
+   190→    emerald: "bg-emerald-brand/10 text-emerald-brand ring-emerald-brand/20",
+   191→    rose: "bg-rose-brand/10 text-rose-brand ring-rose-brand/20",
+   192→    navy: "bg-navy/10 text-navy ring-navy/20",
+   193→  };
+   194→  return (
+   195→    <motion.div
+   196→      variants={cardReveal}
+   197→      className={cn(
+   198→        "flex items-start gap-3 p-4 rounded-2xl glass-1 ring-1 ring-border transition-all",
+   199→        locked && "opacity-70"
+   200→      )}
+   201→    >
+   202→      <span
+   203→        className={cn(
+   204→          "inline-flex items-center justify-center rounded-xl ring-1 size-9 shrink-0",
+   205→          accentBg[accent]
+   206→        )}
+   207→      >
+   208→        {icon}
+   209→      </span>
+   210→      <div className="flex-1 min-w-0">
+   211→        <div className="flex items-center gap-1.5">
+   212→          <p className="text-sm font-semibold text-foreground">{label}</p>
+   213→          {locked && <Lock size={11} className="text-muted-foreground/60" />}
+   214→        </div>
+   215→        {description && (
+   216→          <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{description}</p>
+   217→        )}
+   218→      </div>
+   219→      <Switch
+   220→        checked={checked}
+   221→        onCheckedChange={onChange}
+   222→        disabled={locked}
+   223→        aria-label={label}
+   224→      />
+   225→    </motion.div>
+   226→  );
+   227→}
+   228→
+   229→/** ConfirmDialog — warning-style dialog used in the Danger Zone. */
+   230→function ConfirmDialog({
+   231→  open,
+   232→  onOpenChange,
+   233→  title,
+   234→  description,
+   235→  confirmLabel = "Confirm",
+   236→  cancelLabel = "Cancel",
+   237→  onConfirm,
+   238→  icon,
+   239→  variant = "danger",
+   240→}: {
+   241→  open: boolean;
+   242→  onOpenChange: (v: boolean) => void;
+   243→  title: string;
+   244→  description: string;
+   245→  confirmLabel?: string;
+   246→  cancelLabel?: string;
+   247→  onConfirm: () => void;
+   248→  icon?: React.ReactNode;
+   249→  variant?: "danger" | "warning";
+   250→}) {
+   251→  return (
+   252→    <Dialog open={open} onOpenChange={onOpenChange}>
+   253→      <DialogContent className="sm:max-w-md">
+   254→        <DialogHeader>
+   255→          <div
+   256→            className={cn(
+   257→              "size-12 rounded-2xl flex items-center justify-center ring-1 mb-2",
+   258→              variant === "danger"
+   259→                ? "bg-rose-brand/10 text-rose-brand ring-rose-brand/20"
+   260→                : "bg-gold/15 text-gold ring-gold/25"
+   261→            )}
+   262→          >
+   263→            {icon ?? <AlertTriangle size={24} />}
+   264→          </div>
+   265→          <DialogTitle className="text-lg">{title}</DialogTitle>
+   266→          <DialogDescription>{description}</DialogDescription>
+   267→        </DialogHeader>
+   268→        <DialogFooter className="gap-2">
+   269→          <LootButton
+   270→            variant="ghost"
+   271→            size="sm"
+   272→            onClick={() => onOpenChange(false)}
+   273→          >
+   274→            {cancelLabel}
+   275→          </LootButton>
+   276→          <LootButton
+   277→            variant={variant === "danger" ? "destructive" : "gold"}
+   278→            size="sm"
+   279→            leftIcon={variant === "danger" ? <Trash2 size={14} /> : <AlertTriangle size={14} />}
+   280→            onClick={() => {
+   281→              onConfirm();
+   282→              onOpenChange(false);
+   283→            }}
+   284→          >
+   285→            {confirmLabel}
+   286→          </LootButton>
+   287→        </DialogFooter>
+   288→      </DialogContent>
+   289→    </Dialog>
+   290→  );
+   291→}
+   292→
+   293→/** BadgeCard — a single badge in the collection grid. */
+   294→type Rarity = "common" | "rare" | "epic" | "legendary" | "special" | "vip";
+   295→
+   296→const rarityStyles: Record<
+   297→  Rarity,
+   298→  { ring: string; text: string; bg: string; label: string }
+   299→> = {
+   300→  common: {
+   301→    ring: "ring-muted-foreground/20",
+   302→    text: "text-muted-foreground",
+   303→    bg: "bg-muted/40",
+   304→    label: "Common",
+   305→  },
+   306→  rare: {
+   307→    ring: "ring-electric/30",
+   308→    text: "text-electric",
+   309→    bg: "bg-electric/10",
+   310→    label: "Rare",
+   311→  },
+   312→  epic: {
+   313→    ring: "ring-purple-brand/30",
+   314→    text: "text-purple-brand",
+   315→    bg: "bg-purple/10",
+   316→    label: "Epic",
+   317→  },
+   318→  legendary: {
+   319→    ring: "ring-gold/40",
+   320→    text: "text-gold",
+   321→    bg: "bg-gold/15",
+   322→    label: "Legendary",
+   323→  },
+   324→  special: {
+   325→    ring: "ring-emerald-brand/30",
+   326→    text: "text-emerald-brand",
+   327→    bg: "bg-emerald-brand/10",
+   328→    label: "Special Event",
+   329→  },
+   330→  vip: {
+   331→    ring: "ring-rose-brand/30",
+   332→    text: "text-rose-brand",
+   333→    bg: "bg-rose-brand/10",
+   334→    label: "VIP",
+   335→  },
+   336→};
+   337→
+   338→function BadgeCard({
+   339→  name,
+   340→  description,
+   341→  rarity,
+   342→  progress,
+   343→  unlocked,
+   344→  locked,
+   345→  icon,
+   346→}: {
+   347→  name: string;
+   348→  description: string;
+   349→  rarity: Rarity;
+   350→  progress?: number;
+   351→  unlocked: boolean;
+   352→  locked?: boolean;
+   353→  icon: React.ReactNode;
+   354→}) {
+   355→  const r = rarityStyles[rarity];
+   356→  return (
+   357→    <motion.div
+   358→      variants={cardReveal}
+   359→      whileHover={locked ? undefined : hoverLift.whileHover}
+   360→      className={cn(
+   361→        "relative rounded-2xl p-4 glass-1 ring-1 transition-all flex flex-col items-center text-center gap-2",
+   362→        r.ring,
+   363→        locked && "opacity-60"
+   364→      )}
+   365→    >
+   366→      {locked && (
+   367→        <div className="absolute top-2 right-2 inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+   368→          <Lock size={10} /> Locked
+   369→        </div>
+   370→      )}
+   371→      <div className="relative">
+   372→        <div
+   373→          className={cn(
+   374→            "size-14 rounded-2xl flex items-center justify-center ring-1",
+   375→            r.bg,
+   376→            r.ring,
+   377→            r.text
+   378→          )}
+   379→        >
+   380→          {icon}
+   381→        </div>
+   382→        {unlocked && (
+   383→          <motion.span
+   384→            initial={{ scale: 0 }}
+   385→            animate={{ scale: 1 }}
+   386→            transition={{ type: "spring", stiffness: 320, damping: 16, delay: 0.2 }}
+   387→            className="absolute -bottom-1 -right-1 size-5 rounded-full bg-emerald-brand text-white flex items-center justify-center ring-2 ring-background"
+   388→          >
+   389→            <CheckCircle2 size={12} />
+   390→          </motion.span>
+   391→        )}
+   392→      </div>
+   393→      <p className="text-xs font-semibold text-foreground truncate w-full">{name}</p>
+   394→      <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2 min-h-[28px]">
+   395→        {description}
+   396→      </p>
+   397→      <span
+   398→        className={cn(
+   399→          "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1",
+   400→          r.bg,
+   401→          r.text,
+   402→          r.ring
+   403→        )}
+   404→      >
+   405→        {r.label}
+   406→      </span>
+   407→      {!unlocked && progress !== undefined && (
+   408→        <div className="w-full mt-1">
+   409→          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+   410→            <span>Progress</span>
+   411→            <span>{progress}%</span>
+   412→          </div>
+   413→          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+   414→            <motion.div
+   415→              initial={{ width: 0 }}
+   416→              whileInView={{ width: `${progress}%` }}
+   417→              viewport={{ once: true }}
+   418→              transition={{ duration: 1, ease: "easeOut" }}
+   419→              className={cn("h-full rounded-full", r.bg)}
+   420→            />
+   421→          </div>
+   422→        </div>
+   423→      )}
+   424→    </motion.div>
+   425→  );
+   426→}
+   427→
+   428→/** DeviceCard — single device entry. */
+   429→function DeviceCard({
+   430→  icon,
+   431→  name,
+   432→  type,
+   433→  location,
+   434→  lastActive,
+   435→  current,
+   436→  trusted,
+   437→  locked,
+   438→}: {
+   439→  icon: React.ReactNode;
+   440→  name: string;
+   441→  type: string;
+   442→  location: string;
+   443→  lastActive: string;
+   444→  current?: boolean;
+   445→  trusted?: boolean;
+   446→  locked?: boolean;
+   447→}) {
+   448→  return (
+   449→    <motion.div
+   450→      variants={cardReveal}
+   451→      className={cn(
+   452→        "rounded-2xl p-4 ring-1 flex items-center gap-3 transition-all",
+   453→        current
+   454→          ? "glass-2 ring-electric/40 shadow-[0_8px_24px_-12px_oklch(0.62_0.22_255/0.35)]"
+   455→          : "glass-1 ring-border"
+   456→      )}
+   457→    >
+   458→      <div
+   459→        className={cn(
+   460→          "size-11 rounded-xl flex items-center justify-center ring-1 shrink-0",
+   461→          current
+   462→            ? "bg-electric/10 text-electric ring-electric/20"
+   463→            : "bg-muted/40 text-muted-foreground ring-border"
+   464→        )}
+   465→      >
+   466→        {icon}
+   467→      </div>
+   468→      <div className="flex-1 min-w-0">
+   469→        <div className="flex items-center gap-2 flex-wrap">
+   470→          <p className="text-sm font-semibold text-foreground truncate">{name}</p>
+   471→          {current && (
+   472→            <StatusBadge variant="success" dot pulse>
+   473→              Current
+   474→            </StatusBadge>
+   475→          )}
+   476→          {trusted && (
+   477→            <StatusBadge variant="info" dot>
+   478→              Trusted
+   479→            </StatusBadge>
+   480→          )}
+   481→          {locked && (
+   482→            <StatusBadge variant="default">
+   483→              <Lock size={10} /> Pending
+   484→            </StatusBadge>
+   485→          )}
+   486→        </div>
+   487→        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+   488→          {type} · {location} · {lastActive}
+   489→        </p>
+   490→      </div>
+   491→      {!current && !locked && (
+   492→        <LootButton
+   493→          variant="ghost"
+   494→          size="sm"
+   495→          className="text-rose-brand hover:bg-rose-brand/10"
+   496→          leftIcon={<LogOut size={13} />}
+   497→          onClick={() => showToast("Device session", "Future: this device will be signed out.")}
+   498→        >
+   499→          Sign out
+   500→        </LootButton>
+   501→      )}
+   502→      {locked && <Lock size={14} className="text-muted-foreground/60" />}
+   503→    </motion.div>
+   504→  );
+   505→}
+   506→
+   507→/** ConnectedAccountCard — third-party OAuth account row. */
+   508→function ConnectedAccountCard({
+   509→  icon,
+   510→  name,
+   511→  description,
+   512→  accent,
+   513→  connected,
+   514→  locked = false,
+   515→}: {
+   516→  icon: React.ReactNode;
+   517→  name: string;
+   518→  description: string;
+   519→  accent: Accent;
+   520→  connected: boolean;
+   521→  locked?: boolean;
+   522→}) {
+   523→  const accentBg: Record<Accent, string> = {
+   524→    electric: "bg-electric/10 text-electric ring-electric/20",
+   525→    cyan: "bg-cyan/10 text-cyan-brand ring-cyan-brand/20",
+   526→    purple: "bg-purple/10 text-purple-brand ring-purple-brand/20",
+   527→    gold: "bg-gold/15 text-gold ring-gold/25",
+   528→    emerald: "bg-emerald-brand/10 text-emerald-brand ring-emerald-brand/20",
+   529→    rose: "bg-rose-brand/10 text-rose-brand ring-rose-brand/20",
+   530→    navy: "bg-navy/10 text-navy ring-navy/20",
+   531→  };
+   532→  return (
+   533→    <motion.div
+   534→      variants={cardReveal}
+   535→      className={cn(
+   536→        "rounded-2xl p-4 glass-1 ring-1 ring-border flex items-center gap-3 transition-all",
+   537→        locked && "opacity-70"
+   538→      )}
+   539→    >
+   540→      <span
+   541→        className={cn(
+   542→          "inline-flex items-center justify-center size-10 rounded-xl ring-1 shrink-0",
+   543→          accentBg[accent]
+   544→        )}
+   545→      >
+   546→        {icon}
+   547→      </span>
+   548→      <div className="flex-1 min-w-0">
+   549→        <div className="flex items-center gap-1.5">
+   550→          <p className="text-sm font-semibold text-foreground truncate">{name}</p>
+   551→          {locked && <Lock size={11} className="text-muted-foreground/60" />}
+   552→        </div>
+   553→        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{description}</p>
+   554→      </div>
+   555→      {connected ? (
+   556→        <div className="flex items-center gap-2">
+   557→          <StatusBadge variant="success" dot>
+   558→            Connected
+   559→          </StatusBadge>
+   560→          <LootButton
+   561→            variant="ghost"
+   562→            size="sm"
+   563→            className="text-muted-foreground hover:text-rose-brand"
+   564→            onClick={() => showToast("Disconnect", `Future: disconnect ${name}.`)}
+   565→          >
+   566→            Disconnect
+   567→          </LootButton>
+   568→        </div>
+   569→      ) : (
+   570→        <LootButton
+   571→          variant={locked ? "outline" : "glass"}
+   572→          size="sm"
+   573→          disabled={locked}
+   574→          leftIcon={locked ? <Lock size={13} /> : <Plus size={13} />}
+   575→          onClick={() =>
+   576→            locked
+   577→              ? showToast("Coming soon", `${name} connection is not yet available.`)
+   578→              : showToast("Connect", `Future: connect your ${name} account.`)
+   579→          }
+   580→        >
+   581→          {locked ? "Soon" : "Connect"}
+   582→        </LootButton>
+   583→      )}
+   584→    </motion.div>
+   585→  );
+   586→}
+   587→
+   588→/* ============================================================
+   589→   1. Profile Overview
+   590→   ============================================================ */
+   591→
+   592→function ProfileOverview() {
+   593→  const { fullName, username, email, memberSince, level, xp, xpToNext, rank, dailyStreak } =
+   594→    useUserStore();
+   595→  const { availableCoins, lifetimeEarned } = useWalletStore();
+   596→  const initials = getInitials(fullName);
+   597→  const xpProgress = Math.min(100, Math.round((xp / xpToNext) * 100));
+   598→
+   599→  return (
+   600→    <motion.div variants={cardReveal}>
+   601→      <GlassCard level={3} sheen className="overflow-hidden">
+   602→        {/* Cover banner */}
+   603→        <div className="relative h-28 sm:h-36 bg-[linear-gradient(120deg,var(--electric),var(--cyan-brand)_45%,var(--purple-brand))]">
+   604→          <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_20%_30%,oklch(1_0_0/0.35),transparent_45%)]" />
+   605→          <motion.div
+   606→            variants={floating}
+   607→            animate="animate"
+   608→            className="absolute top-6 right-8 hidden sm:block"
+   609→          >
+   610→            <Hexagon className="text-white/30" size={64} strokeWidth={1.2} />
+   611→          </motion.div>
+   612→          <motion.div
+   613→            variants={floating}
+   614→            animate="animate"
+   615→            transition={{ delay: 1 }}
+   616→            className="absolute bottom-4 right-32 hidden md:block"
+   617→          >
+   618→            <Sparkles className="text-white/40" size={28} />
+   619→          </motion.div>
+   620→        </div>
+   621→
+   622→        {/* Profile content */}
+   623→        <div className="px-5 sm:px-8 pb-6">
+   624→          <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-12 sm:-mt-14">
+   625→            {/* Avatar */}
+   626→            <motion.div
+   627→              initial={{ scale: 0.8, opacity: 0 }}
+   628→              animate={{ scale: 1, opacity: 1 }}
+   629→              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+   630→              className="relative shrink-0"
+   631→            >
+   632→              <div className="size-24 sm:size-28 rounded-2xl ring-4 ring-background bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))] flex items-center justify-center text-white text-3xl sm:text-4xl font-extrabold shadow-[0_18px_40px_-18px_oklch(0.62_0.22_255/0.55)]">
+   633→                {initials}
+   634→              </div>
+   635→              <button
+   636→                type="button"
+   637→                aria-label="Change profile photo"
+   638→                onClick={() => showToast("Change photo", "Future: upload a new profile picture.")}
+   639→                className="absolute -bottom-1 -right-1 size-8 rounded-xl bg-background ring-1 ring-border flex items-center justify-center text-electric hover:bg-accent transition-colors"
+   640→              >
+   641→                <Camera size={14} />
+   642→              </button>
+   643→            </motion.div>
+   644→
+   645→            {/* Identity */}
+   646→            <div className="flex-1 min-w-0 sm:mb-2">
+   647→              <div className="flex items-center gap-2 flex-wrap">
+   648→                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">
+   649→                  {fullName}
+   650→                </h2>
+   651→                <StatusBadge variant="success" dot pulse>
+   652→                  Active
+   653→                </StatusBadge>
+   654→                <StatusBadge variant="info" dot>
+   655→                  <Shield size={11} /> Verified
+   656→                </StatusBadge>
+   657→              </div>
+   658→              <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-muted-foreground">
+   659→                <span className="inline-flex items-center gap-1">
+   660→                  <User size={12} /> {username}
+   661→                </span>
+   662→                <span className="inline-flex items-center gap-1">
+   663→                  <Mail size={12} /> {email}
+   664→                </span>
+   665→                <span className="inline-flex items-center gap-1">
+   666→                  <Phone size={12} /> +91 ··· ··· 4280
+   667→                </span>
+   668→                <span className="inline-flex items-center gap-1">
+   669→                  <Calendar size={12} /> Member since {memberSince}
+   670→                </span>
+   671→              </div>
+   672→            </div>
+   673→
+   674→            {/* Quick actions */}
+   675→            <div className="flex items-center gap-2 sm:mb-2">
+   676→              <LootButton
+   677→                variant="glass"
+   678→                size="sm"
+   679→                leftIcon={<Copy size={13} />}
+   680→                onClick={() => showToast("Profile link", "Future: copy your public profile URL.")}
+   681→              >
+   682→                Share
+   683→              </LootButton>
+   684→              <LootButton
+   685→                variant="electric"
+   686→                size="sm"
+   687→                leftIcon={<Edit size={13} />}
+   688→                onClick={() => showToast("Edit profile", "Open personal information section.")}
+   689→              >
+   690→                Edit
+   691→              </LootButton>
+   692→            </div>
+   693→          </div>
+   694→
+   695→          {/* Stat tiles */}
+   696→          <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
+   697→            {/* Level + XP ring */}
+   698→            <GlassCard level={1} className="p-4 flex items-center gap-3">
+   699→              <ProgressRing
+   700→                value={xpProgress}
+   701→                size={64}
+   702→                strokeWidth={6}
+   703→                gradient="purple"
+   704→                showLabel={false}
+   705→              />
+   706→              <div>
+   707→                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+   708→                  Level
+   709→                </p>
+   710→                <p className="text-2xl font-bold text-foreground leading-none">
+   711→                  {level}
+   712→                </p>
+   713→                <p className="text-[11px] text-muted-foreground mt-0.5">
+   714→                  {xp.toLocaleString()} / {xpToNext.toLocaleString()} XP
+   715→                </p>
+   716→              </div>
+   717→            </GlassCard>
+   718→
+   719→            {/* Coins */}
+   720→            <GlassCard level={1} className="p-4 flex items-center gap-3">
+   721→              <IconBadge name="Coins" accent="gold" size="sm" />
+   722→              <div>
+   723→                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+   724→                  Coins
+   725→                </p>
+   726→                <AnimatedCounter
+   727→                  value={availableCoins}
+   728→                  className="text-2xl font-bold text-foreground leading-none"
+   729→                />
+   730→                <p className="text-[11px] text-emerald-brand mt-0.5">
+   731→                  +{lifetimeEarned.toLocaleString()} earned
+   732→                </p>
+   733→              </div>
+   734→            </GlassCard>
+   735→
+   736→            {/* Rank */}
+   737→            <GlassCard level={1} className="p-4 flex items-center gap-3">
+   738→              <IconBadge name="Crown" accent="electric" size="sm" />
+   739→              <div>
+   740→                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+   741→                  Global Rank
+   742→                </p>
+   743→                <p className="text-2xl font-bold text-foreground leading-none">
+   744→                  #{rank}
+   745→                </p>
+   746→                <p className="text-[11px] text-emerald-brand mt-0.5">
+   747→                  <TrendingUp size={10} className="inline" /> 8 this week
+   748→                </p>
+   749→              </div>
+   750→            </GlassCard>
+   751→
+   752→            {/* Streak */}
+   753→            <GlassCard level={1} className="p-4 flex items-center gap-3">
+   754→              <IconBadge name="Flame" accent="rose" size="sm" />
+   755→              <div>
+   756→                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+   757→                  Daily Streak
+   758→                </p>
+   759→                <p className="text-2xl font-bold text-foreground leading-none">
+   760→                  {dailyStreak} days
+   761→                </p>
+   762→                <p className="text-[11px] text-gold mt-0.5">
+   763→                  <Flame size={10} className="inline" /> Keep it up!
+   764→                </p>
+   765→              </div>
+   766→            </GlassCard>
+   767→          </div>
+   768→        </div>
+   769→      </GlassCard>
+   770→    </motion.div>
+   771→  );
+   772→}
+   773→
+   774→/* A small local Edit icon (lucide's Pencil alias) */
+   775→function Edit({ size = 16, className }: { size?: number; className?: string }) {
+   776→  return (
+   777→    <svg
+   778→      width={size}
+   779→      height={size}
+   780→      viewBox="0 0 24 24"
+   781→      fill="none"
+   782→      stroke="currentColor"
+   783→      strokeWidth="2"
+   784→      strokeLinecap="round"
+   785→      strokeLinejoin="round"
+   786→      className={className}
+   787→      aria-hidden
+   788→    >
+   789→      <path d="M12 20h9" />
+   790→      <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+   791→    </svg>
+   792→  );
+   793→}
+   794→
+   795→/* Plus icon local alias to avoid import collision when needed */
+   796→function Plus({ size = 16, className }: { size?: number; className?: string }) {
+   797→  return (
+   798→    <svg
+   799→      width={size}
+   800→      height={size}
+   801→      viewBox="0 0 24 24"
+   802→      fill="none"
+   803→      stroke="currentColor"
+   804→      strokeWidth="2"
+   805→      strokeLinecap="round"
+   806→      strokeLinejoin="round"
+   807→      className={className}
+   808→      aria-hidden
+   809→    >
+   810→      <path d="M12 5v14M5 12h14" />
+   811→    </svg>
+   812→  );
+   813→}
+   814→
+   815→/* ============================================================
+   816→   2. Personal Information
+   817→   ============================================================ */
+   818→
+   819→function PersonalInformation() {
+   820→  const { fullName, username, email, setUser } = useUserStore();
+   821→  const [form, setForm] = useState({
+   822→    fullName,
+   823→    username,
+   824→    email,
+   825→    phone: "+91 98765 43280",
+   826→    dob: "1998-04-12",
+   827→    country: "India",
+   828→    language: "English",
+   829→    timezone: "Asia/Kolkata (UTC+05:30)",
+   830→    bio: "Earning coins and climbing the leaderboard one mission at a time.",
+   831→    displayName: fullName,
+   832→  });
+   833→
+   834→  const update = (key: keyof typeof form, value: string) =>
+   835→    setForm((s) => ({ ...s, [key]: value }));
+   836→
+   837→  return (
+   838→    <WidgetCard
+   839→      title="Personal Information"
+   840→      description="Update your profile details — changes are display-only in this preview"
+   841→      icon={<User size={16} />}
+   842→      level={2}
+   843→      index={1}
+   844→      footer={
+   845→        <div className="flex items-center justify-between gap-2 flex-wrap">
+   846→          <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+   847→            <Info size={12} /> Saving is disabled in this preview
+   848→          </p>
+   849→          <LootButton
+   850→            variant="electric"
+   851→            size="sm"
+   852→            leftIcon={<Save size={14} />}
+   853→            onClick={() => {
+   854→              setUser({ fullName: form.fullName, username: form.username, email: form.email });
+   855→              showToast("Profile saved", "Your changes have been applied locally (preview).");
+   856→            }}
+   857→          >
+   858→            Save Changes
+   859→          </LootButton>
+   860→        </div>
+   861→      }
+   862→    >
+   863→      {/* Profile photo */}
+   864→      <div className="flex items-center gap-4 p-4 rounded-2xl glass-1 ring-1 ring-border mb-5">
+   865→        <div className="size-16 rounded-2xl bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))] flex items-center justify-center text-white text-xl font-bold">
+   866→          {getInitials(form.fullName)}
+   867→        </div>
+   868→        <div className="flex-1 min-w-0">
+   869→          <p className="text-sm font-semibold text-foreground">Profile Photo</p>
+   870→          <p className="text-[11px] text-muted-foreground mt-0.5">
+   871→            PNG, JPG up to 4MB. Future: uploads to cloud storage.
+   872→          </p>
+   873→        </div>
+   874→        <LootButton
+   875→          variant="outline"
+   876→          size="sm"
+   877→          leftIcon={<Camera size={13} />}
+   878→          onClick={() => showToast("Photo upload", "Future: upload from device or URL.")}
+   879→        >
+   880→          Change
+   881→        </LootButton>
+   882→      </div>
+   883→
+   884→      {/* Form grid */}
+   885→      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   886→        <Field label="Full Name" icon={<User size={14} />}>
+   887→          <Input
+   888→            value={form.fullName}
+   889→            onChange={(e) => update("fullName", e.target.value)}
+   890→            className="h-11 rounded-xl glass-2 ring-1 ring-border px-3 text-sm focus:ring-electric/40"
+   891→          />
+   892→        </Field>
+   893→        <Field label="Display Name" icon={<Sparkles size={14} />}>
+   894→          <Input
+   895→            value={form.displayName}
+   896→            onChange={(e) => update("displayName", e.target.value)}
+   897→            className="h-11 rounded-xl glass-2 ring-1 ring-border px-3 text-sm focus:ring-electric/40"
+   898→          />
+   899→        </Field>
+   900→        <Field label="Username" icon={<AtSign />}>
+   901→          <Input
+   902→            value={form.username}
+   903→            onChange={(e) => update("username", e.target.value)}
+   904→            className="h-11 rounded-xl glass-2 ring-1 ring-border px-3 text-sm focus:ring-electric/40"
+   905→          />
+   906→        </Field>
+   907→        <Field label="Email Address" icon={<Mail size={14} />}>
+   908→          <Input
+   909→            type="email"
+   910→            value={form.email}
+   911→            onChange={(e) => update("email", e.target.value)}
+   912→            className="h-11 rounded-xl glass-2 ring-1 ring-border px-3 text-sm focus:ring-electric/40"
+   913→          />
+   914→        </Field>
+   915→        <Field label="Phone Number" icon={<Phone size={14} />}>
+   916→          <Input
+   917→            value={form.phone}
+   918→            onChange={(e) => update("phone", e.target.value)}
+   919→            className="h-11 rounded-xl glass-2 ring-1 ring-border px-3 text-sm focus:ring-electric/40"
+   920→          />
+   921→        </Field>
+   922→        <Field label="Date of Birth" icon={<Calendar size={14} />}>
+   923→          <Input
+   924→            type="date"
+   925→            value={form.dob}
+   926→            onChange={(e) => update("dob", e.target.value)}
+   927→            className="h-11 rounded-xl glass-2 ring-1 ring-border px-3 text-sm focus:ring-electric/40"
+   928→          />
+   929→        </Field>
+   930→        <Field label="Country" icon={<MapPin size={14} />}>
+   931→          <Input
+   932→            value={form.country}
+   933→            onChange={(e) => update("country", e.target.value)}
+   934→            className="h-11 rounded-xl glass-2 ring-1 ring-border px-3 text-sm focus:ring-electric/40"
+   935→          />
+   936→        </Field>
+   937→        <Field label="Language" icon={<Languages size={14} />}>
+   938→          <Input
+   939→            value={form.language}
+   940→            onChange={(e) => update("language", e.target.value)}
+   941→            className="h-11 rounded-xl glass-2 ring-1 ring-border px-3 text-sm focus:ring-electric/40"
+   942→          />
+   943→        </Field>
+   944→        <Field label="Timezone" icon={<Clock size={14} />}>
+   945→          <Input
+   946→            value={form.timezone}
+   947→            onChange={(e) => update("timezone", e.target.value)}
+   948→            className="h-11 rounded-xl glass-2 ring-1 ring-border px-3 text-sm focus:ring-electric/40"
+   949→          />
+   950→        </Field>
+   951→        <Field label="Website" icon={<Globe size={14} />}>
+   952→          <Input
+   953→            placeholder="https://your-profile.lootloom.app"
+   954→            className="h-11 rounded-xl glass-2 ring-1 ring-border px-3 text-sm focus:ring-electric/40"
+   955→          />
+   956→        </Field>
+   957→      </div>
+   958→
+   959→      {/* Bio */}
+   960→      <div className="mt-4">
+   961→        <Field label="Bio" icon={<Type size={14} />}>
+   962→          <textarea
+   963→            value={form.bio}
+   964→            onChange={(e) => update("bio", e.target.value)}
+   965→            rows={3}
+   966→            maxLength={200}
+   967→            className="w-full rounded-xl glass-2 ring-1 ring-border px-3 py-2 text-sm focus:ring-electric/40 outline-none resize-none"
+   968→          />
+   969→          <p className="text-[11px] text-muted-foreground mt-1 text-right">
+   970→            {form.bio.length} / 200
+   971→          </p>
+   972→        </Field>
+   973→      </div>
+   974→
+   975→      {/* Social links */}
+   976→      <div className="mt-5">
+   977→        <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-2">
+   978→          Social Links (placeholders)
+   979→        </p>
+   980→        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   981→          {[
+   982→            { label: "Twitter / X", value: "@lootloom_member" },
+   983→            { label: "Discord", value: "member#0420" },
+   984→            { label: "GitHub", value: "lootloom-member" },
+   985→            { label: "Telegram", value: "@member" },
+   986→          ].map((s) => (
+   987→            <div
+   988→              key={s.label}
+   989→              className="flex items-center gap-2 rounded-xl glass-1 ring-1 ring-border px-3 py-2"
+   990→            >
+   991→              <ExternalLink size={13} className="text-muted-foreground shrink-0" />
+   992→              <div className="flex-1 min-w-0">
+   993→                <p className="text-[10px] uppercase text-muted-foreground">{s.label}</p>
+   994→                <Input
+   995→                  defaultValue={s.value}
+   996→                  className="h-7 border-0 bg-transparent px-0 text-xs shadow-none focus-visible:ring-0"
+   997→                />
+   998→              </div>
+   999→              <Lock size={11} className="text-muted-foreground/50 shrink-0" />
+  1000→            </div>
+  1001→          ))}
+  1002→        </div>
+  1003→      </div>
+  1004→    </WidgetCard>
+  1005→  );
+  1006→}
+  1007→
+  1008→function Field({
+  1009→  label,
+  1010→  icon,
+  1011→  children,
+  1012→}: {
+  1013→  label: string;
+  1014→  icon?: React.ReactNode;
+  1015→  children: React.ReactNode;
+  1016→}) {
+  1017→  return (
+  1018→    <label className="block space-y-1.5">
+  1019→      <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold inline-flex items-center gap-1.5">
+  1020→        {icon && <span className="text-electric">{icon}</span>}
+  1021→        {label}
+  1022→      </span>
+  1023→      {children}
+  1024→    </label>
+  1025→  );
+  1026→}
+  1027→
+  1028→function AtSign() {
+  1029→  return (
+  1030→    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+  1031→      <circle cx="12" cy="12" r="4" />
+  1032→      <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94" />
+  1033→    </svg>
+  1034→  );
+  1035→}
+  1036→
+  1037→/* ============================================================
+  1038→   3. Account Security
+  1039→   ============================================================ */
+  1040→
+  1041→function AccountSecurity() {
+  1042→  const [twoFA, setTwoFA] = useState(false);
+  1043→  const [biometric, setBiometric] = useState(false);
+  1044→  const securityScore = 72;
+  1045→
+  1046→  return (
+  1047→    <WidgetCard
+  1048→      title="Account Security"
+  1049→      description="Protect your account with multi-layer verification"
+  1050→      icon={<Shield size={16} />}
+  1051→      level={2}
+  1052→      index={2}
+  1053→      action={
+  1054→        <StatusBadge variant="success" dot pulse>
+  1055→          Secured
+  1056→        </StatusBadge>
+  1057→      }
+  1058→    >
+  1059→      {/* Security score banner */}
+  1060→      <div className="flex items-center gap-5 p-4 rounded-2xl glass-1 ring-1 ring-border mb-4">
+  1061→        <ProgressRing
+  1062→          value={securityScore}
+  1063→          size={86}
+  1064→          strokeWidth={8}
+  1065→          gradient="emerald"
+  1066→          label={`${securityScore}%`}
+  1067→        />
+  1068→        <div className="flex-1 min-w-0">
+  1069→          <p className="text-sm font-semibold text-foreground">Security Score</p>
+  1070→          <p className="text-xs text-muted-foreground mt-1 leading-snug">
+  1071→            Good protection. Enable 2FA & verify your phone to reach 100%.
+  1072→          </p>
+  1073→          <div className="flex items-center gap-2 mt-2">
+  1074→            <LootButton
+  1075→              variant="emerald"
+  1076→              size="sm"
+  1077→              leftIcon={<Shield size={13} />}
+  1078→              onClick={() => showToast("Security audit", "Future: run a full security audit.")}
+  1079→            >
+  1080→              Improve
+  1081→            </LootButton>
+  1082→          </div>
+  1083→        </div>
+  1084→      </div>
+  1085→
+  1086→      {/* Status rows */}
+  1087→      <div className="rounded-2xl glass-1 ring-1 ring-border p-4 divide-y divide-border/60">
+  1088→        <SettingRow
+  1089→          icon={<KeyRound size={15} />}
+  1090→          label="Password"
+  1091→          description="Last changed 3 months ago"
+  1092→          accent="emerald"
+  1093→        >
+  1094→          <StatusBadge variant="success" dot>
+  1095→            Strong
+  1096→          </StatusBadge>
+  1097→          <LootButton
+  1098→            variant="ghost"
+  1099→            size="sm"
+  1100→            className="ml-2"
+  1101→            onClick={() => showToast("Change password", "Future: open password change flow.")}
+  1102→          >
+  1103→            Change
+  1104→          </LootButton>
+  1105→        </SettingRow>
+  1106→
+  1107→        <SettingRow
+  1108→          icon={<Mail size={15} />}
+  1109→          label="Email Verification"
+  1110→          description="member@lootloom.app verified"
+  1111→          accent="emerald"
+  1112→        >
+  1113→          <StatusBadge variant="success" dot>
+  1114→            Verified
+  1115→          </StatusBadge>
+  1116→        </SettingRow>
+  1117→
+  1118→        <SettingRow
+  1119→          icon={<Phone size={15} />}
+  1120→          label="Phone Verification"
+  1121→          description="+91 ··· ··· 4280 — verify to boost security"
+  1122→          accent="gold"
+  1123→        >
+  1124→          <StatusBadge variant="warning" dot>
+  1125→            Pending
+  1126→          </StatusBadge>
+  1127→          <LootButton
+  1128→            variant="glass"
+  1129→            size="sm"
+  1130→            className="ml-2"
+  1131→            onClick={() => showToast("Verify phone", "Future: send OTP to your phone.")}
+  1132→          >
+  1133→            Verify
+  1134→          </LootButton>
+  1135→        </SettingRow>
+  1136→
+  1137→        <SettingRow
+  1138→          icon={<Smartphone size={15} />}
+  1139→          label="Two-Factor Authentication"
+  1140→          description="Add an extra layer of protection"
+  1141→          accent="electric"
+  1142→        >
+  1143→          <Switch checked={twoFA} onCheckedChange={setTwoFA} aria-label="2FA" />
+  1144→        </SettingRow>
+  1145→
+  1146→        <SettingRow
+  1147→          icon={<Fingerprint size={15} />}
+  1148→          label="Biometric Login"
+  1149→          description="Use fingerprint or face unlock"
+  1150→          accent="purple"
+  1151→          locked
+  1152→        >
+  1153→          <Switch checked={biometric} onCheckedChange={setBiometric} disabled aria-label="Biometric" />
+  1154→        </SettingRow>
+  1155→
+  1156→        <SettingRow
+  1157→          icon={<Monitor size={15} />}
+  1158→          label="Trusted Devices"
+  1159→          description="3 devices recognised"
+  1160→          accent="cyan"
+  1161→          locked
+  1162→        >
+  1163→          <LootButton variant="ghost" size="sm" onClick={() => showToast("Trusted devices", "Future: manage trusted device list.")}>
+  1164→            Manage
+  1165→          </LootButton>
+  1166→        </SettingRow>
+  1167→
+  1168→        <SettingRow
+  1169→          icon={<History size={15} />}
+  1170→          label="Login History"
+  1171→          description="Recent sign-in activity"
+  1172→          accent="navy"
+  1173→        >
+  1174→          <SkeletonRow count={1} />
+  1175→        </SettingRow>
+  1176→
+  1177→        <SettingRow
+  1178→          icon={<KeyRound size={15} />}
+  1179→          label="Recovery Codes"
+  1180→          description="Generate backup codes for account recovery"
+  1181→          accent="rose"
+  1182→          locked
+  1183→        >
+  1184→          <LootButton
+  1185→            variant="outline"
+  1186→            size="sm"
+  1187→            leftIcon={<Lock size={12} />}
+  1188→            onClick={() => showToast("Recovery codes", "Future: generate single-use recovery codes.")}
+  1189→          >
+  1190→            Generate
+  1191→          </LootButton>
+  1192→        </SettingRow>
+  1193→      </div>
+  1194→    </WidgetCard>
+  1195→  );
+  1196→}
+  1197→
+  1198→/* ============================================================
+  1199→   4. Privacy Center
+  1200→   ============================================================ */
+  1201→
+  1202→function PrivacyCenter() {
+  1203→  const [toggles, setToggles] = useState({
+  1204→    profile: true,
+  1205→    activity: true,
+  1206→    leaderboard: true,
+  1207→    referral: true,
+  1208→    dataSharing: false,
+  1209→    publicProfile: false,
+  1210→    search: true,
+  1211→  });
+  1212→
+  1213→  const set = (k: keyof typeof toggles) => (v: boolean) => {
+  1214→    setToggles((s) => ({ ...s, [k]: v }));
+  1215→    showToast("Privacy updated", "Future: this preference will be saved to your account.");
+  1216→  };
+  1217→
+  1218→  return (
+  1219→    <WidgetCard
+  1220→      title="Privacy Center"
+  1221→      description="Control who can see your activity and information"
+  1222→      icon={<Eye size={16} />}
+  1223→      level={2}
+  1224→      index={3}
+  1225→    >
+  1226→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+  1227→        <ToggleCard
+  1228→          icon={<User size={16} />}
+  1229→          label="Profile Visibility"
+  1230→          description="Show your profile to other members"
+  1231→          checked={toggles.profile}
+  1232→          onChange={set("profile")}
+  1233→          accent="electric"
+  1234→        />
+  1235→        <ToggleCard
+  1236→          icon={<History size={16} />}
+  1237→          label="Activity Visibility"
+  1238→          description="Share recent activity publicly"
+  1239→          checked={toggles.activity}
+  1240→          onChange={set("activity")}
+  1241→          accent="cyan"
+  1242→        />
+  1243→        <ToggleCard
+  1244→          icon={<Crown size={16} />}
+  1245→          label="Leaderboard Visibility"
+  1246→          description="Appear in global leaderboards"
+  1247→          checked={toggles.leaderboard}
+  1248→          onChange={set("leaderboard")}
+  1249→          accent="gold"
+  1250→        />
+  1251→        <ToggleCard
+  1252→          icon={<Users size={16} />}
+  1253→          label="Referral Visibility"
+  1254→          description="Show your referral code publicly"
+  1255→          checked={toggles.referral}
+  1256→          onChange={set("referral")}
+  1257→          accent="emerald"
+  1258→        />
+  1259→        <ToggleCard
+  1260→          icon={<HardDrive size={16} />}
+  1261→          label="Data Sharing"
+  1262→          description="Allow anonymous analytics sharing"
+  1263→          checked={toggles.dataSharing}
+  1264→          onChange={set("dataSharing")}
+  1265→          accent="purple"
+  1266→          locked
+  1267→        />
+  1268→        <ToggleCard
+  1269→          icon={<Globe size={16} />}
+  1270→          label="Public Profile"
+  1271→          description="Enable a public profile URL"
+  1272→          checked={toggles.publicProfile}
+  1273→          onChange={set("publicProfile")}
+  1274→          accent="rose"
+  1275→          locked
+  1276→        />
+  1277→        <ToggleCard
+  1278→          icon={<Search />}
+  1279→          label="Search Visibility"
+  1280→          description="Allow members to find you by username"
+  1281→          checked={toggles.search}
+  1282→          onChange={set("search")}
+  1283→          accent="navy"
+  1284→        />
+  1285→      </div>
+  1286→    </WidgetCard>
+  1287→  );
+  1288→}
+  1289→
+  1290→function Search() {
+  1291→  return (
+  1292→    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+  1293→      <circle cx="11" cy="11" r="8" />
+  1294→      <path d="m21 21-4.3-4.3" />
+  1295→    </svg>
+  1296→  );
+  1297→}
+  1298→
+  1299→/* ============================================================
+  1300→   5. Appearance Settings
+  1301→   ============================================================ */
+  1302→
+  1303→function AppearanceSettings() {
+  1304→  const { theme, setTheme, sidebarCollapsed, setSidebarCollapsed } = useUIStore();
+  1305→  const [toggles, setToggles] = useState({
+  1306→    animations: true,
+  1307→    reducedMotion: false,
+  1308→    compact: false,
+  1309→    highContrast: false,
+  1310→    accessibilityTheme: false,
+  1311→  });
+  1312→
+  1313→  const accentSwatches: { name: string; className: string }[] = [
+  1314→    { name: "Electric", className: "bg-[linear-gradient(120deg,var(--electric),var(--cyan-brand))]" },
+  1315→    { name: "Purple", className: "bg-[linear-gradient(120deg,var(--purple-brand),oklch(0.7_0.2_320))]" },
+  1316→    { name: "Gold", className: "bg-[linear-gradient(120deg,var(--gold),oklch(0.75_0.18_60))]" },
+  1317→    { name: "Emerald", className: "bg-[linear-gradient(120deg,var(--emerald-brand),oklch(0.75_0.16_180))]" },
+  1318→    { name: "Rose", className: "bg-[linear-gradient(120deg,var(--rose-brand),oklch(0.7_0.18_30))]" },
+  1319→    { name: "Navy", className: "bg-[linear-gradient(120deg,var(--navy),oklch(0.4_0.06_260))]" },
+  1320→  ];
+  1321→  const [accent, setAccent] = useState("Electric");
+  1322→
+  1323→  return (
+  1324→    <WidgetCard
+  1325→      title="Appearance Settings"
+  1326→      description="Personalize how LootLoom looks and feels"
+  1327→      icon={<Palette size={16} />}
+  1328→      level={2}
+  1329→      index={4}
+  1330→    >
+  1331→      {/* Theme toggle */}
+  1332→      <div className="flex items-center justify-between gap-3 p-4 rounded-2xl glass-1 ring-1 ring-border mb-4">
+  1333→        <div className="flex items-center gap-3">
+  1334→          <div className="inline-flex p-1 rounded-xl glass-2 ring-1 ring-border">
+  1335→            <button
+  1336→              type="button"
+  1337→              onClick={() => setTheme("light")}
+  1338→              className={cn(
+  1339→                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+  1340→                theme === "light" ? "bg-[linear-gradient(120deg,var(--electric),var(--cyan-brand))] text-white" : "text-muted-foreground hover:text-foreground"
+  1341→              )}
+  1342→            >
+  1343→              <Sun size={13} /> Light
+  1344→            </button>
+  1345→            <button
+  1346→              type="button"
+  1347→              onClick={() => setTheme("dark")}
+  1348→              className={cn(
+  1349→                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+  1350→                theme === "dark" ? "bg-[linear-gradient(120deg,var(--purple-brand),oklch(0.7_0.2_320))] text-white" : "text-muted-foreground hover:text-foreground"
+  1351→              )}
+  1352→            >
+  1353→              <Moon size={13} /> Dark
+  1354→            </button>
+  1355→          </div>
+  1356→        </div>
+  1357→        <div className="text-right">
+  1358→          <p className="text-sm font-semibold text-foreground">Theme</p>
+  1359→          <p className="text-[11px] text-muted-foreground">Currently {theme === "light" ? "Light" : "Dark"}</p>
+  1360→        </div>
+  1361→      </div>
+  1362→
+  1363→      {/* Accent color */}
+  1364→      <div className="p-4 rounded-2xl glass-1 ring-1 ring-border mb-4">
+  1365→        <div className="flex items-center justify-between mb-3">
+  1366→          <div>
+  1367→            <p className="text-sm font-semibold text-foreground">Accent Color</p>
+  1368→            <p className="text-[11px] text-muted-foreground">Choose your signature gradient</p>
+  1369→          </div>
+  1370→          <StatusBadge variant="default">{accent}</StatusBadge>
+  1371→        </div>
+  1372→        <div className="flex items-center gap-2 flex-wrap">
+  1373→          {accentSwatches.map((s) => (
+  1374→            <button
+  1375→              key={s.name}
+  1376→              type="button"
+  1377→              onClick={() => {
+  1378→                setAccent(s.name);
+  1379→                showToast("Accent color", `Future: apply ${s.name} accent across the app.`);
+  1380→              }}
+  1381→              aria-label={s.name}
+  1382→              className={cn(
+  1383→                "size-9 rounded-xl ring-1 ring-border transition-all hover:scale-110",
+  1384→                s.className,
+  1385→                accent === s.name && "ring-2 ring-offset-2 ring-offset-background ring-electric"
+  1386→              )}
+  1387→            />
+  1388→          ))}
+  1389→        </div>
+  1390→      </div>
+  1391→
+  1392→      {/* Sidebar mode */}
+  1393→      <div className="flex items-center justify-between gap-3 p-4 rounded-2xl glass-1 ring-1 ring-border mb-4">
+  1394→        <div className="flex items-start gap-3">
+  1395→          <span className="text-electric mt-0.5"><Monitor size={15} /></span>
+  1396→          <div>
+  1397→            <p className="text-sm font-semibold text-foreground">Sidebar Mode</p>
+  1398→            <p className="text-[11px] text-muted-foreground mt-0.5">
+  1399→              {sidebarCollapsed ? "Collapsed (icons only)" : "Expanded (full labels)"}
+  1400→            </p>
+  1401→          </div>
+  1402→        </div>
+  1403→        <div className="inline-flex p-1 rounded-xl glass-2 ring-1 ring-border">
+  1404→          <button
+  1405→            type="button"
+  1406→            onClick={() => setSidebarCollapsed(false)}
+  1407→            className={cn(
+  1408→              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+  1409→              !sidebarCollapsed ? "bg-[linear-gradient(120deg,var(--electric),var(--cyan-brand))] text-white" : "text-muted-foreground hover:text-foreground"
+  1410→            )}
+  1411→          >
+  1412→            Expanded
+  1413→          </button>
+  1414→          <button
+  1415→            type="button"
+  1416→            onClick={() => setSidebarCollapsed(true)}
+  1417→            className={cn(
+  1418→              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+  1419→              sidebarCollapsed ? "bg-[linear-gradient(120deg,var(--electric),var(--cyan-brand))] text-white" : "text-muted-foreground hover:text-foreground"
+  1420→            )}
+  1421→          >
+  1422→            Collapsed
+  1423→          </button>
+  1424→        </div>
+  1425→      </div>
+  1426→
+  1427→      {/* Selects */}
+  1428→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+  1429→        <SelectField label="Glass Intensity" icon={<Sparkles size={14} />} defaultValue="High" options={["Low", "Medium", "High", "Ultra"]} />
+  1430→        <SelectField label="Font Size" icon={<Type size={14} />} defaultValue="Medium" options={["Small", "Medium", "Large", "Extra Large"]} />
+  1431→      </div>
+  1432→
+  1433→      {/* Toggles */}
+  1434→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+  1435→        <ToggleCard
+  1436→          icon={<Zap size={16} />}
+  1437→          label="Animations"
+  1438→          description="Enable motion and transition effects"
+  1439→          checked={toggles.animations}
+  1440→          onChange={(v) => setToggles((s) => ({ ...s, animations: v }))}
+  1441→          accent="electric"
+  1442→        />
+  1443→        <ToggleCard
+  1444→          icon={<Eye size={16} />}
+  1445→          label="Reduced Motion"
+  1446→          description="Minimize non-essential animations"
+  1447→          checked={toggles.reducedMotion}
+  1448→          onChange={(v) => setToggles((s) => ({ ...s, reducedMotion: v }))}
+  1449→          accent="cyan"
+  1450→        />
+  1451→        <ToggleCard
+  1452→          icon={<Monitor size={16} />}
+  1453→          label="Compact Mode"
+  1454→          description="Reduce spacing for denser layouts"
+  1455→          checked={toggles.compact}
+  1456→          onChange={(v) => setToggles((s) => ({ ...s, compact: v }))}
+  1457→          accent="purple"
+  1458→        />
+  1459→        <ToggleCard
+  1460→          icon={<Type size={16} />}
+  1461→          label="High Contrast"
+  1462→          description="Improve readability with stronger contrast"
+  1463→          checked={toggles.highContrast}
+  1464→          onChange={(v) => setToggles((s) => ({ ...s, highContrast: v }))}
+  1465→          accent="gold"
+  1466→          locked
+  1467→        />
+  1468→        <ToggleCard
+  1469→          icon={<Accessibility />}
+  1470→          label="Accessibility Theme"
+  1471→          description="Optimized for visual impairments"
+  1472→          checked={toggles.accessibilityTheme}
+  1473→          onChange={(v) => setToggles((s) => ({ ...s, accessibilityTheme: v }))}
+  1474→          accent="emerald"
+  1475→          locked
+  1476→        />
+  1477→      </div>
+  1478→    </WidgetCard>
+  1479→  );
+  1480→}
+  1481→
+  1482→function Accessibility() {
+  1483→  return (
+  1484→    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+  1485→      <circle cx="12" cy="4" r="1" />
+  1486→      <path d="m9 20 3-6 3 6" />
+  1487→      <path d="m6 8 6 2 6-2" />
+  1488→      <path d="M12 10v4" />
+  1489→    </svg>
+  1490→  );
+  1491→}
+  1492→
+  1493→function SelectField({
+  1494→  label,
+  1495→  icon,
+  1496→  defaultValue,
+  1497→  options,
+  1498→}: {
+  1499→  label: string;
+  1500→  icon?: React.ReactNode;
+  1501→  defaultValue: string;
+  1502→  options: string[];
+  1503→}) {
+  1504→  const [value, setValue] = useState(defaultValue);
+  1505→  return (
+  1506→    <div className="rounded-2xl glass-1 ring-1 ring-border p-3">
+  1507→      <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold inline-flex items-center gap-1.5 mb-2">
+  1508→        {icon && <span className="text-electric">{icon}</span>}
+  1509→        {label}
+  1510→      </p>
+  1511→      <div className="flex flex-wrap gap-1.5">
+  1512→        {options.map((o) => (
+  1513→          <button
+  1514→            key={o}
+  1515→            type="button"
+  1516→            onClick={() => {
+  1517→              setValue(o);
+  1518→              showToast(label, `Future: apply ${o} ${label.toLowerCase()}.`);
+  1519→            }}
+  1520→            className={cn(
+  1521→              "px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all",
+  1522→              value === o
+  1523→                ? "bg-[linear-gradient(120deg,var(--electric),var(--cyan-brand))] text-white"
+  1524→                : "glass-2 ring-1 ring-border text-muted-foreground hover:text-foreground"
+  1525→            )}
+  1526→          >
+  1527→            {o}
+  1528→          </button>
+  1529→        ))}
+  1530→      </div>
+  1531→    </div>
+  1532→  );
+  1533→}
+  1534→
+  1535→/* ============================================================
+  1536→   6. Notification Preferences
+  1537→   ============================================================ */
+  1538→
+  1539→function NotificationPreferences() {
+  1540→  const [prefs, setPrefs] = useState<Record<string, boolean>>({
+  1541→    reward: true,
+  1542→    wallet: true,
+  1543→    redeem: true,
+  1544→    referral: true,
+  1545→    achievement: true,
+  1546→    security: true,
+  1547→    support: true,
+  1548→    announcements: true,
+  1549→    email: true,
+  1550→    push: false,
+  1551→    sms: false,
+  1552→  });
+  1553→
+  1554→  const toggle = (k: string) => (v: boolean) => {
+  1555→    setPrefs((s) => ({ ...s, [k]: v }));
+  1556→    showToast("Notification preference", "Future: preferences will sync to your devices.");
+  1557→  };
+  1558→
+  1559→  const channels: { key: string; label: string; description: string; icon: React.ReactNode; accent: Accent; locked?: boolean }[] = [
+  1560→    { key: "reward", label: "Reward Notifications", description: "When you earn coins", icon: <Gift size={16} />, accent: "gold" },
+  1561→    { key: "wallet", label: "Wallet Notifications", description: "Balance updates & transactions", icon: <Coins size={16} />, accent: "electric" },
+  1562→    { key: "redeem", label: "Redeem Notifications", description: "Redeem status changes", icon: <ShoppingBagIcon />, accent: "purple" },
+  1563→    { key: "referral", label: "Referral Notifications", description: "Friend joins and rewards", icon: <Users size={16} />, accent: "emerald" },
+  1564→    { key: "achievement", label: "Achievement Notifications", description: "Badges & milestones", icon: <Trophy size={16} />, accent: "cyan" },
+  1565→    { key: "security", label: "Security Alerts", description: "Sign-ins & account changes", icon: <Shield size={16} />, accent: "rose" },
+  1566→    { key: "support", label: "Support Updates", description: "Ticket replies & resolutions", icon: <LifeBuoy size={16} />, accent: "navy" },
+  1567→    { key: "announcements", label: "Announcements", description: "Platform news & updates", icon: <Sparkles size={16} />, accent: "electric" },
+  1568→    { key: "email", label: "Email Channel", description: "Receive notifications by email", icon: <Mail size={16} />, accent: "cyan" },
+  1569→    { key: "push", label: "Push Channel", description: "Browser & app push notifications", icon: <Bell size={16} />, accent: "purple", locked: true },
+  1570→    { key: "sms", label: "SMS Channel", description: "Critical alerts by SMS", icon: <Phone size={16} />, accent: "gold", locked: true },
+  1571→  ];
+  1572→
+  1573→  return (
+  1574→    <WidgetCard
+  1575→      title="Notification Preferences"
+  1576→      description="Choose what you want to be notified about"
+  1577→      icon={<Bell size={16} />}
+  1578→      level={2}
+  1579→      index={5}
+  1580→      action={
+  1581→        <LootButton
+  1582→          variant="ghost"
+  1583→          size="sm"
+  1584→          onClick={() => {
+  1585→            setPrefs(Object.fromEntries(Object.keys(prefs).map((k) => [k, true])));
+  1586→            showToast("All enabled", "Every notification channel turned on.");
+  1587→          }}
+  1588→        >
+  1589→          Enable all
+  1590→        </LootButton>
+  1591→      }
+  1592→    >
+  1593→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+  1594→        {channels.map((c) => (
+  1595→          <ToggleCard
+  1596→            key={c.key}
+  1597→            icon={c.icon}
+  1598→            label={c.label}
+  1599→            description={c.description}
+  1600→            checked={prefs[c.key]}
+  1601→            onChange={toggle(c.key)}
+  1602→            accent={c.accent}
+  1603→            locked={c.locked}
+  1604→          />
+  1605→        ))}
+  1606→      </div>
+  1607→    </WidgetCard>
+  1608→  );
+  1609→}
+  1610→
+  1611→function ShoppingBagIcon() {
+  1612→  return (
+  1613→    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+  1614→      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+  1615→      <path d="M3 6h18" />
+  1616→      <path d="M16 10a4 4 0 0 1-8 0" />
+  1617→    </svg>
+  1618→  );
+  1619→}
+  1620→
+  1621→function LifeBuoy({ size = 16, className }: { size?: number; className?: string }) {
+  1622→  return (
+  1623→    <svg
+  1624→      width={size}
+  1625→      height={size}
+  1626→      viewBox="0 0 24 24"
+  1627→      fill="none"
+  1628→      stroke="currentColor"
+  1629→      strokeWidth={2}
+  1630→      strokeLinecap="round"
+  1631→      strokeLinejoin="round"
+  1632→      className={className}
+  1633→      aria-hidden
+  1634→    >
+  1635→      <circle cx="12" cy="12" r="10" />
+  1636→      <circle cx="12" cy="12" r="4" />
+  1637→      <path d="m4.93 4.93 4.24 4.24" />
+  1638→      <path d="m14.83 9.17 4.24-4.24" />
+  1639→      <path d="m14.83 14.83 4.24 4.24" />
+  1640→      <path d="m9.17 14.83-4.24 4.24" />
+  1641→    </svg>
+  1642→  );
+  1643→}
+  1644→
+  1645→/* ============================================================
+  1646→   7. Connected Accounts
+  1647→   ============================================================ */
+  1648→
+  1649→function ConnectedAccounts() {
+  1650→  const accounts: {
+  1651→    name: string;
+  1652→    description: string;
+  1653→    icon: React.ReactNode;
+  1654→    accent: Accent;
+  1655→    connected: boolean;
+  1656→    locked?: boolean;
+  1657→  }[] = [
+  1658→    {
+  1659→      name: "Google",
+  1660→      description: "Sign in with Google account",
+  1661→      icon: <Chrome size={18} />,
+  1662→      accent: "electric",
+  1663→      connected: true,
+  1664→    },
+  1665→    {
+  1666→      name: "Apple",
+  1667→      description: "Sign in with Apple ID",
+  1668→      icon: <Apple size={18} />,
+  1669→      accent: "navy",
+  1670→      connected: false,
+  1671→      locked: true,
+  1672→    },
+  1673→    {
+  1674→      name: "Facebook",
+  1675→      description: "Connect Facebook for social sharing",
+  1676→      icon: <Facebook size={18} />,
+  1677→      accent: "cyan",
+  1678→      connected: false,
+  1679→    },
+  1680→    {
+  1681→      name: "GitHub",
+  1682→      description: "Link GitHub for developer perks",
+  1683→      icon: <Github size={18} />,
+  1684→      accent: "navy",
+  1685→      connected: false,
+  1686→    },
+  1687→    {
+  1688→      name: "Discord",
+  1689→      description: "Join our Discord community",
+  1690→      icon: <MessageCircle size={18} />,
+  1691→      accent: "purple",
+  1692→      connected: true,
+  1693→    },
+  1694→    {
+  1695→      name: "Telegram",
+  1696→      description: "Connect Telegram for alerts",
+  1697→      icon: <SendIcon />,
+  1698→      accent: "cyan",
+  1699→      connected: false,
+  1700→      locked: true,
+  1701→    },
+  1702→    {
+  1703→      name: "Twitter / X",
+  1704→      description: "Share rewards to Twitter",
+  1705→      icon: <XIcon />,
+  1706→      accent: "navy",
+  1707→      connected: false,
+  1708→      locked: true,
+  1709→    },
+  1710→  ];
+  1711→
+  1712→  return (
+  1713→    <WidgetCard
+  1714→      title="Connected Accounts"
+  1715→      description="Link third-party accounts (placeholders — OAuth not implemented)"
+  1716→      icon={<Globe size={16} />}
+  1717→      level={2}
+  1718→      index={6}
+  1719→      action={
+  1720→        <StatusBadge variant="default">
+  1721→          <Lock size={11} /> OAuth placeholder
+  1722→        </StatusBadge>
+  1723→      }
+  1724→    >
+  1725→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+  1726→        {accounts.map((a) => (
+  1727→          <ConnectedAccountCard key={a.name} {...a} />
+  1728→        ))}
+  1729→      </div>
+  1730→      <p className="text-[11px] text-muted-foreground mt-4 inline-flex items-center gap-1.5">
+  1731→        <Info size={12} />
+  1732→        OAuth integration is on the roadmap — no third-party credentials are stored.
+  1733→      </p>
+  1734→    </WidgetCard>
+  1735→  );
+  1736→}
+  1737→
+  1738→function SendIcon() {
+  1739→  return (
+  1740→    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+  1741→      <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+  1742→      <path d="m21.854 2.147-10.94 10.939" />
+  1743→    </svg>
+  1744→  );
+  1745→}
+  1746→
+  1747→function XIcon() {
+  1748→  return (
+  1749→    <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+  1750→      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  1751→    </svg>
+  1752→  );
+  1753→}
+  1754→
+  1755→/* ============================================================
+  1756→   8. Account Statistics
+  1757→   ============================================================ */
+  1758→
+  1759→function AccountStatistics() {
+  1760→  const { level, rank, dailyStreak, xp } = useUserStore();
+  1761→  const { availableCoins, lifetimeEarned, lifetimeRedeemed, todayEarnings } = useWalletStore();
+  1762→
+  1763→  const stats = [
+  1764→    {
+  1765→      label: "Lifetime Earnings",
+  1766→      value: lifetimeEarned,
+  1767→      icon: "TrendingUp",
+  1768→      accent: "emerald" as Accent,
+  1769→      trend: { value: 12, positive: true },
+  1770→    },
+  1771→    {
+  1772→      label: "Lifetime Redeems",
+  1773→      value: lifetimeRedeemed,
+  1774→      icon: "Gift",
+  1775→      accent: "purple" as Accent,
+  1776→      trend: { value: 6, positive: true },
+  1777→    },
+  1778→    {
+  1779→      label: "Referral Count",
+  1780→      value: 24,
+  1781→      icon: "Users",
+  1782→      accent: "cyan" as Accent,
+  1783→      trend: { value: 18, positive: true },
+  1784→    },
+  1785→    {
+  1786→      label: "Achievements",
+  1787→      value: 14,
+  1788→      icon: "Trophy",
+  1789→      accent: "gold" as Accent,
+  1790→      trend: { value: 3, positive: true },
+  1791→    },
+  1792→    {
+  1793→      label: "Missions Completed",
+  1794→      value: 87,
+  1795→      icon: "Target",
+  1796→      accent: "electric" as Accent,
+  1797→      trend: { value: 9, positive: true },
+  1798→    },
+  1799→    {
+  1800→      label: "Leaderboard Rank",
+  1801→      value: rank,
+  1802→      prefix: "#",
+  1803→      icon: "Crown",
+  1804→      accent: "rose" as Accent,
+  1805→      trend: { value: 8, positive: true },
+  1806→    },
+  1807→    {
+  1808→      label: "Daily Streak",
+  1809→      value: dailyStreak,
+  1810→      suffix: "d",
+  1811→      icon: "Flame",
+  1812→      accent: "rose" as Accent,
+  1813→    },
+  1814→    {
+  1815→      label: "Current Level",
+  1816→      value: level,
+  1817→      icon: "Sparkles",
+  1818→      accent: "navy" as Accent,
+  1819→    },
+  1820→  ];
+  1821→
+  1822→  return (
+  1823→    <WidgetCard
+  1824→      title="Account Statistics"
+  1825→      description="Lifetime performance across the platform"
+  1826→      icon={<TrendingUp size={16} />}
+  1827→      level={2}
+  1828→      index={7}
+  1829→    >
+  1830→      <Grid cols={4}>
+  1831→        {stats.map((s, i) => (
+  1832→          <StatCard
+  1833→            key={s.label}
+  1834→            label={s.label}
+  1835→            value={s.value}
+  1836→            prefix={s.prefix}
+  1837→            suffix={s.suffix}
+  1838→            icon={s.icon}
+  1839→            accent={s.accent}
+  1840→            trend={s.trend}
+  1841→            index={i}
+  1842→          />
+  1843→        ))}
+  1844→      </Grid>
+  1845→
+  1846→      {/* Wallet summary */}
+  1847→      <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+  1848→        <GlassCard level={1} className="p-4 flex items-center gap-3">
+  1849→          <IconBadge name="Wallet" accent="electric" size="sm" />
+  1850→          <div>
+  1851→            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+  1852→              Available Coins
+  1853→            </p>
+  1854→            <AnimatedCounter
+  1855→              value={availableCoins}
+  1856→              className="text-xl font-bold text-foreground"
+  1857→            />
+  1858→          </div>
+  1859→        </GlassCard>
+  1860→        <GlassCard level={1} className="p-4 flex items-center gap-3">
+  1861→          <IconBadge name="Clock" accent="gold" size="sm" />
+  1862→          <div>
+  1863→            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+  1864→              Today&apos;s Earnings
+  1865→            </p>
+  1866→            <AnimatedCounter
+  1867→              value={todayEarnings}
+  1868→              className="text-xl font-bold text-foreground"
+  1869→            />
+  1870→          </div>
+  1871→        </GlassCard>
+  1872→        <GlassCard level={1} className="p-4 flex items-center gap-3">
+  1873→          <IconBadge name="Zap" accent="purple" size="sm" />
+  1874→          <div>
+  1875→            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+  1876→              Total XP
+  1877→            </p>
+  1878→            <AnimatedCounter
+  1879→              value={xp}
+  1880→              className="text-xl font-bold text-foreground"
+  1881→            />
+  1882→          </div>
+  1883→        </GlassCard>
+  1884→      </div>
+  1885→    </WidgetCard>
+  1886→  );
+  1887→}
+  1888→
+  1889→/* ============================================================
+  1890→   9. Badge Collection
+  1891→   ============================================================ */
+  1892→
+  1893→const BADGES: {
+  1894→  name: string;
+  1895→  description: string;
+  1896→  rarity: Rarity;
+  1897→  icon: React.ReactNode;
+  1898→  unlocked: boolean;
+  1899→  progress?: number;
+  1900→  locked?: boolean;
+  1901→}[] = [
+  1902→  { name: "First Steps", description: "Complete your first mission", rarity: "common", icon: <Target size={22} />, unlocked: true },
+  1903→  { name: "Coin Collector", description: "Earn 1,000 coins", rarity: "rare", icon: <Coins size={22} />, unlocked: true },
+  1904→  { name: "Streak Keeper", description: "Maintain a 7-day streak", rarity: "rare", icon: <Flame size={22} />, unlocked: true },
+  1905→  { name: "Social Star", description: "Refer 5 friends", rarity: "epic", icon: <Users size={22} />, unlocked: true, progress: 60 },
+  1906→  { name: "Mission Master", description: "Complete 50 missions", rarity: "epic", icon: <Award size={22} />, unlocked: false, progress: 74 },
+  1907→  { name: "Reward Connoisseur", description: "Redeem 10 rewards", rarity: "epic", icon: <Gift size={22} />, unlocked: false, progress: 40 },
+  1908→  { name: "Legendary Earner", description: "Earn 50,000 lifetime coins", rarity: "legendary", icon: <Crown size={22} />, unlocked: false, progress: 92 },
+  1909→  { name: "Summer Sprint", description: "Participate in the summer event", rarity: "special", icon: <Star size={22} />, unlocked: true },
+  1910→  { name: "VIP Member", description: "Unlock exclusive VIP perks", rarity: "vip", icon: <Sparkles size={22} />, unlocked: false, locked: true },
+  1911→  { name: "Anniversary Badge", description: "Celebrate 1 year on LootLoom", rarity: "special", icon: <Hexagon size={22} />, unlocked: false, progress: 35 },
+  1912→];
+  1913→
+  1914→function BadgeCollection() {
+  1915→  const [showAll, setShowAll] = useState(false);
+  1916→  const visible = showAll ? BADGES : BADGES.slice(0, 8);
+  1917→  const unlockedCount = BADGES.filter((b) => b.unlocked).length;
+  1918→
+  1919→  return (
+  1920→    <WidgetCard
+  1921→      title="Badge Collection"
+  1922→      description={`${unlockedCount} of ${BADGES.length} badges unlocked`}
+  1923→      icon={<Award size={16} />}
+  1924→      level={2}
+  1925→      index={8}
+  1926→      action={
+  1927→        <LootButton
+  1928→          variant="glass"
+  1929→          size="sm"
+  1930→          rightIcon={<ChevronRight size={13} />}
+  1931→          onClick={() => useNavigationStore.getState().navigate("achievements")}
+  1932→        >
+  1933→          View all
+  1934→        </LootButton>
+  1935→      }
+  1936→    >
+  1937→      <motion.div
+  1938→        variants={staggerContainer}
+  1939→        initial="hidden"
+  1940→        whileInView="visible"
+  1941→        viewport={{ once: true, margin: "-30px" }}
+  1942→        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
+  1943→      >
+  1944→        {visible.map((b) => (
+  1945→          <BadgeCard key={b.name} {...b} />
+  1946→        ))}
+  1947→      </motion.div>
+  1948→
+  1949→      {BADGES.length > 8 && (
+  1950→        <div className="mt-4 flex justify-center">
+  1951→          <LootButton variant="ghost" size="sm" onClick={() => setShowAll((s) => !s)}>
+  1952→            {showAll ? "Show less" : `Show all ${BADGES.length}`}
+  1953→          </LootButton>
+  1954→        </div>
+  1955→      )}
+  1956→    </WidgetCard>
+  1957→  );
+  1958→}
+  1959→
+  1960→/* ============================================================
+  1961→   10. Activity Summary
+  1962→   ============================================================ */
+  1963→
+  1964→function ActivitySummary() {
+  1965→  const navigate = useNavigationStore((s) => s.navigate);
+  1966→  const items = [
+  1967→    { type: "login", label: "Recent Login", description: "Signed in from Chrome · Mumbai, India", time: "2 hours ago", icon: <LogInIcon />, accent: "emerald" as Accent },
+  1968→    { type: "wallet", label: "Recent Wallet Activity", description: "Earned 145 coins today", time: "5 hours ago", icon: <Wallet size={16} />, accent: "electric" as Accent },
+  1969→    { type: "reward", label: "Recent Reward", description: "Redeem request submitted for ₹100 UPI", time: "Yesterday", icon: <Gift size={16} />, accent: "purple" as Accent },
+  1970→    { type: "notification", label: "Recent Notification", description: "Daily bonus is ready to claim", time: "Today", icon: <Bell size={16} />, accent: "gold" as Accent },
+  1971→    { type: "redeem", label: "Recent Redeem", description: "Gift card redeem processed", time: "2 days ago", icon: <ShoppingBagIcon />, accent: "rose" as Accent },
+  1972→  ];
+  1973→
+  1974→  return (
+  1975→    <WidgetCard
+  1976→      title="Activity Summary"
+  1977→      description="Recent account events (placeholders for future backend data)"
+  1978→      icon={<History size={16} />}
+  1979→      level={2}
+  1980→      index={9}
+  1981→      action={
+  1982→        <LootButton
+  1983→          variant="ghost"
+  1984→          size="sm"
+  1985→          rightIcon={<ChevronRight size={13} />}
+  1986→          onClick={() => navigate("history")}
+  1987→        >
+  1988→          Full history
+  1989→        </LootButton>
+  1990→      }
+  1991→    >
+  1992→      <div className="relative pl-6">
+  1993→        {/* Timeline line */}
+  1994→        <div className="absolute left-2 top-2 bottom-2 w-px bg-[linear-gradient(180deg,var(--electric),var(--purple-brand))]" />
+  1995→        <div className="space-y-3">
+  1996→          {items.map((it, i) => (
+  1997→            <motion.div
+  1998→              key={it.type}
+  1999→              variants={cardReveal}
+  2000→              custom={i}
+
+[showing lines 1-2000 of 2592; use offset=2001 with limit to continue reading]

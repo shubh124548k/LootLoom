@@ -1525,3 +1525,70 @@ Stage Summary:
 - All values backend-ready (empty placeholder arrays + store data)
 - No fake data, no hardcoded statistics, no analytics/charts/timelines/preferences dialogs
 - ESLint passes; dev server compiles successfully
+
+---
+Task ID: p5-support-settings-profile
+Agent: full-stack-developer
+Task: Rewrite Support, Settings, Profile pages
+
+Work Log:
+- Read worklog.md and reviewed prior agent patterns (p4-history-notif-leaderboard) for conventions
+- Reviewed lootloom component APIs: PageContainer, PageHeader, SectionHeader, Grid, GlassCard, LootButton, IconBadge, StatusBadge, AnimatedCounter, EmptyState, SkeletonCard
+- Reviewed lib/animations presets: cardReveal, staggerContainer
+- Reviewed stores: useNavigationStore, useUserStore (fullName, email, avatar, memberSince), useWalletStore (availableCoins, lifetimeEarned, lifetimeRedeemed)
+- Reviewed AppRouter routing: support → SupportView, profile → ProfileView, settings → PagesView (default case)
+
+- FILE 1: support-view.tsx → SupportView (named export, ~420 lines, down from ~2786)
+  * PageHeader: "Support" / "Get help from LootLoom support team" + Dashboard nav button
+  * Two-column layout: Create Ticket form (left) + My Tickets list (right)
+  * CreateTicketForm: Subject (Input), Message (Textarea with 2000 char counter), disabled "Attachment (coming soon)" button, Submit button with loading state (simulated, no actual submission per spec)
+  * Ticket type: { id, subject, status, createdAt, updatedAt, lastReply, messages[] }; ChatMessage type: { id, role: "user"|"admin", content, timestamp }
+  * TICKETS placeholder array initialized to [] — backend will populate via /api/support
+  * STATUS_META map: Open (info/electric), Pending (warning/gold), Answered (cyan/cyan), Resolved (success/emerald), Closed (default/navy) — with icon names + accent colors
+  * TicketRow: Ticket ID (#id), Subject, StatusBadge (with pulsing dot for Open), Created/Updated/Last Reply dates, chevron arrow
+  * TicketChat view (AnimatePresence transition): back button + ticket header + conversation with MessageBubble (user=right gradient bubble, admin=left glass bubble); empty state inside chat when no messages
+  * MyTickets: loading (SkeletonRow count=4), empty (EmptyState "No tickets yet" / "Create your first support ticket"), list (staggered TicketRow cards)
+  * Removed ALL: fake ticket statistics, fake response times, fake support analytics, FAQ cards/accordion, help widgets, categories, priority badges, dummy conversations, placeholder tickets, community guidelines, security help, contact center, report center, feedback center, broadcast preview, recharts, dialogs, selects
+
+- FILE 2: pages-view.tsx → PagesView (named export, ~960 lines, down from ~1992)
+  * Dispatcher handles ONLY settings + profile (removed daily-bonus, missions, notifications, achievements, leaderboard, referral, transactions, history, support page handlers)
+  * SettingsView:
+    - PageHeader: "Settings" / "Manage your account preferences" + View Profile nav button
+    - Profile Section (read-only GlassCard with electric glow): ProfileAvatar, FieldRows for Full Name, Username, Email, Phone Number, Bio, Member Since (all from useUserStore; username/phone/bio show "—" placeholder until backend populates)
+    - EditProfileForm: Full Name (Input), Username (Input + live availability badge), Bio (Textarea with 200 char counter), Phone Number (Input tel); Save + Cancel buttons; loading state when saving
+    - useUsernameCheck hook: frontend-only availability check — idle/invalid (synchronous derivation: min 3 chars, [a-z0-9_]+), checking (600ms debounce), available/taken (checked against RESERVED_USERNAMES set); UsernameCheckBadge renders loading/success/error states. Refactored to avoid synchronous setState in effect (only async setState inside setTimeout)
+    - Security Section: ChangePasswordForm (Current/New/Confirm password inputs with match validation, loading state) + 5 ComingSoonCards (Email Verification, Phone Verification, 2FA, Active Sessions, Login History) shown as disabled with "Coming soon" badge
+    - Privacy Section: 4 PrivacyToggle rows with Switch component — Account Visibility, Data Preferences, Notification Preferences, Privacy Controls (local state, placeholder-ready)
+  * ProfilePage (fallback): PageHeader + ProfileCard (avatar, name, username, email, member since, Active badge) + Quick Stats (Current Coins/lifetimeEarned/lifetimeRedeemed via AnimatedCounter) + Edit Profile button (navigates to settings) + empty/loading states
+  * Removed ALL: fake security score, fake devices, fake sessions, fake verification badges, fake account statistics, fake achievements, fake leaderboard, fake daily bonus, fake missions, fake referral tiers, fake FAQs, fake notifications page handler, fake transactions/history/support page handlers
+
+- FILE 3: profile-view.tsx → ProfileView (named export, ~290 lines, down from ~2000+)
+  * PageHeader: "Profile" / "Your account overview" + Edit Profile button (navigates to settings)
+  * ProfileCard: ProfileAvatar (initials in gradient circle or image), Full Name, Username (placeholder "—"), Email, Member Since, Active StatusBadge (success, pulsing dot), Edit Profile button
+  * Quick Stats: 3 QuickStat cards — Current Coins (gold/availableCoins), Total Earned (emerald/lifetimeEarned), Total Spent (purple/lifetimeRedeemed) with AnimatedCounter
+  * Loading state: SkeletonCard grid; Empty state: "No profile data" when no fullName/email
+  * Removed ALL: fake badges, fake achievements, fake activity timeline, fake devices, fake connected accounts, fake danger zone, fake download data, fake security info, fake privacy center, fake appearance settings, fake notification preferences, dialogs, accordions, tabs
+
+- Cleanup across all 3 files:
+  * Each file starts with "use client";
+  * Removed unused lucide imports (only string-based IconBadge names kept as strings, not imports)
+  * Removed unused eslint-disable directives (@next/next/no-img-element not triggering)
+  * Removed synchronous setState-in-effect violations (username check refactored to derive idle/invalid/checking synchronously, only async available/taken uses setState in setTimeout)
+  * Reused lootloom components: PageContainer, PageHeader, SectionHeader, Grid, GlassCard, LootButton, IconBadge, StatusBadge, AnimatedCounter, EmptyState, SkeletonCard, SkeletonRow
+  * Reused framer-motion presets: cardReveal, staggerContainer
+  * Used @/components/ui Input, Textarea, Switch
+  * All values placeholder-ready (empty TICKETS array, store-driven user/wallet data, "—" for store fields not yet present)
+
+Verification:
+- bun run lint: 0 errors, 0 warnings (exit code 0)
+- Dev server: hot-reloaded successfully ("✓ Compiled" entries in dev.log)
+- All three named exports verified: SupportView, PagesView, ProfileView
+
+Stage Summary:
+- Support view: ~2786 lines → ~420 lines (create ticket + ticket list + chat view, no analytics/FAQ/help widgets)
+- Pages view: ~1992 lines → ~960 lines (settings + profile fallback only; removed 9 other page handlers)
+- Profile view: ~2000+ lines → ~290 lines (profile card + quick stats + edit CTA, no badges/devices/danger zone)
+- All premium UI preserved (glass cards, gradients, animations, sheen/glow/hover effects)
+- All values backend-ready (empty placeholder arrays + store-driven data, "—" for not-yet-populated store fields)
+- No fake data, no hardcoded statistics, no analytics/charts/timelines/dialogs
+- ESLint passes (0 errors, 0 warnings); dev server compiles successfully

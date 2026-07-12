@@ -1,0 +1,1992 @@
+     1→"use client";
+     2→
+     3→/**
+     4→ * LootLoom — PagesView
+     5→ * Renders all secondary authenticated app views based on `useNavigationStore().current`.
+     6→ * Each view is wrapped in <PageContainer> + <PageHeader> with premium glass styling.
+     7→ */
+     8→
+     9→import { useMemo, useState, type ReactElement } from "react";
+    10→import { motion, AnimatePresence } from "framer-motion";
+    11→import * as Icons from "lucide-react";
+    12→import {
+    13→  GlassCard,
+    14→  LootButton,
+    15→  IconBadge,
+    16→  AnimatedCounter,
+    17→  ProgressRing,
+    18→  StatCard,
+    19→  StatusBadge,
+    20→  WidgetCard,
+    21→  PageContainer,
+    22→  PageHeader,
+    23→  SectionHeader,
+    24→  Grid,
+    25→  EmptyState,
+    26→  SkeletonRow,
+    27→} from "@/components/lootloom";
+    28→import {
+    29→  useNavigationStore,
+    30→  useNotificationStore,
+    31→  useActivityStore,
+    32→  useUserStore,
+    33→  useWalletStore,
+    34→} from "@/stores";
+    35→import { cardReveal, staggerContainer, hoverLift, floating } from "@/lib/animations";
+    36→import { cn } from "@/lib/utils";
+    37→import {
+    38→  Tabs,
+    39→  TabsContent,
+    40→  TabsList,
+    41→  TabsTrigger,
+    42→} from "@/components/ui/tabs";
+    43→import { Switch } from "@/components/ui/switch";
+    44→import { Input } from "@/components/ui/input";
+    45→import { Textarea } from "@/components/ui/textarea";
+    46→import {
+    47→  Accordion,
+    48→  AccordionContent,
+    49→  AccordionItem,
+    50→  AccordionTrigger,
+    51→} from "@/components/ui/accordion";
+    52→import {
+    53→  Table,
+    54→  TableBody,
+    55→  TableCell,
+    56→  TableHead,
+    57→  TableHeader,
+    58→  TableRow,
+    59→} from "@/components/ui/table";
+    60→import type {
+    61→  AchievementItem,
+    62→  LeaderboardUser,
+    63→  MissionItem,
+    64→  ViewId,
+    65→} from "@/types";
+    66→
+    67→/* ============================================================
+    68→   Shared helpers
+    69→   ============================================================ */
+    70→
+    71→function getInitials(name: string): string {
+    72→  return name
+    73→    .split(" ")
+    74→    .map((p) => p[0])
+    75→    .filter(Boolean)
+    76→    .slice(0, 2)
+    77→    .join("")
+    78→    .toUpperCase();
+    79→}
+    80→
+    81→function FilterTab({
+    82→  active,
+    83→  onClick,
+    84→  children,
+    85→}: {
+    86→  active: boolean;
+    87→  onClick: () => void;
+    88→  children: React.ReactNode;
+    89→}) {
+    90→  return (
+    91→    <button
+    92→      onClick={onClick}
+    93→      className={cn(
+    94→        "px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap",
+    95→        active
+    96→          ? "bg-[linear-gradient(120deg,var(--electric),var(--cyan-brand)_60%,var(--purple-brand))] text-white shadow-[0_8px_20px_-8px_oklch(0.62_0.22_255/0.55)]"
+    97→          : "glass-1 text-muted-foreground hover:text-foreground ring-1 ring-border"
+    98→      )}
+    99→    >
+   100→      {children}
+   101→    </button>
+   102→  );
+   103→}
+   104→
+   105→/* ============================================================
+   106→   Placeholder data
+   107→   ============================================================ */
+   108→
+   109→const ACHIEVEMENTS: AchievementItem[] = [
+   110→  { id: "a1", name: "First Steps", description: "Complete your first mission", icon: "Footprints", progress: 1, total: 1, rarity: "common", unlocked: true },
+   111→  { id: "a2", name: "Coin Collector", description: "Earn 1,000 coins total", icon: "Coins", progress: 1000, total: 1000, rarity: "common", unlocked: true },
+   112→  { id: "a3", name: "Streak Keeper", description: "Maintain a 7-day streak", icon: "Flame", progress: 7, total: 7, rarity: "rare", unlocked: true },
+   113→  { id: "a4", name: "Social Butterfly", description: "Invite 5 friends", icon: "Users", progress: 3, total: 5, rarity: "rare", unlocked: false },
+   114→  { id: "a5", name: "Mission Master", description: "Complete 50 missions", icon: "Target", progress: 38, total: 50, rarity: "epic", unlocked: false },
+   115→  { id: "a6", name: "Big Spender", description: "Redeem ₹1,000 worth", icon: "ShoppingBag", progress: 850, total: 1000, rarity: "epic", unlocked: false },
+   116→  { id: "a7", name: "Leaderboard Legend", description: "Reach top 10 globally", icon: "Crown", progress: 142, total: 10, rarity: "legendary", unlocked: false },
+   117→  { id: "a8", name: "Daily Devotee", description: "Claim daily bonus 30 days", icon: "CalendarCheck", progress: 12, total: 30, rarity: "rare", unlocked: false },
+   118→  { id: "a9", name: "Ad Hunter", description: "Watch 100 rewarded ads", icon: "PlayCircle", progress: 100, total: 100, rarity: "epic", unlocked: true },
+   119→  { id: "a10", name: "Vault Vault", description: "Hold 50,000 coins at once", icon: "Vault", progress: 12840, total: 50000, rarity: "legendary", unlocked: false },
+   120→];
+   121→
+   122→const LEADERBOARD: LeaderboardUser[] = [
+   123→  { rank: 1, name: "Aarav Mehta", xp: 84200, coins: 124000, level: 47, isCurrentUser: false },
+   124→  { rank: 2, name: "Priya Sharma", xp: 78600, coins: 118500, level: 45, isCurrentUser: false },
+   125→  { rank: 3, name: "Rohan Verma", xp: 72100, coins: 109800, level: 43, isCurrentUser: false },
+   126→  { rank: 4, name: "Ananya Iyer", xp: 68400, coins: 98200, level: 41, isCurrentUser: false },
+   127→  { rank: 5, name: "Karthik Nair", xp: 61900, coins: 91300, level: 40, isCurrentUser: false },
+   128→  { rank: 6, name: "Diya Kapoor", xp: 58200, coins: 84600, level: 38, isCurrentUser: false },
+   129→  { rank: 7, name: "Vikram Singh", xp: 53800, coins: 78900, level: 37, isCurrentUser: false },
+   130→  { rank: 8, name: "Meera Reddy", xp: 49100, coins: 72400, level: 35, isCurrentUser: false },
+   131→  { rank: 9, name: "Arjun Pillai", xp: 44600, coins: 67100, level: 34, isCurrentUser: false },
+   132→  { rank: 10, name: "Saanvi Gupta", xp: 40200, coins: 61800, level: 32, isCurrentUser: false },
+   133→  { rank: 11, name: "LootLoom Member", xp: 2840, coins: 12840, level: 7, isCurrentUser: true },
+   134→  { rank: 12, name: "Riya Joshi", xp: 2640, coins: 11900, level: 7, isCurrentUser: false },
+   135→  { rank: 13, name: "Aditya Rao", xp: 2480, coins: 11200, level: 6, isCurrentUser: false },
+   136→  { rank: 14, name: "Ishita Bose", xp: 2320, coins: 10400, level: 6, isCurrentUser: false },
+   137→  { rank: 15, name: "Kabir Khanna", xp: 2180, coins: 9800, level: 6, isCurrentUser: false },
+   138→];
+   139→
+   140→const DAILY_BONUS_DAYS = [
+   141→  { day: "Mon", reward: 25, claimed: true, isToday: false },
+   142→  { day: "Tue", reward: 35, claimed: true, isToday: false },
+   143→  { day: "Wed", reward: 45, claimed: true, isToday: false },
+   144→  { day: "Thu", reward: 50, claimed: true, isToday: false },
+   145→  { day: "Fri", reward: 60, claimed: true, isToday: false },
+   146→  { day: "Sat", reward: 80, claimed: false, isToday: true },
+   147→  { day: "Sun", reward: 120, claimed: false, isToday: false },
+   148→];
+   149→
+   150→const MISSIONS: MissionItem[] = [
+   151→  { id: "m1", name: "Daily Explorer", description: "Watch 5 rewarded ads", reward: 120, progress: 3, total: 5, difficulty: "easy", estimatedTime: "10 min", category: "daily", status: "in-progress" },
+   152→  { id: "m2", name: "Coin Sprint", description: "Earn 200 coins from ads", reward: 80, progress: 145, total: 200, difficulty: "easy", estimatedTime: "15 min", category: "daily", status: "in-progress" },
+   153→  { id: "m3", name: "Survey Pro", description: "Complete 3 surveys", reward: 250, progress: 1, total: 3, difficulty: "medium", estimatedTime: "20 min", category: "daily", status: "in-progress" },
+   154→  { id: "m4", name: "Social Sharer", description: "Share LootLoom on social media", reward: 100, progress: 0, total: 1, difficulty: "easy", estimatedTime: "5 min", category: "daily", status: "available" },
+   155→  { id: "m5", name: "Weekly Champion", description: "Reach 1,000 coins this week", reward: 500, progress: 980, total: 1000, difficulty: "hard", estimatedTime: "Ongoing", category: "weekly", status: "in-progress" },
+   156→  { id: "m6", name: "Referral Hero", description: "Invite 3 friends this week", reward: 600, progress: 1, total: 3, difficulty: "hard", estimatedTime: "Ongoing", category: "weekly", status: "in-progress" },
+   157→  { id: "m7", name: "Streak Master", description: "Maintain a 14-day streak", reward: 1000, progress: 12, total: 14, difficulty: "expert", estimatedTime: "Ongoing", category: "weekly", status: "in-progress" },
+   158→  { id: "m8", name: "Monthly Mogul", description: "Earn 5,000 coins this month", reward: 2500, progress: 4280, total: 5000, difficulty: "expert", estimatedTime: "Ongoing", category: "monthly", status: "in-progress" },
+   159→  { id: "m9", name: "Legend in Making", description: "Reach Level 15", reward: 3000, progress: 7, total: 15, difficulty: "expert", estimatedTime: "Ongoing", category: "monthly", status: "in-progress" },
+   160→];
+   161→
+   162→const REFERRAL_TIERS = [
+   163→  { count: 1, reward: 200, label: "First Friend", icon: "UserPlus" },
+   164→  { count: 5, reward: 1200, label: "Squad Builder", icon: "Users" },
+   165→  { count: 10, reward: 3000, label: "Network Grower", icon: "Network" },
+   166→  { count: 25, reward: 10000, label: "LootLoom Ambassador", icon: "Crown" },
+   167→];
+   168→
+   169→const FAQS = [
+   170→  { q: "How do I earn coins on LootLoom?", a: "You can earn coins by watching rewarded ads, completing missions, claiming daily bonuses, participating in surveys, and referring friends. Each action rewards a specific amount of coins that you can later redeem for real rewards." },
+   171→  { q: "What is the minimum redeem amount?", a: "The minimum redeem amount is ₹100 (1,000 coins). Once you reach this threshold, you can submit a redeem request through the Rewards section and choose from UPI, gift cards, or other supported methods." },
+   172→  { q: "How long does redeem processing take?", a: "Most UPI redemptions are processed within 24-48 hours. Gift cards are typically delivered within 1 hour via email. Larger redemptions above ₹1,000 may require additional verification and can take up to 5 business days." },
+   173→  { q: "Why is my daily streak reset?", a: "Your daily streak resets if you miss claiming your daily bonus for more than 24 hours. To maintain your streak, make sure to log in and claim your bonus every day. Streak milestones unlock bonus rewards." },
+   174→  { q: "Can I transfer coins to another account?", a: "No, coins are non-transferable between accounts. This policy protects against fraud and ensures fair play. Each account's earnings are tied to that account's verified identity." },
+   175→  { q: "How do referral rewards work?", a: "When someone signs up using your referral code, you earn 200 coins once they complete their first mission. You also earn 10% of their lifetime earnings, up to a cap. Rewards are credited within 24 hours of qualification." },
+   176→  { q: "Is my account information secure?", a: "Yes. We use bank-grade encryption for all data, support two-factor authentication, and never share your information with third parties. You can review our privacy policy for full details on data handling." },
+   177→  { q: "What happens if I violate the terms?", a: "Accounts found violating our terms (auto-clickers, fake referrals, multiple accounts) may be suspended or permanently banned, with all earned coins forfeited. Always play fair to keep your account in good standing." },
+   178→];
+   179→
+   180→const NOTIF_TYPE_META: Record<
+   181→  string,
+   182→  { accent: "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy"; icon: string }
+   183→> = {
+   184→  reward: { accent: "gold", icon: "Gift" },
+   185→  wallet: { accent: "electric", icon: "Wallet" },
+   186→  system: { accent: "cyan", icon: "Settings" },
+   187→  security: { accent: "rose", icon: "ShieldCheck" },
+   188→  social: { accent: "purple", icon: "Users" },
+   189→  announcement: { accent: "emerald", icon: "Megaphone" },
+   190→};
+   191→
+   192→/* ============================================================
+   193→   Notifications
+   194→   ============================================================ */
+   195→
+   196→function NotificationsPage() {
+   197→  const { items, markAllRead, markRead } = useNotificationStore();
+   198→  const [filter, setFilter] = useState<"all" | "unread" | "reward" | "system" | "security">("all");
+   199→
+   200→  const filtered = useMemo(() => {
+   201→    if (filter === "all") return items;
+   202→    if (filter === "unread") return items.filter((n) => !n.read);
+   203→    return items.filter((n) => n.type === filter);
+   204→  }, [items, filter]);
+   205→
+   206→  return (
+   207→    <PageContainer>
+   208→      <PageHeader
+   209→        title="Notifications"
+   210→        description="Stay updated on rewards, security, and platform activity."
+   211→        actions={
+   212→          <LootButton
+   213→            variant="glass"
+   214→            size="sm"
+   215→            leftIcon={<Icons.CheckCheck size={15} />}
+   216→            onClick={markAllRead}
+   217→          >
+   218→            Mark all read
+   219→          </LootButton>
+   220→        }
+   221→      />
+   222→
+   223→      <motion.div
+   224→        variants={staggerContainer}
+   225→        initial="hidden"
+   226→        animate="visible"
+   227→        className="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1"
+   228→      >
+   229→        {(["all", "unread", "reward", "system", "security"] as const).map((f) => (
+   230→          <motion.div key={f} variants={cardReveal}>
+   231→            <FilterTab active={filter === f} onClick={() => setFilter(f)}>
+   232→              {f === "all" && "All"}
+   233→              {f === "unread" && "Unread"}
+   234→              {f === "reward" && "Rewards"}
+   235→              {f === "system" && "System"}
+   236→              {f === "security" && "Security"}
+   237→            </FilterTab>
+   238→          </motion.div>
+   239→        ))}
+   240→      </motion.div>
+   241→
+   242→      {filtered.length === 0 ? (
+   243→        <GlassCard level={2} className="p-0">
+   244→          <EmptyState
+   245→            icon="BellOff"
+   246→            title="No notifications"
+   247→            description="When you have notifications, they'll appear here."
+   248→          />
+   249→        </GlassCard>
+   250→      ) : (
+   251→        <motion.div
+   252→          variants={staggerContainer}
+   253→          initial="hidden"
+   254→          animate="visible"
+   255→          className="space-y-3"
+   256→        >
+   257→          {filtered.map((n) => {
+   258→            const meta = NOTIF_TYPE_META[n.type] ?? NOTIF_TYPE_META.system;
+   259→            return (
+   260→              <motion.div key={n.id} variants={cardReveal} {...hoverLift}>
+   261→                <GlassCard
+   262→                  level={2}
+   263→                  hover
+   264→                  sheen
+   265→                  onClick={() => !n.read && markRead(n.id)}
+   266→                  className={cn(
+   267→                    "p-4 flex items-start gap-4 cursor-pointer ring-1",
+   268→                    n.read ? "ring-border" : "ring-electric/30"
+   269→                  )}
+   270→                >
+   271→                  <IconBadge name={meta.icon} accent={meta.accent} />
+   272→                  <div className="flex-1 min-w-0">
+   273→                    <div className="flex items-center gap-2 mb-1">
+   274→                      <h3 className="font-semibold text-sm text-foreground truncate">{n.title}</h3>
+   275→                      {!n.read && (
+   276→                        <span className="size-2 rounded-full bg-electric shrink-0 ring-4 ring-electric/15" />
+   277→                      )}
+   278→                    </div>
+   279→                    <p className="text-sm text-muted-foreground leading-relaxed mb-1.5">{n.body}</p>
+   280→                    <div className="flex items-center gap-2">
+   281→                      <span className="text-xs text-muted-foreground">{n.time}</span>
+   282→                      <StatusBadge
+   283→                        variant={
+   284→                          n.type === "reward"
+   285→                            ? "gold"
+   286→                            : n.type === "security"
+   287→                            ? "error"
+   288→                            : n.type === "social"
+   289→                            ? "purple"
+   290→                            : n.type === "wallet"
+   291→                            ? "electric"
+   292→                            : "info"
+   293→                        }
+   294→                      >
+   295→                        {n.type}
+   296→                      </StatusBadge>
+   297→                    </div>
+   298→                  </div>
+   299→                  {!n.read && (
+   300→                    <Icons.ChevronRight className="text-muted-foreground shrink-0 mt-1" size={16} />
+   301→                  )}
+   302→                </GlassCard>
+   303→              </motion.div>
+   304→            );
+   305→          })}
+   306→        </motion.div>
+   307→      )}
+   308→    </PageContainer>
+   309→  );
+   310→}
+   311→
+   312→/* ============================================================
+   313→   Achievements
+   314→   ============================================================ */
+   315→
+   316→const RARITY_META: Record<
+   317→  AchievementItem["rarity"],
+   318→  { accent: "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose"; ring: "electric" | "cyan" | "purple" | "gold" | "emerald"; label: string; glow: string }
+   319→> = {
+   320→  common: { accent: "cyan", ring: "cyan", label: "Common", glow: "ring-cyan-brand/25" },
+   321→  rare: { accent: "electric", ring: "electric", label: "Rare", glow: "ring-electric/30" },
+   322→  epic: { accent: "purple", ring: "purple", label: "Epic", glow: "ring-purple-brand/30" },
+   323→  legendary: { accent: "gold", ring: "gold", label: "Legendary", glow: "ring-gold/30" },
+   324→};
+   325→
+   326→function AchievementCard({ item, index }: { item: AchievementItem; index: number }) {
+   327→  const meta = RARITY_META[item.rarity];
+   328→  const pct = Math.min(100, (item.progress / item.total) * 100);
+   329→  const LucideIcon = (Icons as unknown as Record<string, Icons.LucideIcon>)[item.icon] ?? Icons.Award;
+   330→
+   331→  return (
+   332→    <motion.div variants={cardReveal} custom={index}>
+   333→      <GlassCard
+   334→        level={2}
+   335→        hover
+   336→        sheen
+   337→        className={cn(
+   338→          "p-5 h-full flex flex-col items-center text-center ring-1",
+   339→          item.unlocked ? meta.glow : "ring-border opacity-80"
+   340→        )}
+   341→      >
+   342→        <div className="relative mb-4">
+   343→          <ProgressRing
+   344→            value={pct}
+   345→            size={88}
+   346→            strokeWidth={6}
+   347→            gradient={meta.ring}
+   348→            showLabel={false}
+   349→          />
+   350→          <div
+   351→            className={cn(
+   352→              "absolute inset-0 m-auto size-14 rounded-2xl flex items-center justify-center ring-1",
+   353→              item.unlocked
+   354→                ? "glass-3 " + meta.glow
+   355→                : "glass-1 ring-border"
+   356→            )}
+   357→          >
+   358→            {item.unlocked ? (
+   359→              <LucideIcon className={cn("text-foreground")} size={22} />
+   360→            ) : (
+   361→              <Icons.Lock className="text-muted-foreground" size={20} />
+   362→            )}
+   363→          </div>
+   364→        </div>
+   365→        <h3 className="font-semibold text-sm text-foreground mb-1">{item.name}</h3>
+   366→        <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{item.description}</p>
+   367→        <div className="flex items-center gap-2 mt-auto">
+   368→          <StatusBadge
+   369→            variant={
+   370→              item.rarity === "common"
+   371→                ? "cyan"
+   372→                : item.rarity === "rare"
+   373→                ? "electric"
+   374→                : item.rarity === "epic"
+   375→                ? "purple"
+   376→                : "gold"
+   377→            }
+   378→            dot
+   379→          >
+   380→            {meta.label}
+   381→          </StatusBadge>
+   382→          {item.unlocked ? (
+   383→            <StatusBadge variant="success" dot pulse>
+   384→              Unlocked
+   385→            </StatusBadge>
+   386→          ) : (
+   387→            <span className="text-xs text-muted-foreground tabular-nums">
+   388→              {item.progress.toLocaleString("en-IN")}/{item.total.toLocaleString("en-IN")}
+   389→            </span>
+   390→          )}
+   391→        </div>
+   392→      </GlassCard>
+   393→    </motion.div>
+   394→  );
+   395→}
+   396→
+   397→function AchievementsPage() {
+   398→  const user = useUserStore();
+   399→  const unlocked = ACHIEVEMENTS.filter((a) => a.unlocked).length;
+   400→  const completion = Math.round((unlocked / ACHIEVEMENTS.length) * 100);
+   401→  const xpPct = Math.round((user.xp / user.xpToNext) * 100);
+   402→
+   403→  const milestones = [
+   404→    { level: 5, label: "Apprentice", reached: true },
+   405→    { level: 7, label: "Explorer", reached: true },
+   406→    { level: 10, label: "Achiever", reached: false },
+   407→    { level: 15, label: "Veteran", reached: false },
+   408→    { level: 25, label: "Legend", reached: false },
+   409→  ];
+   410→
+   411→  return (
+   412→    <PageContainer>
+   413→      <PageHeader
+   414→        title="Achievements"
+   415→        description="Track your milestones, unlock badges, and rise through the ranks."
+   416→      />
+   417→
+   418→      <motion.div
+   419→        variants={staggerContainer}
+   420→        initial="hidden"
+   421→        animate="visible"
+   422→        className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6"
+   423→      >
+   424→        <motion.div variants={cardReveal}>
+   425→          <GlassCard level={3} sheen className="p-6 flex items-center gap-5">
+   426→            <ProgressRing value={xpPct} size={92} strokeWidth={8} gradient="electric" label={`L${user.level}`} />
+   427→            <div className="flex-1">
+   428→              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Current Level</p>
+   429→              <p className="text-2xl font-bold text-foreground">Level {user.level}</p>
+   430→              <p className="text-xs text-muted-foreground mt-1 tabular-nums">
+   431→                {user.xp.toLocaleString("en-IN")} / {user.xpToNext.toLocaleString("en-IN")} XP
+   432→              </p>
+   433→            </div>
+   434→          </GlassCard>
+   435→        </motion.div>
+   436→        <motion.div variants={cardReveal} custom={1}>
+   437→          <GlassCard level={3} sheen className="p-6 flex items-center gap-5">
+   438→            <ProgressRing value={completion} size={92} strokeWidth={8} gradient="gold" />
+   439→            <div className="flex-1">
+   440→              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Completion</p>
+   441→              <p className="text-2xl font-bold text-foreground">{unlocked}/{ACHIEVEMENTS.length}</p>
+   442→              <p className="text-xs text-muted-foreground mt-1">{completion}% achievements unlocked</p>
+   443→            </div>
+   444→          </GlassCard>
+   445→        </motion.div>
+   446→        <motion.div variants={cardReveal} custom={2}>
+   447→          <GlassCard level={3} sheen className="p-6 flex items-center gap-5">
+   448→            <ProgressRing value={72} size={92} strokeWidth={8} gradient="purple" label="72%" />
+   449→            <div className="flex-1">
+   450→              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Mastery</p>
+   451→              <p className="text-2xl font-bold text-foreground">Expert</p>
+   452→              <p className="text-xs text-muted-foreground mt-1">Overall platform mastery</p>
+   453→            </div>
+   454→          </GlassCard>
+   455→        </motion.div>
+   456→      </motion.div>
+   457→
+   458→      <SectionHeader
+   459→        title="Achievement Badges"
+   460→        description="Collect rare, epic, and legendary badges"
+   461→        icon={<Icons.Award size={18} />}
+   462→        className="mb-4"
+   463→      />
+   464→      <motion.div
+   465→        variants={staggerContainer}
+   466→        initial="hidden"
+   467→        animate="visible"
+   468→        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8"
+   469→      >
+   470→        {ACHIEVEMENTS.map((a, i) => (
+   471→          <AchievementCard key={a.id} item={a} index={i} />
+   472→        ))}
+   473→      </motion.div>
+   474→
+   475→      <SectionHeader
+   476→        title="Milestones"
+   477→        description="Your progression timeline"
+   478→        icon={<Icons.Flag size={18} />}
+   479→        className="mb-4"
+   480→      />
+   481→      <GlassCard level={2} className="p-6">
+   482→        <div className="relative pl-8">
+   483→          <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-gradient-to-b from-electric via-purple-brand to-gold/40" />
+   484→          {milestones.map((m, i) => (
+   485→            <motion.div
+   486→              key={m.level}
+   487→              initial={{ opacity: 0, x: -10 }}
+   488→              animate={{ opacity: 1, x: 0 }}
+   489→              transition={{ delay: i * 0.08 }}
+   490→              className="relative pb-6 last:pb-0"
+   491→            >
+   492→              <div
+   493→                className={cn(
+   494→                  "absolute -left-[1.4rem] top-1 size-3.5 rounded-full ring-4 ring-background",
+   495→                  m.reached ? "bg-gradient-to-br from-electric to-purple-brand" : "bg-muted-foreground/30"
+   496→                )}
+   497→              />
+   498→              <div className="flex items-center gap-3">
+   499→                <h4 className={cn("font-semibold text-sm", m.reached ? "text-foreground" : "text-muted-foreground")}>
+   500→                  Level {m.level} — {m.label}
+   501→                </h4>
+   502→                {m.reached && (
+   503→                  <StatusBadge variant="success" dot>
+   504→                    Reached
+   505→                  </StatusBadge>
+   506→                )}
+   507→              </div>
+   508→              <p className="text-xs text-muted-foreground mt-1">
+   509→                {m.reached ? "You've reached this milestone." : `Reach level ${m.level} to unlock.`}
+   510→              </p>
+   511→            </motion.div>
+   512→          ))}
+   513→        </div>
+   514→      </GlassCard>
+   515→    </PageContainer>
+   516→  );
+   517→}
+   518→
+   519→/* ============================================================
+   520→   Leaderboard
+   521→   ============================================================ */
+   522→
+   523→function LeaderboardPage() {
+   524→  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly" | "all">("weekly");
+   525→  const top3 = LEADERBOARD.slice(0, 3);
+   526→  const rest = LEADERBOARD.slice(3);
+   527→  const podiumOrder = [top3[1], top3[0], top3[2]]; // silver, gold, bronze
+   528→
+   529→  const podiumMeta = [
+   530→    { accent: "cyan" as const, ring: "cyan" as const, icon: "Medal", label: "Silver", glow: "ring-cyan-brand/30" },
+   531→    { accent: "gold" as const, ring: "gold" as const, icon: "Crown", label: "Gold", glow: "ring-gold/40" },
+   532→    { accent: "purple" as const, ring: "purple" as const, icon: "Award", label: "Bronze", glow: "ring-purple-brand/30" },
+   533→  ];
+   534→
+   535→  return (
+   536→    <PageContainer>
+   537→      <PageHeader
+   538→        title="Leaderboard"
+   539→        description="Compete with players worldwide and climb the ranks."
+   540→        actions={
+   541→          <motion.div
+   542→            variants={staggerContainer}
+   543→            initial="hidden"
+   544→            animate="visible"
+   545→            className="flex gap-1.5"
+   546→          >
+   547→            {(["daily", "weekly", "monthly", "all"] as const).map((p) => (
+   548→              <motion.div key={p} variants={cardReveal}>
+   549→                <FilterTab active={period === p} onClick={() => setPeriod(p)}>
+   550→                  {p === "daily" && "Daily"}
+   551→                  {p === "weekly" && "Weekly"}
+   552→                  {p === "monthly" && "Monthly"}
+   553→                  {p === "all" && "All-time"}
+   554→                </FilterTab>
+   555→              </motion.div>
+   556→            ))}
+   557→          </motion.div>
+   558→        }
+   559→      />
+   560→
+   561→      {/* Podium */}
+   562→      <motion.div
+   563→        variants={staggerContainer}
+   564→        initial="hidden"
+   565→        animate="visible"
+   566→        className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6"
+   567→      >
+   568→        {podiumOrder.map((u, i) => {
+   569→          const meta = podiumMeta[i];
+   570→          const LucideIcon = (Icons as unknown as Record<string, Icons.LucideIcon>)[meta.icon];
+   571→          const isFirst = i === 1;
+   572→          return (
+   573→            <motion.div
+   574→              key={u.rank}
+   575→              variants={cardReveal}
+   576→              custom={i}
+   577→              className={isFirst ? "sm:-mt-4" : ""}
+   578→            >
+   579→              <motion.div
+   580→                variants={isFirst ? floating : undefined}
+   581→                className="h-full"
+   582→              >
+   583→                <GlassCard
+   584→                  level={3}
+   585→                  sheen
+   586→                  reflect
+   587→                  className={cn(
+   588→                    "p-6 text-center ring-1 h-full",
+   589→                    meta.glow,
+   590→                    isFirst ? "shadow-[var(--shadow-lg)]" : ""
+   591→                  )}
+   592→                >
+   593→                  <div className="flex justify-center mb-3">
+   594→                    <div className={cn("size-12 rounded-2xl flex items-center justify-center ring-1", meta.glow, "glass-3")}>
+   595→                      <LucideIcon className={cn(isFirst ? "text-gold" : i === 0 ? "text-cyan-brand" : "text-purple-brand")} size={24} />
+   596→                    </div>
+   597→                  </div>
+   598→                  <div className="inline-flex items-center justify-center size-14 rounded-2xl bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))] text-white font-bold text-lg mb-3">
+   599→                    {getInitials(u.name)}
+   600→                  </div>
+   601→                  <h3 className="font-semibold text-foreground text-sm truncate">{u.name}</h3>
+   602→                  <p className="text-xs text-muted-foreground mb-3">Level {u.level}</p>
+   603→                  <div className="grid grid-cols-2 gap-2">
+   604→                    <div className="glass-1 rounded-lg py-2">
+   605→                      <p className="text-[10px] text-muted-foreground uppercase font-semibold">XP</p>
+   606→                      <p className="text-sm font-bold text-foreground tabular-nums">{u.xp.toLocaleString("en-IN")}</p>
+   607→                    </div>
+   608→                    <div className="glass-1 rounded-lg py-2">
+   609→                      <p className="text-[10px] text-muted-foreground uppercase font-semibold">Coins</p>
+   610→                      <p className="text-sm font-bold text-foreground tabular-nums">{u.coins.toLocaleString("en-IN")}</p>
+   611→                    </div>
+   612→                  </div>
+   613→                  <StatusBadge variant={isFirst ? "gold" : i === 0 ? "cyan" : "purple"} className="mt-3">
+   614→                    {meta.label} · #{u.rank}
+   615→                  </StatusBadge>
+   616→                </GlassCard>
+   617→              </motion.div>
+   618→            </motion.div>
+   619→          );
+   620→        })}
+   621→      </motion.div>
+   622→
+   623→      {/* Full ranking table */}
+   624→      <GlassCard level={2} className="p-2 sm:p-4">
+   625→        <SectionHeader
+   626→          title="Full Rankings"
+   627→          description={`${LEADERBOARD.length} players ranked`}
+   628→          icon={<Icons.ListOrdered size={18} />}
+   629→          className="px-2 mb-2"
+   630→        />
+   631→        <Table>
+   632→          <TableHeader>
+   633→            <TableRow>
+   634→              <TableHead className="w-16">Rank</TableHead>
+   635→              <TableHead>Player</TableHead>
+   636→              <TableHead className="text-right">Level</TableHead>
+   637→              <TableHead className="text-right hidden sm:table-cell">XP</TableHead>
+   638→              <TableHead className="text-right">Coins</TableHead>
+   639→            </TableRow>
+   640→          </TableHeader>
+   641→          <TableBody>
+   642→            {rest.map((u, i) => (
+   643→              <motion.tr
+   644→                key={u.rank}
+   645→                initial={{ opacity: 0, y: 6 }}
+   646→                animate={{ opacity: 1, y: 0 }}
+   647→                transition={{ delay: i * 0.03 }}
+   648→                className={cn(
+   649→                  "border-b transition-colors",
+   650→                  u.isCurrentUser
+   651→                    ? "bg-electric/5 hover:bg-electric/10 ring-1 ring-inset ring-electric/20"
+   652→                    : "hover:bg-muted/40"
+   653→                )}
+   654→              >
+   655→                <TableCell className="font-bold tabular-nums text-foreground">#{u.rank}</TableCell>
+   656→                <TableCell>
+   657→                  <div className="flex items-center gap-3">
+   658→                    <div className="size-9 rounded-xl bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))] text-white text-xs font-bold flex items-center justify-center shrink-0">
+   659→                      {getInitials(u.name)}
+   660→                    </div>
+   661→                    <div className="min-w-0">
+   662→                      <p className="font-semibold text-sm text-foreground truncate">{u.name}</p>
+   663→                      {u.isCurrentUser && (
+   664→                        <StatusBadge variant="electric" className="mt-0.5">
+   665→                          You
+   666→                        </StatusBadge>
+   667→                      )}
+   668→                    </div>
+   669→                  </div>
+   670→                </TableCell>
+   671→                <TableCell className="text-right font-semibold tabular-nums">{u.level}</TableCell>
+   672→                <TableCell className="text-right tabular-nums hidden sm:table-cell">{u.xp.toLocaleString("en-IN")}</TableCell>
+   673→                <TableCell className="text-right font-semibold text-gold tabular-nums">{u.coins.toLocaleString("en-IN")}</TableCell>
+   674→              </motion.tr>
+   675→            ))}
+   676→          </TableBody>
+   677→        </Table>
+   678→      </GlassCard>
+   679→    </PageContainer>
+   680→  );
+   681→}
+   682→
+   683→/* ============================================================
+   684→   Daily Bonus
+   685→   ============================================================ */
+   686→
+   687→function DailyBonusPage() {
+   688→  const todayIndex = DAILY_BONUS_DAYS.findIndex((d) => d.isToday);
+   689→  const [claimed, setClaimed] = useState<boolean[]>(DAILY_BONUS_DAYS.map((d) => d.claimed));
+   690→  const user = useUserStore();
+   691→
+   692→  const handleClaim = (idx: number) => {
+   693→    setClaimed((prev) => prev.map((c, i) => (i === idx ? true : c)));
+   694→  };
+   695→
+   696→  return (
+   697→    <PageContainer>
+   698→      <PageHeader
+   699→        title="Daily Bonus"
+   700→        description="Log in every day to claim escalating rewards and build your streak."
+   701→      />
+   702→
+   703→      <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+   704→        <motion.div variants={cardReveal}>
+   705→          <GlassCard level={3} sheen className="p-6 mb-6 flex flex-col sm:flex-row sm:items-center gap-6">
+   706→            <div className="flex items-center gap-4">
+   707→              <motion.div
+   708→                animate={{ scale: [1, 1.08, 1], rotate: [0, -5, 5, 0] }}
+   709→                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+   710→                className="size-16 rounded-2xl bg-[linear-gradient(135deg,var(--gold),oklch(0.75_0.18_60))] flex items-center justify-center shadow-[0_8px_24px_-6px_oklch(0.8_0.16_85/0.5)]"
+   711→              >
+   712→                <Icons.Flame className="text-white" size={32} />
+   713→              </motion.div>
+   714→              <div>
+   715→                <p className="text-xs text-muted-foreground font-semibold uppercase">Current Streak</p>
+   716→                <p className="text-3xl font-bold text-foreground">
+   717→                  {user.dailyStreak} <span className="text-base text-muted-foreground">days</span>
+   718→                </p>
+   719→                <p className="text-xs text-emerald-brand font-medium mt-0.5">Keep it up!</p>
+   720→              </div>
+   721→            </div>
+   722→            <div className="flex-1 sm:text-right">
+   723→              <p className="text-xs text-muted-foreground font-semibold uppercase mb-1">Next Milestone</p>
+   724→              <p className="text-sm font-semibold text-foreground">Reach 14 days for a bonus 500 coins</p>
+   725→              <div className="w-full sm:w-48 h-2 rounded-full bg-muted overflow-hidden mt-2 sm:ml-auto">
+   726→                <motion.div
+   727→                  initial={{ width: 0 }}
+   728→                  animate={{ width: `${(user.dailyStreak / 14) * 100}%` }}
+   729→                  transition={{ duration: 1, delay: 0.3 }}
+   730→                  className="h-full bg-[linear-gradient(90deg,var(--gold),var(--electric))]"
+   731→                />
+   732→              </div>
+   733→            </div>
+   734→          </GlassCard>
+   735→        </motion.div>
+   736→      </motion.div>
+   737→
+   738→      <SectionHeader
+   739→        title="7-Day Reward Cycle"
+   740→        description="Claim each day to unlock the next reward"
+   741→        icon={<Icons.CalendarDays size={18} />}
+   742→        className="mb-4"
+   743→      />
+   744→      <motion.div
+   745→        variants={staggerContainer}
+   746→        initial="hidden"
+   747→        animate="visible"
+   748→        className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-8"
+   749→      >
+   750→        {DAILY_BONUS_DAYS.map((d, i) => {
+   751→          const isClaimed = claimed[i];
+   752→          const isToday = d.isToday;
+   753→          const isFuture = i > todayIndex;
+   754→          return (
+   755→            <motion.div key={d.day} variants={cardReveal} custom={i}>
+   756→              <GlassCard
+   757→                level={isToday ? 3 : 2}
+   758→                sheen={isToday}
+   759→                className={cn(
+   760→                  "p-4 text-center ring-1 h-full flex flex-col",
+   761→                  isToday ? "ring-electric/40 shadow-[0_8px_24px_-8px_oklch(0.62_0.22_255/0.45)]" : "ring-border",
+   762→                  isFuture && "opacity-60"
+   763→                )}
+   764→              >
+   765→                <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">{d.day}</p>
+   766→                <div
+   767→                  className={cn(
+   768→                    "mx-auto size-10 rounded-xl flex items-center justify-center mb-3",
+   769→                    isClaimed
+   770→                      ? "bg-emerald-brand/10 ring-1 ring-emerald-brand/20"
+   771→                      : isToday
+   772→                      ? "bg-electric/10 ring-1 ring-electric/20"
+   773→                      : "bg-muted/50"
+   774→                  )}
+   775→                >
+   776→                  {isClaimed ? (
+   777→                    <Icons.Check className="text-emerald-brand" size={20} />
+   778→                  ) : isFuture ? (
+   779→                    <Icons.Lock className="text-muted-foreground" size={16} />
+   780→                  ) : (
+   781→                    <Icons.Coins className="text-gold" size={20} />
+   782→                  )}
+   783→                </div>
+   784→                <p className="text-lg font-bold text-foreground tabular-nums">{d.reward}</p>
+   785→                <p className="text-[10px] text-muted-foreground mb-3">coins</p>
+   786→                {isToday && !isClaimed && (
+   787→                  <LootButton size="sm" variant="electric" fullWidth onClick={() => handleClaim(i)} className="mt-auto">
+   788→                    Claim
+   789→                  </LootButton>
+   790→                )}
+   791→                {isToday && isClaimed && (
+   792→                  <StatusBadge variant="success" className="mt-auto">
+   793→                    Claimed
+   794→                  </StatusBadge>
+   795→                )}
+   796→                {isClaimed && !isToday && (
+   797→                  <StatusBadge variant="default" className="mt-auto">
+   798→                    Done
+   799→                  </StatusBadge>
+   800→                )}
+   801→                {isFuture && (
+   802→                  <span className="text-[10px] text-muted-foreground mt-auto">Locked</span>
+   803→                )}
+   804→              </GlassCard>
+   805→            </motion.div>
+   806→          );
+   807→        })}
+   808→      </motion.div>
+   809→
+   810→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   811→        <WidgetCard
+   812→          title="Tomorrow's Reward"
+   813→          description="Don't break your streak"
+   814→          icon={<Icons.Sparkles size={18} />}
+   815→        >
+   816→          <div className="flex items-center gap-4">
+   817→            <div className="size-14 rounded-2xl bg-[linear-gradient(135deg,var(--purple-brand),var(--electric))] flex items-center justify-center">
+   818→              <Icons.Coins className="text-white" size={26} />
+   819→            </div>
+   820→            <div>
+   821→              <p className="text-3xl font-bold text-foreground">120 <span className="text-sm text-muted-foreground">coins</span></p>
+   822→              <p className="text-xs text-muted-foreground">Sunday bonus reward · +50% boost</p>
+   823→            </div>
+   824→          </div>
+   825→        </WidgetCard>
+   826→
+   827→        <WidgetCard
+   828→          title="Streak Milestones"
+   829→          description="Bonus rewards along the way"
+   830→          icon={<Icons.Target size={18} />}
+   831→        >
+   832→          <div className="space-y-2.5">
+   833→            {[
+   834→              { days: 7, reward: 200, reached: true },
+   835→              { days: 14, reward: 500, reached: false },
+   836→              { days: 30, reward: 1500, reached: false },
+   837→            ].map((m) => (
+   838→              <div key={m.days} className="flex items-center gap-3">
+   839→                <div
+   840→                  className={cn(
+   841→                    "size-9 rounded-xl flex items-center justify-center ring-1 shrink-0",
+   842→                    m.reached
+   843→                      ? "bg-emerald-brand/10 ring-emerald-brand/20 text-emerald-brand"
+   844→                      : "glass-1 ring-border text-muted-foreground"
+   845→                  )}
+   846→                >
+   847→                  {m.reached ? <Icons.Check size={16} /> : <Icons.Flame size={16} />}
+   848→                </div>
+   849→                <div className="flex-1 min-w-0">
+   850→                  <p className="text-sm font-semibold text-foreground">{m.days}-day streak</p>
+   851→                  <p className="text-xs text-muted-foreground">{m.reached ? "Achieved" : "In progress"}</p>
+   852→                </div>
+   853→                <span className="text-sm font-bold text-gold tabular-nums">+{m.reward}</span>
+   854→              </div>
+   855→            ))}
+   856→          </div>
+   857→        </WidgetCard>
+   858→      </div>
+   859→
+   860→      <WidgetCard
+   861→        title="Monthly Preview"
+   862→        description="This month's claimed bonuses"
+   863→        icon={<Icons.CalendarRange size={18} />}
+   864→        className="mt-4"
+   865→      >
+   866→        <div className="grid grid-cols-7 gap-1.5">
+   867→          {Array.from({ length: 28 }).map((_, i) => {
+   868→            const claimedDay = i < 12;
+   869→            const today = i === 12;
+   870→            return (
+   871→              <div
+   872→                key={i}
+   873→                className={cn(
+   874→                  "aspect-square rounded-md flex items-center justify-center text-[10px] font-semibold",
+   875→                  claimedDay
+   876→                    ? "bg-emerald-brand/15 text-emerald-brand ring-1 ring-emerald-brand/20"
+   877→                    : today
+   878→                    ? "bg-electric/15 text-electric ring-1 ring-electric/30"
+   879→                    : "bg-muted/40 text-muted-foreground/50"
+   880→                )}
+   881→              >
+   882→                {claimedDay ? <Icons.Check size={12} /> : i + 1}
+   883→              </div>
+   884→            );
+   885→          })}
+   886→        </div>
+   887→      </WidgetCard>
+   888→    </PageContainer>
+   889→  );
+   890→}
+   891→
+   892→/* ============================================================
+   893→   Missions
+   894→   ============================================================ */
+   895→
+   896→const DIFFICULTY_META: Record<
+   897→  MissionItem["difficulty"],
+   898→  { variant: "success" | "info" | "warning" | "error"; color: string }
+   899→> = {
+   900→  easy: { variant: "success", color: "text-emerald-brand" },
+   901→  medium: { variant: "info", color: "text-electric" },
+   902→  hard: { variant: "warning", color: "text-gold" },
+   903→  expert: { variant: "error", color: "text-rose-brand" },
+   904→};
+   905→
+   906→function MissionCard({ mission, index }: { mission: MissionItem; index: number }) {
+   907→  const meta = DIFFICULTY_META[mission.difficulty];
+   908→  const pct = Math.min(100, (mission.progress / mission.total) * 100);
+   909→  const isCompleted = mission.status === "completed";
+   910→
+   911→  return (
+   912→    <motion.div variants={cardReveal} custom={index}>
+   913→      <GlassCard level={2} hover sheen className="p-5 h-full flex flex-col ring-1 ring-border">
+   914→        <div className="flex items-start justify-between gap-3 mb-3">
+   915→          <div className="flex items-center gap-3 min-w-0">
+   916→            <IconBadge name="Target" accent="electric" size="sm" />
+   917→            <div className="min-w-0">
+   918→              <h3 className="font-semibold text-sm text-foreground truncate">{mission.name}</h3>
+   919→              <p className="text-xs text-muted-foreground">{mission.estimatedTime}</p>
+   920→            </div>
+   921→          </div>
+   922→          <StatusBadge variant={meta.variant}>{mission.difficulty}</StatusBadge>
+   923→        </div>
+   924→
+   925→        <p className="text-xs text-muted-foreground leading-relaxed mb-4">{mission.description}</p>
+   926→
+   927→        <div className="flex items-center gap-4 mb-4">
+   928→          <ProgressRing
+   929→            value={pct}
+   930→            size={56}
+   931→            strokeWidth={5}
+   932→            gradient={isCompleted ? "emerald" : "electric"}
+   933→            showLabel={false}
+   934→          />
+   935→          <div className="flex-1">
+   936→            <p className="text-xs text-muted-foreground mb-1">Progress</p>
+   937→            <p className="text-sm font-bold text-foreground tabular-nums">
+   938→              {mission.progress.toLocaleString("en-IN")} / {mission.total.toLocaleString("en-IN")}
+   939→            </p>
+   940→            <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+   941→              <motion.div
+   942→                initial={{ width: 0 }}
+   943→                whileInView={{ width: `${pct}%` }}
+   944→                viewport={{ once: true }}
+   945→                transition={{ duration: 0.9, delay: 0.2 }}
+   946→                className={cn(
+   947→                  "h-full",
+   948→                  isCompleted
+   949→                    ? "bg-emerald-brand"
+   950→                    : "bg-[linear-gradient(90deg,var(--electric),var(--cyan-brand))]"
+   951→                )}
+   952→              />
+   953→            </div>
+   954→          </div>
+   955→        </div>
+   956→
+   957→        <div className="flex items-center justify-between mt-auto pt-3 border-t border-border/60">
+   958→          <div className="flex items-center gap-1.5">
+   959→            <Icons.Coins className="text-gold" size={16} />
+   960→            <span className="font-bold text-foreground tabular-nums">{mission.reward}</span>
+   961→            <span className="text-xs text-muted-foreground">coins</span>
+   962→          </div>
+   963→          {isCompleted ? (
+   964→            <StatusBadge variant="success" dot pulse>
+   965→              Completed
+   966→            </StatusBadge>
+   967→          ) : mission.status === "in-progress" ? (
+   968→            <LootButton size="sm" variant="electric">
+   969→              Continue
+   970→            </LootButton>
+   971→          ) : mission.status === "locked" ? (
+   972→            <LootButton size="sm" variant="ghost" disabled leftIcon={<Icons.Lock size={14} />}>
+   973→              Locked
+   974→            </LootButton>
+   975→          ) : (
+   976→            <LootButton size="sm" variant="outline">
+   977→              Start
+   978→            </LootButton>
+   979→          )}
+   980→        </div>
+   981→      </GlassCard>
+   982→    </motion.div>
+   983→  );
+   984→}
+   985→
+   986→function MissionsPage() {
+   987→  const [tab, setTab] = useState<"daily" | "weekly" | "monthly">("daily");
+   988→  const filtered = MISSIONS.filter((m) => m.category === tab);
+   989→
+   990→  return (
+   991→    <PageContainer>
+   992→      <PageHeader
+   993→        title="Missions"
+   994→        description="Complete missions to earn bonus coins and level up faster."
+   995→      />
+   996→
+   997→      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="mb-6">
+   998→        <TabsList className="glass-1 h-auto p-1">
+   999→          <TabsTrigger value="daily" className="px-4 data-[state=active]:bg-[linear-gradient(120deg,var(--electric),var(--cyan-brand))] data-[state=active]:text-white">Daily</TabsTrigger>
+  1000→          <TabsTrigger value="weekly" className="px-4 data-[state=active]:bg-[linear-gradient(120deg,var(--electric),var(--cyan-brand))] data-[state=active]:text-white">Weekly</TabsTrigger>
+  1001→          <TabsTrigger value="monthly" className="px-4 data-[state=active]:bg-[linear-gradient(120deg,var(--electric),var(--cyan-brand))] data-[state=active]:text-white">Monthly</TabsTrigger>
+  1002→        </TabsList>
+  1003→      </Tabs>
+  1004→
+  1005→      <AnimatePresence mode="wait">
+  1006→        <motion.div
+  1007→          key={tab}
+  1008→          variants={staggerContainer}
+  1009→          initial="hidden"
+  1010→          animate="visible"
+  1011→          exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}
+  1012→          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+  1013→        >
+  1014→          {filtered.map((m, i) => (
+  1015→            <MissionCard key={m.id} mission={m} index={i} />
+  1016→          ))}
+  1017→        </motion.div>
+  1018→      </AnimatePresence>
+  1019→    </PageContainer>
+  1020→  );
+  1021→}
+  1022→
+  1023→/* ============================================================
+  1024→   Referral
+  1025→   ============================================================ */
+  1026→
+  1027→function ReferralPage() {
+  1028→  const user = useUserStore();
+  1029→  const [copied, setCopied] = useState(false);
+  1030→  const navigate = useNavigationStore((s) => s.navigate);
+  1031→
+  1032→  const handleCopy = async () => {
+  1033→    try {
+  1034→      await navigator.clipboard?.writeText(user.referralCode);
+  1035→    } catch {
+  1036→      /* ignore */
+  1037→    }
+  1038→    setCopied(true);
+  1039→    setTimeout(() => setCopied(false), 2000);
+  1040→  };
+  1041→
+  1042→  return (
+  1043→    <PageContainer>
+  1044→      <PageHeader
+  1045→        title="Referral"
+  1046→        description="Invite friends, earn rewards. Build your network and grow together."
+  1047→      />
+  1048→
+  1049→      <motion.div
+  1050→        variants={staggerContainer}
+  1051→        initial="hidden"
+  1052→        animate="visible"
+  1053→        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+  1054→      >
+  1055→        <StatCard index={0} label="Friends Invited" value={12} icon="Users" accent="electric" trend={{ value: 8, positive: true }} />
+  1056→        <StatCard index={1} label="Pending Rewards" value={320} suffix=" coins" icon="Clock" accent="gold" />
+  1057→        <StatCard index={2} label="Total Earnings" value={2400} suffix=" coins" icon="Coins" accent="emerald" trend={{ value: 22, positive: true }} />
+  1058→        <StatCard index={3} label="This Month" value={800} suffix=" coins" icon="TrendingUp" accent="purple" trend={{ value: 14, positive: true }} />
+  1059→      </motion.div>
+  1060→
+  1061→      <WidgetCard
+  1062→        title="Your Referral Code"
+  1063→        description="Share this code with friends"
+  1064→        icon={<Icons.Ticket size={18} />}
+  1065→        className="mb-6"
+  1066→      >
+  1067→        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+  1068→          <div className="flex-1 relative">
+  1069→            <div className="glass-3 rounded-2xl p-5 ring-1 ring-electric/20 relative overflow-hidden">
+  1070→              <div className="absolute inset-0 bg-[linear-gradient(120deg,var(--electric)/5,var(--purple-brand)/5)]" />
+  1071→              <p className="text-xs text-muted-foreground font-semibold uppercase mb-1 relative">Referral Code</p>
+  1072→              <p className="text-3xl font-bold text-foreground tracking-wider font-mono relative">{user.referralCode}</p>
+  1073→              <p className="text-xs text-muted-foreground mt-1 relative">
+  1074→                Friends get 100 coins on signup · You get 200 coins when they complete their first mission
+  1075→              </p>
+  1076→            </div>
+  1077→          </div>
+  1078→          <div className="flex sm:flex-col gap-2">
+  1079→            <LootButton
+  1080→              variant="electric"
+  1081→              size="lg"
+  1082→              fullWidth
+  1083→              leftIcon={copied ? <Icons.CheckCheck size={18} /> : <Icons.Copy size={18} />}
+  1084→              onClick={handleCopy}
+  1085→            >
+  1086→              {copied ? "Copied!" : "Copy Code"}
+  1087→            </LootButton>
+  1088→          </div>
+  1089→        </div>
+  1090→        <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border/60">
+  1091→          <span className="text-xs text-muted-foreground font-semibold mr-1">Share via:</span>
+  1092→          {[
+  1093→            { icon: "Share2", label: "Share" },
+  1094→            { icon: "MessageCircle", label: "WhatsApp" },
+  1095→            { icon: "Send", label: "Telegram" },
+  1096→            { icon: "Mail", label: "Email" },
+  1097→            { icon: "Twitter", label: "Twitter" },
+  1098→          ].map((s) => {
+  1099→            const LucideIcon = (Icons as unknown as Record<string, Icons.LucideIcon>)[s.icon];
+  1100→            return (
+  1101→              <LootButton key={s.label} variant="glass" size="sm" leftIcon={<LucideIcon size={14} />}>
+  1102→                {s.label}
+  1103→              </LootButton>
+  1104→            );
+  1105→          })}
+  1106→        </div>
+  1107→      </WidgetCard>
+  1108→
+  1109→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+  1110→        <WidgetCard
+  1111→          title="How It Works"
+  1112→          description="3 simple steps"
+  1113→          icon={<Icons.HelpCircle size={18} />}
+  1114→        >
+  1115→          <div className="space-y-4">
+  1116→            {[
+  1117→              { step: 1, title: "Share your code", desc: "Send your unique referral code to friends", icon: "Share2" },
+  1118→              { step: 2, title: "They sign up", desc: "Friend registers using your code", icon: "UserPlus" },
+  1119→              { step: 3, title: "You both earn", desc: "Get 200 coins when they complete their first mission", icon: "Coins" },
+  1120→            ].map((s, i) => {
+  1121→              const LucideIcon = (Icons as unknown as Record<string, Icons.LucideIcon>)[s.icon];
+  1122→              return (
+  1123→                <motion.div
+  1124→                  key={s.step}
+  1125→                  variants={cardReveal}
+  1126→                  custom={i}
+  1127→                  initial="hidden"
+  1128→                  whileInView="visible"
+  1129→                  viewport={{ once: true }}
+  1130→                  className="flex items-start gap-3"
+  1131→                >
+  1132→                  <div className="size-9 rounded-xl bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))] text-white font-bold text-sm flex items-center justify-center shrink-0">
+  1133→                    {s.step}
+  1134→                  </div>
+  1135→                  <div className="flex-1">
+  1136→                    <div className="flex items-center gap-2">
+  1137→                      <LucideIcon className="text-electric" size={15} />
+  1138→                      <h4 className="font-semibold text-sm text-foreground">{s.title}</h4>
+  1139→                    </div>
+  1140→                    <p className="text-xs text-muted-foreground mt-0.5">{s.desc}</p>
+  1141→                  </div>
+  1142→                </motion.div>
+  1143→              );
+  1144→            })}
+  1145→          </div>
+  1146→        </WidgetCard>
+  1147→
+  1148→        <WidgetCard
+  1149→          title="Reward Tiers"
+  1150→          description="Earn more as you invite more"
+  1151→          icon={<Icons.Trophy size={18} />}
+  1152→        >
+  1153→          <div className="space-y-2.5">
+  1154→            {REFERRAL_TIERS.map((t, i) => {
+  1155→              const LucideIcon = (Icons as unknown as Record<string, Icons.LucideIcon>)[t.icon];
+  1156→              const reached = 12 >= t.count;
+  1157→              return (
+  1158→                <motion.div
+  1159→                  key={t.count}
+  1160→                  variants={cardReveal}
+  1161→                  custom={i}
+  1162→                  initial="hidden"
+  1163→                  whileInView="visible"
+  1164→                  viewport={{ once: true }}
+  1165→                  className={cn(
+  1166→                    "flex items-center gap-3 p-3 rounded-xl ring-1",
+  1167→                    reached ? "bg-emerald-brand/5 ring-emerald-brand/20" : "glass-1 ring-border"
+  1168→                  )}
+  1169→                >
+  1170→                  <div
+  1171→                    className={cn(
+  1172→                      "size-10 rounded-xl flex items-center justify-center shrink-0 ring-1",
+  1173→                      reached
+  1174→                        ? "bg-emerald-brand/10 ring-emerald-brand/20 text-emerald-brand"
+  1175→                        : "glass-1 ring-border text-muted-foreground"
+  1176→                    )}
+  1177→                  >
+  1178→                    <LucideIcon size={18} />
+  1179→                  </div>
+  1180→                  <div className="flex-1 min-w-0">
+  1181→                    <p className="font-semibold text-sm text-foreground">{t.label}</p>
+  1182→                    <p className="text-xs text-muted-foreground">Invite {t.count} friends</p>
+  1183→                  </div>
+  1184→                  <div className="text-right">
+  1185→                    <p className="font-bold text-gold tabular-nums text-sm">+{t.reward.toLocaleString("en-IN")}</p>
+  1186→                    {reached && (
+  1187→                      <StatusBadge variant="success" className="mt-0.5">
+  1188→                        <Icons.Check size={10} className="mr-0.5" /> Done
+  1189→                      </StatusBadge>
+  1190→                    )}
+  1191→                  </div>
+  1192→                </motion.div>
+  1193→              );
+  1194→            })}
+  1195→          </div>
+  1196→        </WidgetCard>
+  1197→      </div>
+  1198→
+  1199→      <WidgetCard
+  1200→        title="Referral History"
+  1201→        description="Your invited friends and reward status"
+  1202→        icon={<Icons.History size={18} />}
+  1203→        action={
+  1204→          <LootButton variant="ghost" size="sm" onClick={() => navigate("transactions")}>
+  1205→            View All
+  1206→          </LootButton>
+  1207→        }
+  1208→      >
+  1209→        <SkeletonRow count={5} />
+  1210→      </WidgetCard>
+  1211→    </PageContainer>
+  1212→  );
+  1213→}
+  1214→
+  1215→/* ============================================================
+  1216→   Transactions
+  1217→   ============================================================ */
+  1218→
+  1219→function TransactionsPage() {
+  1220→  const wallet = useWalletStore();
+  1221→
+  1222→  return (
+  1223→    <PageContainer>
+  1224→      <PageHeader
+  1225→        title="Transactions"
+  1226→        description="View and track all your coin transactions and redemption history."
+  1227→      />
+  1228→
+  1229→      <motion.div
+  1230→        variants={staggerContainer}
+  1231→        initial="hidden"
+  1232→        animate="visible"
+  1233→        className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6"
+  1234→      >
+  1235→        <StatCard index={0} label="Total In" value={wallet.lifetimeEarned} suffix=" coins" icon="ArrowDownLeft" accent="emerald" trend={{ value: 12, positive: true }} />
+  1236→        <StatCard index={1} label="Total Out" value={wallet.lifetimeRedeemed} suffix=" coins" icon="ArrowUpRight" accent="rose" trend={{ value: 4, positive: false }} />
+  1237→        <StatCard index={2} label="Pending" value={wallet.pendingCoins} suffix=" coins" icon="Clock" accent="gold" />
+  1238→      </motion.div>
+  1239→
+  1240→      <GlassCard level={2} className="p-4 mb-6">
+  1241→        <div className="flex flex-col lg:flex-row gap-3">
+  1242→          <div className="flex-1 relative">
+  1243→            <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+  1244→            <Input placeholder="Search transactions…" className="pl-9" />
+  1245→          </div>
+  1246→          <div className="flex gap-2 flex-wrap">
+  1247→            <LootButton variant="glass" size="md" leftIcon={<Icons.Filter size={15} />}>
+  1248→              Type
+  1249→            </LootButton>
+  1250→            <LootButton variant="glass" size="md" leftIcon={<Icons.CheckCircle2 size={15} />}>
+  1251→              Status
+  1252→            </LootButton>
+  1253→            <LootButton variant="glass" size="md" leftIcon={<Icons.Calendar size={15} />}>
+  1254→              Date Range
+  1255→            </LootButton>
+  1256→            <LootButton variant="outline" size="md" leftIcon={<Icons.Download size={15} />}>
+  1257→              Export
+  1258→            </LootButton>
+  1259→          </div>
+  1260→        </div>
+  1261→      </GlassCard>
+  1262→
+  1263→      <GlassCard level={2} className="p-2 sm:p-4">
+  1264→        <SectionHeader
+  1265→          title="Transaction History"
+  1266→          description="Loading transactions…"
+  1267→          icon={<Icons.Receipt size={18} />}
+  1268→          className="px-2 mb-3"
+  1269→        />
+  1270→        <Table>
+  1271→          <TableHeader>
+  1272→            <TableRow>
+  1273→              <TableHead>Transaction</TableHead>
+  1274→              <TableHead className="hidden sm:table-cell">Date</TableHead>
+  1275→              <TableHead className="hidden md:table-cell">Type</TableHead>
+  1276→              <TableHead className="hidden md:table-cell">Status</TableHead>
+  1277→              <TableHead className="text-right">Amount</TableHead>
+  1278→            </TableRow>
+  1279→          </TableHeader>
+  1280→          <TableBody>
+  1281→            <TableRow>
+  1282→              <TableCell colSpan={5} className="p-0">
+  1283→                <div className="py-2">
+  1284→                  <SkeletonRow count={8} />
+  1285→                </div>
+  1286→              </TableCell>
+  1287→            </TableRow>
+  1288→          </TableBody>
+  1289→        </Table>
+  1290→      </GlassCard>
+  1291→    </PageContainer>
+  1292→  );
+  1293→}
+  1294→
+  1295→/* ============================================================
+  1296→   History (Activity Timeline)
+  1297→   ============================================================ */
+  1298→
+  1299→const ACTIVITY_TYPE_META: Record<
+  1300→  string,
+  1301→  { accent: "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy"; icon: string }
+  1302→> = {
+  1303→  earned: { accent: "emerald", icon: "PlayCircle" },
+  1304→  redeemed: { accent: "rose", icon: "ShoppingBag" },
+  1305→  mission: { accent: "electric", icon: "Target" },
+  1306→  referral: { accent: "purple", icon: "Users" },
+  1307→  bonus: { accent: "gold", icon: "CalendarCheck" },
+  1308→  system: { accent: "cyan", icon: "Settings" },
+  1309→};
+  1310→
+  1311→function HistoryPage() {
+  1312→  const { items } = useActivityStore();
+  1313→  const [filter, setFilter] = useState<"all" | "earned" | "redeemed" | "mission" | "referral">("all");
+  1314→
+  1315→  const filtered = useMemo(() => {
+  1316→    if (filter === "all") return items;
+  1317→    return items.filter((a) => a.type === filter);
+  1318→  }, [items, filter]);
+  1319→
+  1320→  return (
+  1321→    <PageContainer>
+  1322→      <PageHeader
+  1323→        title="Activity History"
+  1324→        description="A complete timeline of everything you've done on LootLoom."
+  1325→      />
+  1326→
+  1327→      <motion.div
+  1328→        variants={staggerContainer}
+  1329→        initial="hidden"
+  1330→        animate="visible"
+  1331→        className="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1"
+  1332→      >
+  1333→        {(["all", "earned", "redeemed", "mission", "referral"] as const).map((f) => (
+  1334→          <motion.div key={f} variants={cardReveal}>
+  1335→            <FilterTab active={filter === f} onClick={() => setFilter(f)}>
+  1336→              {f === "all" && "All"}
+  1337→              {f === "earned" && "Earned"}
+  1338→              {f === "redeemed" && "Redeemed"}
+  1339→              {f === "mission" && "Missions"}
+  1340→              {f === "referral" && "Referrals"}
+  1341→            </FilterTab>
+  1342→          </motion.div>
+  1343→        ))}
+  1344→      </motion.div>
+  1345→
+  1346→      {filtered.length === 0 ? (
+  1347→        <GlassCard level={2} className="p-0">
+  1348→          <EmptyState
+  1349→            icon="History"
+  1350→            title="No activity yet"
+  1351→            description="Once you start earning coins, your activity will appear here."
+  1352→          />
+  1353→        </GlassCard>
+  1354→      ) : (
+  1355→        <GlassCard level={2} className="p-6">
+  1356→          <div className="relative pl-8">
+  1357→            <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-gradient-to-b from-electric via-purple-brand to-cyan-brand/30" />
+  1358→            {filtered.map((a, i) => {
+  1359→              const meta = ACTIVITY_TYPE_META[a.type] ?? ACTIVITY_TYPE_META.system;
+  1360→              const isPositive = (a.amount ?? 0) > 0;
+  1361→              return (
+  1362→                <motion.div
+  1363→                  key={a.id}
+  1364→                  initial={{ opacity: 0, x: -10 }}
+  1365→                  animate={{ opacity: 1, x: 0 }}
+  1366→                  transition={{ delay: i * 0.06 }}
+  1367→                  className="relative pb-6 last:pb-0"
+  1368→                >
+  1369→                  <div className="absolute -left-[1.65rem] top-1 size-4 rounded-full bg-background ring-2 ring-electric/40 flex items-center justify-center">
+  1370→                    <div className="size-1.5 rounded-full bg-gradient-to-br from-electric to-purple-brand" />
+  1371→                  </div>
+  1372→                  <div className="flex items-start gap-3">
+  1373→                    <IconBadge name={meta.icon} accent={meta.accent} size="sm" />
+  1374→                    <div className="flex-1 min-w-0">
+  1375→                      <div className="flex items-center justify-between gap-2">
+  1376→                        <h4 className="font-semibold text-sm text-foreground">{a.title}</h4>
+  1377→                        {a.amount !== undefined && (
+  1378→                          <span
+  1379→                            className={cn(
+  1380→                              "font-bold text-sm tabular-nums",
+  1381→                              isPositive ? "text-emerald-brand" : "text-rose-brand"
+  1382→                            )}
+  1383→                          >
+  1384→                            {isPositive ? "+" : ""}{a.amount.toLocaleString("en-IN")}
+  1385→                          </span>
+  1386→                        )}
+  1387→                      </div>
+  1388→                      <p className="text-xs text-muted-foreground">{a.description}</p>
+  1389→                      <p className="text-[11px] text-muted-foreground/70 mt-0.5">{a.time}</p>
+  1390→                    </div>
+  1391→                  </div>
+  1392→                </motion.div>
+  1393→              );
+  1394→            })}
+  1395→          </div>
+  1396→        </GlassCard>
+  1397→      )}
+  1398→    </PageContainer>
+  1399→  );
+  1400→}
+  1401→
+  1402→/* ============================================================
+  1403→   Support
+  1404→   ============================================================ */
+  1405→
+  1406→function SupportPage() {
+  1407→  const quickActions = [
+  1408→    { icon: "TicketPlus", label: "Create Ticket", desc: "Submit a new support request", accent: "electric" as const, action: "Create" },
+  1409→    { icon: "Search", label: "Track Ticket", desc: "Check status of your tickets", accent: "cyan" as const, action: "Track" },
+  1410→    { icon: "BookOpen", label: "Help Center", desc: "Browse guides and tutorials", accent: "purple" as const, action: "Open" },
+  1411→    { icon: "Mail", label: "Contact Us", desc: "Email our support team", accent: "gold" as const, action: "Email" },
+  1412→    { icon: "MessageCircleQuestion", label: "FAQ", desc: "Frequently asked questions", accent: "emerald" as const, action: "View" },
+  1413→    { icon: "Headset", label: "Live Chat", desc: "Coming soon", accent: "rose" as const, action: "Locked", locked: true },
+  1414→  ];
+  1415→
+  1416→  return (
+  1417→    <PageContainer>
+  1418→      <PageHeader
+  1419→        title="Support Center"
+  1420→        description="We're here to help. Find answers, submit tickets, or reach out directly."
+  1421→      />
+  1422→
+  1423→      <motion.div
+  1424→        variants={staggerContainer}
+  1425→        initial="hidden"
+  1426→        animate="visible"
+  1427→        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"
+  1428→      >
+  1429→        {quickActions.map((q, i) => {
+  1430→          const LucideIcon = (Icons as unknown as Record<string, Icons.LucideIcon>)[q.icon];
+  1431→          return (
+  1432→            <motion.div key={q.label} variants={cardReveal} custom={i} {...hoverLift}>
+  1433→              <GlassCard level={2} hover sheen className={cn("p-5 h-full flex flex-col ring-1", q.locked ? "ring-border opacity-70" : "ring-border")}>
+  1434→                <div className="flex items-start justify-between mb-3">
+  1435→                  <IconBadge name={q.icon} accent={q.accent} />
+  1436→                  {q.locked && (
+  1437→                    <StatusBadge variant="default">
+  1438→                      <Icons.Lock size={10} className="mr-1" /> Soon
+  1439→                    </StatusBadge>
+  1440→                  )}
+  1441→                </div>
+  1442→                <h3 className="font-semibold text-sm text-foreground mb-1">{q.label}</h3>
+  1443→                <p className="text-xs text-muted-foreground leading-relaxed mb-4">{q.desc}</p>
+  1444→                <LootButton
+  1445→                  size="sm"
+  1446→                  variant={q.locked ? "ghost" : "outline"}
+  1447→                  fullWidth
+  1448→                  disabled={q.locked}
+  1449→                  rightIcon={q.locked ? <Icons.Lock size={13} /> : <Icons.ArrowRight size={14} />}
+  1450→                  className="mt-auto"
+  1451→                >
+  1452→                  {q.action}
+  1453→                </LootButton>
+  1454→              </GlassCard>
+  1455→            </motion.div>
+  1456→          );
+  1457→        })}
+  1458→      </motion.div>
+  1459→
+  1460→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+  1461→        <WidgetCard
+  1462→          title="FAQ"
+  1463→          description="Quick answers to common questions"
+  1464→          icon={<Icons.HelpCircle size={18} />}
+  1465→        >
+  1466→          <Accordion type="single" collapsible className="w-full">
+  1467→            {FAQS.map((f, i) => (
+  1468→              <AccordionItem key={i} value={`item-${i}`}>
+  1469→                <AccordionTrigger className="text-sm font-medium text-foreground text-left hover:no-underline">
+  1470→                  {f.q}
+  1471→                </AccordionTrigger>
+  1472→                <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
+  1473→                  {f.a}
+  1474→                </AccordionContent>
+  1475→              </AccordionItem>
+  1476→            ))}
+  1477→          </Accordion>
+  1478→        </WidgetCard>
+  1479→
+  1480→        <WidgetCard
+  1481→          title="Contact Form"
+  1482→          description="Send us a message"
+  1483→          icon={<Icons.Mail size={18} />}
+  1484→        >
+  1485→          <div className="space-y-3">
+  1486→            <div>
+  1487→              <label className="text-xs font-semibold text-muted-foreground uppercase mb-1.5 block">Name</label>
+  1488→              <Input placeholder="Your name" disabled />
+  1489→            </div>
+  1490→            <div>
+  1491→              <label className="text-xs font-semibold text-muted-foreground uppercase mb-1.5 block">Email</label>
+  1492→              <Input type="email" placeholder="you@example.com" disabled />
+  1493→            </div>
+  1494→            <div>
+  1495→              <label className="text-xs font-semibold text-muted-foreground uppercase mb-1.5 block">Subject</label>
+  1496→              <Input placeholder="Brief subject" disabled />
+  1497→            </div>
+  1498→            <div>
+  1499→              <label className="text-xs font-semibold text-muted-foreground uppercase mb-1.5 block">Message</label>
+  1500→              <Textarea placeholder="Describe your issue…" rows={4} disabled />
+  1501→            </div>
+  1502→            <LootButton variant="electric" fullWidth disabled leftIcon={<Icons.Send size={15} />}>
+  1503→              Submit (Coming Soon)
+  1504→            </LootButton>
+  1505→          </div>
+  1506→        </WidgetCard>
+  1507→      </div>
+  1508→
+  1509→      <WidgetCard
+  1510→        title="Recent Tickets"
+  1511→        description="Your submitted support requests"
+  1512→        icon={<Icons.Ticket size={18} />}
+  1513→      >
+  1514→        <SkeletonRow count={4} />
+  1515→      </WidgetCard>
+  1516→    </PageContainer>
+  1517→  );
+  1518→}
+  1519→
+  1520→/* ============================================================
+  1521→   Settings
+  1522→   ============================================================ */
+  1523→
+  1524→function SettingsRow({
+  1525→  icon,
+  1526→  title,
+  1527→  desc,
+  1528→  children,
+  1529→}: {
+  1530→  icon: React.ReactNode;
+  1531→  title: string;
+  1532→  desc: string;
+  1533→  children: React.ReactNode;
+  1534→}) {
+  1535→  return (
+  1536→    <div className="flex items-center justify-between gap-4 py-4 border-b border-border/60 last:border-b-0">
+  1537→      <div className="flex items-center gap-3 min-w-0">
+  1538→        <div className="size-9 rounded-xl glass-1 ring-1 ring-border flex items-center justify-center text-electric shrink-0">
+  1539→          {icon}
+  1540→        </div>
+  1541→        <div className="min-w-0">
+  1542→          <p className="font-semibold text-sm text-foreground">{title}</p>
+  1543→          <p className="text-xs text-muted-foreground truncate">{desc}</p>
+  1544→        </div>
+  1545→      </div>
+  1546→      <div className="shrink-0">{children}</div>
+  1547→    </div>
+  1548→  );
+  1549→}
+  1550→
+  1551→function SettingsPage() {
+  1552→  const user = useUserStore();
+  1553→  const [notifs, setNotifs] = useState({
+  1554→    rewards: true,
+  1555→    security: true,
+  1556→    social: false,
+  1557→    announcements: true,
+  1558→    weekly: true,
+  1559→  });
+  1560→  const [prefs, setPrefs] = useState({
+  1561→    soundEffects: true,
+  1562→    animations: true,
+  1563→    autoClaim: false,
+  1564→  });
+  1565→
+  1566→  return (
+  1567→    <PageContainer>
+  1568→      <PageHeader title="Settings" description="Manage your account, security, and preferences." />
+  1569→
+  1570→      <Tabs defaultValue="profile" className="w-full">
+  1571→        <TabsList className="glass-1 h-auto p-1 mb-6 flex-wrap">
+  1572→          <TabsTrigger value="profile">Profile</TabsTrigger>
+  1573→          <TabsTrigger value="security">Security</TabsTrigger>
+  1574→          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+  1575→          <TabsTrigger value="preferences">Preferences</TabsTrigger>
+  1576→          <TabsTrigger value="privacy">Privacy</TabsTrigger>
+  1577→        </TabsList>
+  1578→
+  1579→        <TabsContent value="profile">
+  1580→          <GlassCard level={2} className="p-6">
+  1581→            <SectionHeader title="Profile Information" description="Your account details" icon={<Icons.User size={18} />} className="mb-4" />
+  1582→            <div className="flex flex-col sm:flex-row gap-6 mb-6">
+  1583→              <div className="flex flex-col items-center gap-3">
+  1584→                <div className="size-24 rounded-3xl bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))] text-white text-2xl font-bold flex items-center justify-center shadow-[var(--shadow-glow)]">
+  1585→                  {getInitials(user.fullName)}
+  1586→                </div>
+  1587→                <LootButton variant="glass" size="sm" leftIcon={<Icons.Camera size={14} />} disabled>
+  1588→                  Change
+  1589→                </LootButton>
+  1590→              </div>
+  1591→              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1592→                <div>
+  1593→                  <label className="text-xs font-semibold text-muted-foreground uppercase mb-1.5 block">Full Name</label>
+  1594→                  <Input value={user.fullName} readOnly />
+  1595→                </div>
+  1596→                <div>
+  1597→                  <label className="text-xs font-semibold text-muted-foreground uppercase mb-1.5 block">Username</label>
+  1598→                  <Input value={user.username} readOnly />
+  1599→                </div>
+  1600→                <div>
+  1601→                  <label className="text-xs font-semibold text-muted-foreground uppercase mb-1.5 block">Email</label>
+  1602→                  <Input value={user.email} readOnly />
+  1603→                </div>
+  1604→                <div>
+  1605→                  <label className="text-xs font-semibold text-muted-foreground uppercase mb-1.5 block">Member Since</label>
+  1606→                  <Input value={user.memberSince} readOnly />
+  1607→                </div>
+  1608→                <div className="sm:col-span-2">
+  1609→                  <label className="text-xs font-semibold text-muted-foreground uppercase mb-1.5 block">Bio</label>
+  1610→                  <Textarea value="Earning coins and climbing the leaderboard on LootLoom." readOnly rows={2} />
+  1611→                </div>
+  1612→              </div>
+  1613→            </div>
+  1614→            <div className="flex justify-end gap-2">
+  1615→              <LootButton variant="glass" size="md">Cancel</LootButton>
+  1616→              <LootButton variant="electric" size="md" leftIcon={<Icons.Save size={15} />} disabled>
+  1617→                Save Changes
+  1618→              </LootButton>
+  1619→            </div>
+  1620→          </GlassCard>
+  1621→        </TabsContent>
+  1622→
+  1623→        <TabsContent value="security">
+  1624→          <div className="space-y-4">
+  1625→            <GlassCard level={2} className="p-6">
+  1626→              <SectionHeader title="Password" description="Update your account password" icon={<Icons.KeyRound size={18} />} className="mb-4" />
+  1627→              <div className="space-y-3 max-w-md">
+  1628→                <Input type="password" placeholder="Current password" disabled />
+  1629→                <Input type="password" placeholder="New password" disabled />
+  1630→                <Input type="password" placeholder="Confirm new password" disabled />
+  1631→                <LootButton variant="electric" size="md" leftIcon={<Icons.ShieldCheck size={15} />} disabled>
+  1632→                  Update Password
+  1633→                </LootButton>
+  1634→              </div>
+  1635→            </GlassCard>
+  1636→            <GlassCard level={2} className="p-6">
+  1637→              <SectionHeader title="Two-Factor Authentication" description="Add an extra layer of security" icon={<Icons.Smartphone size={18} />} className="mb-2" />
+  1638→              <SettingsRow icon={<Icons.Smartphone size={16} />} title="Authenticator App" desc="Use Google Authenticator or similar">
+  1639→                <LootButton variant="outline" size="sm" disabled>
+  1640→                  Enable
+  1641→                </LootButton>
+  1642→              </SettingsRow>
+  1643→              <SettingsRow icon={<Icons.MessageSquare size={16} />} title="SMS Verification" desc="Receive codes via SMS">
+  1644→                <LootButton variant="outline" size="sm" disabled>
+  1645→                  Enable
+  1646→                </LootButton>
+  1647→              </SettingsRow>
+  1648→            </GlassCard>
+  1649→            <GlassCard level={2} className="p-6">
+  1650→              <SectionHeader title="Active Sessions" description="Devices currently signed in" icon={<Icons.MonitorSmartphone size={18} />} className="mb-2" />
+  1651→              <SettingsRow icon={<Icons.Monitor size={16} />} title="Chrome on Windows" desc="Mumbai, IN · Current session">
+  1652→                <StatusBadge variant="success" dot pulse>
+  1653→                  Active
+  1654→                </StatusBadge>
+  1655→              </SettingsRow>
+  1656→              <SettingsRow icon={<Icons.Smartphone size={16} />} title="Safari on iPhone" desc="Mumbai, IN · 2 hours ago">
+  1657→                <LootButton variant="ghost" size="sm" className="text-rose-brand">
+  1658→                  Revoke
+  1659→                </LootButton>
+  1660→              </SettingsRow>
+  1661→            </GlassCard>
+  1662→          </div>
+  1663→        </TabsContent>
+  1664→
+  1665→        <TabsContent value="notifications">
+  1666→          <GlassCard level={2} className="p-6">
+  1667→            <SectionHeader title="Notification Preferences" description="Choose what you want to be notified about" icon={<Icons.Bell size={18} />} className="mb-2" />
+  1668→            <SettingsRow icon={<Icons.Gift size={16} />} title="Rewards & Bonuses" desc="Daily bonuses, mission rewards, redemptions">
+  1669→              <Switch checked={notifs.rewards} onCheckedChange={(v) => setNotifs((p) => ({ ...p, rewards: v }))} />
+  1670→            </SettingsRow>
+  1671→            <SettingsRow icon={<Icons.ShieldCheck size={16} />} title="Security Alerts" desc="New sign-ins, password changes">
+  1672→              <Switch checked={notifs.security} onCheckedChange={(v) => setNotifs((p) => ({ ...p, security: v }))} />
+  1673→            </SettingsRow>
+  1674→            <SettingsRow icon={<Icons.Users size={16} />} title="Social Activity" desc="Friend referrals, mentions">
+  1675→              <Switch checked={notifs.social} onCheckedChange={(v) => setNotifs((p) => ({ ...p, social: v }))} />
+  1676→            </SettingsRow>
+  1677→            <SettingsRow icon={<Icons.Megaphone size={16} />} title="Announcements" desc="Platform news and updates">
+  1678→              <Switch checked={notifs.announcements} onCheckedChange={(v) => setNotifs((p) => ({ ...p, announcements: v }))} />
+  1679→            </SettingsRow>
+  1680→            <SettingsRow icon={<Icons.CalendarCheck size={16} />} title="Weekly Summary" desc="Your weekly earnings recap">
+  1681→              <Switch checked={notifs.weekly} onCheckedChange={(v) => setNotifs((p) => ({ ...p, weekly: v }))} />
+  1682→            </SettingsRow>
+  1683→          </GlassCard>
+  1684→        </TabsContent>
+  1685→
+  1686→        <TabsContent value="preferences">
+  1687→          <GlassCard level={2} className="p-6">
+  1688→            <SectionHeader title="Preferences" description="Customize your experience" icon={<Icons.SlidersHorizontal size={18} />} className="mb-2" />
+  1689→            <SettingsRow icon={<Icons.Coins size={16} />} title="Display Currency" desc="How coin values are shown">
+  1690→              <LootButton variant="glass" size="sm" rightIcon={<Icons.ChevronDown size={14} />}>
+  1691→                Coins (₹1 = 10)
+  1692→              </LootButton>
+  1693→            </SettingsRow>
+  1694→            <SettingsRow icon={<Icons.Languages size={16} />} title="Language" desc="Interface language">
+  1695→              <LootButton variant="glass" size="sm" rightIcon={<Icons.ChevronDown size={14} />}>
+  1696→                English (IN)
+  1697→              </LootButton>
+  1698→            </SettingsRow>
+  1699→            <SettingsRow icon={<Icons.Palette size={16} />} title="Theme" desc="Light or dark mode">
+  1700→              <LootButton variant="glass" size="sm" rightIcon={<Icons.ChevronDown size={14} />}>
+  1701→                Light
+  1702→              </LootButton>
+  1703→            </SettingsRow>
+  1704→            <SettingsRow icon={<Icons.Volume2 size={16} />} title="Sound Effects" desc="Play sounds on actions">
+  1705→              <Switch checked={prefs.soundEffects} onCheckedChange={(v) => setPrefs((p) => ({ ...p, soundEffects: v }))} />
+  1706→            </SettingsRow>
+  1707→            <SettingsRow icon={<Icons.Sparkles size={16} />} title="Animations" desc="Enable motion and transitions">
+  1708→              <Switch checked={prefs.animations} onCheckedChange={(v) => setPrefs((p) => ({ ...p, animations: v }))} />
+  1709→            </SettingsRow>
+  1710→            <SettingsRow icon={<Icons.CalendarCheck size={16} />} title="Auto-claim Daily Bonus" desc="Claim automatically when you log in">
+  1711→              <Switch checked={prefs.autoClaim} onCheckedChange={(v) => setPrefs((p) => ({ ...p, autoClaim: v }))} />
+  1712→            </SettingsRow>
+  1713→          </GlassCard>
+  1714→        </TabsContent>
+  1715→
+  1716→        <TabsContent value="privacy">
+  1717→          <GlassCard level={2} className="p-6">
+  1718→            <SectionHeader title="Privacy" description="Control your data and visibility" icon={<Icons.Lock size={18} />} className="mb-2" />
+  1719→            <SettingsRow icon={<Icons.Eye size={16} />} title="Public Profile" desc="Show your profile to other users">
+  1720→              <Switch defaultChecked />
+  1721→            </SettingsRow>
+  1722→            <SettingsRow icon={<Icons.BarChart3 size={16} />} title="Leaderboard Visibility" desc="Appear in global rankings">
+  1723→              <Switch defaultChecked />
+  1724→            </SettingsRow>
+  1725→            <SettingsRow icon={<Icons.Cookie size={16} />} title="Analytics Cookies" desc="Help us improve LootLoom">
+  1726→              <Switch defaultChecked />
+  1727→            </SettingsRow>
+  1728→            <SettingsRow icon={<Icons.Download size={16} />} title="Download My Data" desc="Export all your account data">
+  1729→              <LootButton variant="outline" size="sm" disabled>
+  1730→                Request
+  1731→              </LootButton>
+  1732→            </SettingsRow>
+  1733→            <SettingsRow icon={<Icons.Trash2 size={16} />} title="Delete Account" desc="Permanently delete your account">
+  1734→              <LootButton variant="destructive" size="sm" disabled>
+  1735→                Delete
+  1736→              </LootButton>
+  1737→            </SettingsRow>
+  1738→          </GlassCard>
+  1739→        </TabsContent>
+  1740→      </Tabs>
+  1741→    </PageContainer>
+  1742→  );
+  1743→}
+  1744→
+  1745→/* ============================================================
+  1746→   Profile
+  1747→   ============================================================ */
+  1748→
+  1749→function ProfilePage() {
+  1750→  const user = useUserStore();
+  1751→  const wallet = useWalletStore();
+  1752→  const navigate = useNavigationStore((s) => s.navigate);
+  1753→  const { items } = useActivityStore();
+  1754→  const xpPct = Math.round((user.xp / user.xpToNext) * 100);
+  1755→  const recentBadges = ACHIEVEMENTS.filter((a) => a.unlocked).slice(0, 4);
+  1756→
+  1757→  return (
+  1758→    <PageContainer>
+  1759→      <PageHeader
+  1760→        title="Profile"
+  1761→        description="Your LootLoom identity, all in one place."
+  1762→        actions={
+  1763→          <LootButton variant="electric" size="sm" leftIcon={<Icons.Pencil size={14} />} onClick={() => navigate("settings")}>
+  1764→            Edit Profile
+  1765→          </LootButton>
+  1766→        }
+  1767→      />
+  1768→
+  1769→      <motion.div
+  1770→        variants={staggerContainer}
+  1771→        initial="hidden"
+  1772→        animate="visible"
+  1773→        className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+  1774→      >
+  1775→        {/* Profile Card */}
+  1776→        <motion.div variants={cardReveal} className="lg:col-span-1">
+  1777→          <GlassCard level={3} sheen reflect className="p-6 h-full ring-1 ring-electric/15">
+  1778→            <div className="flex flex-col items-center text-center">
+  1779→              <motion.div
+  1780→                animate={{ y: [0, -6, 0] }}
+  1781→                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+  1782→                className="relative mb-4"
+  1783→              >
+  1784→                <div className="absolute inset-0 blur-2xl bg-electric/20 rounded-full" />
+  1785→                <div className="relative size-28 rounded-3xl bg-[linear-gradient(135deg,var(--electric),var(--cyan-brand)_55%,var(--purple-brand))] text-white text-3xl font-bold flex items-center justify-center shadow-[var(--shadow-glow)]">
+  1786→                  {getInitials(user.fullName)}
+  1787→                </div>
+  1788→                <div className="absolute -bottom-1 -right-1 size-8 rounded-2xl glass-3 ring-1 ring-border flex items-center justify-center">
+  1789→                  <span className="text-xs font-bold text-foreground">L{user.level}</span>
+  1790→                </div>
+  1791→              </motion.div>
+  1792→              <h2 className="text-xl font-bold text-foreground">{user.fullName}</h2>
+  1793→              <p className="text-sm text-muted-foreground">{user.username}</p>
+  1794→              <p className="text-xs text-muted-foreground/80 mt-1">{user.email}</p>
+  1795→
+  1796→              <div className="w-full flex items-center justify-center gap-2 my-4">
+  1797→                <StatusBadge variant="electric" dot pulse>
+  1798→                  Online
+  1799→                </StatusBadge>
+  1800→                <StatusBadge variant="gold">Premium</StatusBadge>
+  1801→              </div>
+  1802→
+  1803→              <div className="w-full flex items-center gap-4 mb-5">
+  1804→                <ProgressRing value={xpPct} size={64} strokeWidth={6} gradient="electric" showLabel={false} />
+  1805→                <div className="flex-1 text-left">
+  1806→                  <p className="text-xs text-muted-foreground font-semibold uppercase">Level Progress</p>
+  1807→                  <p className="text-sm font-bold text-foreground tabular-nums">
+  1808→                    {user.xp.toLocaleString("en-IN")} / {user.xpToNext.toLocaleString("en-IN")} XP
+  1809→                  </p>
+  1810→                  <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+  1811→                    <motion.div
+  1812→                      initial={{ width: 0 }}
+  1813→                      whileInView={{ width: `${xpPct}%` }}
+  1814→                      viewport={{ once: true }}
+  1815→                      transition={{ duration: 1, delay: 0.3 }}
+  1816→                      className="h-full bg-[linear-gradient(90deg,var(--electric),var(--cyan-brand))]"
+  1817→                    />
+  1818→                  </div>
+  1819→                </div>
+  1820→              </div>
+  1821→
+  1822→              <div className="grid grid-cols-2 gap-3 w-full mb-4">
+  1823→                <div className="glass-1 rounded-xl p-3 text-center ring-1 ring-border">
+  1824→                  <div className="flex items-center justify-center gap-1.5 mb-1">
+  1825→                    <Icons.Coins className="text-gold" size={14} />
+  1826→                    <p className="text-xs text-muted-foreground font-semibold uppercase">Coins</p>
+  1827→                  </div>
+  1828→                  <AnimatedCounter value={wallet.availableCoins} className="text-lg font-bold text-foreground" />
+  1829→                </div>
+  1830→                <div className="glass-1 rounded-xl p-3 text-center ring-1 ring-border">
+  1831→                  <div className="flex items-center justify-center gap-1.5 mb-1">
+  1832→                    <Icons.Trophy className="text-purple-brand" size={14} />
+  1833→                    <p className="text-xs text-muted-foreground font-semibold uppercase">Rank</p>
+  1834→                  </div>
+  1835→                  <p className="text-lg font-bold text-foreground tabular-nums">#{user.rank}</p>
+  1836→                </div>
+  1837→                <div className="glass-1 rounded-xl p-3 text-center ring-1 ring-border">
+  1838→                  <div className="flex items-center justify-center gap-1.5 mb-1">
+  1839→                    <Icons.Flame className="text-rose-brand" size={14} />
+  1840→                    <p className="text-xs text-muted-foreground font-semibold uppercase">Streak</p>
+  1841→                  </div>
+  1842→                  <p className="text-lg font-bold text-foreground tabular-nums">{user.dailyStreak}d</p>
+  1843→                </div>
+  1844→                <div className="glass-1 rounded-xl p-3 text-center ring-1 ring-border">
+  1845→                  <div className="flex items-center justify-center gap-1.5 mb-1">
+  1846→                    <Icons.CalendarDays className="text-emerald-brand" size={14} />
+  1847→                    <p className="text-xs text-muted-foreground font-semibold uppercase">Member</p>
+  1848→                  </div>
+  1849→                  <p className="text-lg font-bold text-foreground">{user.memberSince}</p>
+  1850→                </div>
+  1851→              </div>
+  1852→
+  1853→              <div className="w-full glass-1 rounded-xl p-3 ring-1 ring-border flex items-center justify-between">
+  1854→                <div className="flex items-center gap-2">
+  1855→                  <Icons.Ticket className="text-electric" size={15} />
+  1856→                  <span className="text-xs text-muted-foreground">Referral Code</span>
+  1857→                </div>
+  1858→                <span className="font-mono font-bold text-sm text-foreground">{user.referralCode}</span>
+  1859→              </div>
+  1860→            </div>
+  1861→          </GlassCard>
+  1862→        </motion.div>
+  1863→
+  1864→        {/* Right column */}
+  1865→        <motion.div variants={cardReveal} custom={1} className="lg:col-span-2 space-y-4">
+  1866→          <Grid cols={3}>
+  1867→            <StatCard index={0} label="Total Earned" value={wallet.lifetimeEarned} suffix="" icon="TrendingUp" accent="emerald" />
+  1868→            <StatCard index={1} label="Total Redeemed" value={wallet.lifetimeRedeemed} suffix="" icon="ShoppingBag" accent="rose" />
+  1869→            <StatCard index={2} label="Last Login" value={0} icon="Clock" accent="cyan" />
+  1870→          </Grid>
+  1871→
+  1872→          <WidgetCard
+  1873→            title="Badge Collection"
+  1874→            description={`${ACHIEVEMENTS.filter((a) => a.unlocked).length} of ${ACHIEVEMENTS.length} unlocked`}
+  1875→            icon={<Icons.Award size={18} />}
+  1876→            action={
+  1877→              <LootButton variant="ghost" size="sm" onClick={() => navigate("achievements")}>
+  1878→                View All
+  1879→              </LootButton>
+  1880→            }
+  1881→          >
+  1882→            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+  1883→              {recentBadges.map((b) => {
+  1884→                const meta = RARITY_META[b.rarity];
+  1885→                const LucideIcon = (Icons as unknown as Record<string, Icons.LucideIcon>)[b.icon] ?? Icons.Award;
+  1886→                return (
+  1887→                  <div
+  1888→                    key={b.id}
+  1889→                    className={cn(
+  1890→                      "glass-1 rounded-xl p-4 flex flex-col items-center text-center ring-1",
+  1891→                      meta.glow
+  1892→                    )}
+  1893→                  >
+  1894→                    <div className="size-10 rounded-xl glass-3 ring-1 ring-border flex items-center justify-center mb-2">
+  1895→                      <LucideIcon className="text-foreground" size={18} />
+  1896→                    </div>
+  1897→                    <p className="text-xs font-semibold text-foreground truncate w-full">{b.name}</p>
+  1898→                    <StatusBadge
+  1899→                      variant={
+  1900→                        b.rarity === "common" ? "cyan" : b.rarity === "rare" ? "electric" : b.rarity === "epic" ? "purple" : "gold"
+  1901→                      }
+  1902→                      className="mt-1"
+  1903→                    >
+  1904→                      {meta.label}
+  1905→                    </StatusBadge>
+  1906→                  </div>
+  1907→                );
+  1908→              })}
+  1909→            </div>
+  1910→          </WidgetCard>
+  1911→
+  1912→          <WidgetCard
+  1913→            title="Recent Activity"
+  1914→            description="Your latest actions"
+  1915→            icon={<Icons.Activity size={18} />}
+  1916→            action={
+  1917→              <LootButton variant="ghost" size="sm" onClick={() => navigate("history")}>
+  1918→                View All
+  1919→              </LootButton>
+  1920→            }
+  1921→          >
+  1922→            <div className="space-y-2.5">
+  1923→              {items.slice(0, 4).map((a) => {
+  1924→                const meta = ACTIVITY_TYPE_META[a.type] ?? ACTIVITY_TYPE_META.system;
+  1925→                const isPositive = (a.amount ?? 0) > 0;
+  1926→                return (
+  1927→                  <div key={a.id} className="flex items-center gap-3">
+  1928→                    <IconBadge name={meta.icon} accent={meta.accent} size="sm" />
+  1929→                    <div className="flex-1 min-w-0">
+  1930→                      <p className="text-sm font-semibold text-foreground truncate">{a.title}</p>
+  1931→                      <p className="text-xs text-muted-foreground truncate">{a.time}</p>
+  1932→                    </div>
+  1933→                    {a.amount !== undefined && (
+  1934→                      <span
+  1935→                        className={cn(
+  1936→                          "text-sm font-bold tabular-nums",
+  1937→                          isPositive ? "text-emerald-brand" : "text-rose-brand"
+  1938→                        )}
+  1939→                      >
+  1940→                        {isPositive ? "+" : ""}{a.amount.toLocaleString("en-IN")}
+  1941→                      </span>
+  1942→                    )}
+  1943→                  </div>
+  1944→                );
+  1945→              })}
+  1946→            </div>
+  1947→          </WidgetCard>
+  1948→        </motion.div>
+  1949→      </motion.div>
+  1950→    </PageContainer>
+  1951→  );
+  1952→}
+  1953→
+  1954→/* ============================================================
+  1955→   Main router
+  1956→   ============================================================ */
+  1957→
+  1958→const PAGES: Record<string, () => ReactElement> = {
+  1959→  notifications: NotificationsPage,
+  1960→  achievements: AchievementsPage,
+  1961→  leaderboard: LeaderboardPage,
+  1962→  "daily-bonus": DailyBonusPage,
+  1963→  missions: MissionsPage,
+  1964→  referral: ReferralPage,
+  1965→  transactions: TransactionsPage,
+  1966→  history: HistoryPage,
+  1967→  support: SupportPage,
+  1968→  settings: SettingsPage,
+  1969→  profile: ProfilePage,
+  1970→};
+  1971→
+  1972→export function PagesView() {
+  1973→  const current = useNavigationStore((s) => s.current) as ViewId;
+  1974→  const Page = PAGES[current];
+  1975→
+  1976→  return (
+  1977→    <AnimatePresence mode="wait">
+  1978→      {Page ? (
+  1979→        <Page key={current} />
+  1980→      ) : (
+  1981→        <PageContainer key="unknown">
+  1982→          <EmptyState
+  1983→            icon="Compass"
+  1984→            title="Page not found"
+  1985→            description="This page is not available yet."
+  1986→          />
+  1987→        </PageContainer>
+  1988→      )}
+  1989→    </AnimatePresence>
+  1990→  );
+  1991→}
+  1992→
