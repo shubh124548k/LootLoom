@@ -2436,3 +2436,85 @@ Quality improvements delivered:
 8. Code cleanup: deleted 670 lines dead code (pages/system-view.tsx), removed 6 console.log debug statements from lib/auth.ts
 - ESLint passes (0 errors, 0 warnings)
 - Dev server running on port 3000
+
+---
+Task ID: p9-complete
+Agent: main
+Task: Prompt 9 — Frontend backend integration layer (models, API, validation, errors, realtime, security)
+
+Work Log:
+- Created src/lib/models/ — 13 TypeScript model files (1226 lines total):
+  * common.ts (82) — ApiResponse, ApiErrorResponse, ApiResult, PaginationMeta, PaginatedResponse, ListQueryParams, ISODateString, UUID, EntityId, Timestamps, SoftDeletable, type guards
+  * auth.ts (186) — LoginRequest, SignupRequest, Session, SessionUser, LogoutResponse, ForgotPasswordRequest/Response, ResetPasswordRequest/Response, SendOtpRequest, VerifyOtpRequest/Response, GoogleAuthCallback, UserRole, CeoLoginRequest, CeoSession, CeoUser, TwoFactorSetupResponse, ActiveSession, LoginHistoryEntry, RecoveryCodesResponse
+  * user.ts (118) — UserProfile, UserSettings, NotificationPreferences, PrivacyPreferences, AppearancePreferences, UpdateProfileRequest, UsernameAvailabilityResponse, AvatarUploadResponse, PublicUserProfile, AdminUserView, UserStats, User, AccountStatus
+  * wallet.ts (89) — Wallet, CoinBalance, WalletSummary, ChartPoint, WalletTransactionType (ad_reward, offerwall_reward, redeem_deduction, admin_adjustment, referral_bonus, daily_bonus, mission_reward), TransactionDirection, TransactionStatus, Transaction, TransactionHistoryResponse, TransactionQuery
+  * ads.ts (122) — AdSession, AdSessionStatus, AdProvider, AdReward, AdCompletionRequest/Response, DailyAdLimit, OfferwallProvider, OfferwallProviderStatus, EarnStatistics
+  * reward.ts (72) — Reward, RewardAvailability, RewardFeatured, RewardCategory, RewardStatus, RewardCatalog, RewardQuery, RewardRedeemPreview
+  * redeem.ts (84) — RedeemStatus (pending, approved, rejected, completed, cancelled), CreateRedeemRequest, RedeemRequest, RedeemResponse, RedeemQuery, RedeemApprovalRequest, RedeemApprovalResponse, RedeemRequestWithUser
+  * history.ts (84) — HistoryType, HistoryItemStatus, CeoMessage, AdminReply, HistoryItem, HistoryQuery, deriveHistoryLabel helper
+  * notification.ts (86) — NotificationType (redeem_submitted, redeem_approved, redeem_rejected, coins_added, coins_deducted, ceo_message, support_reply, profile_updated, security_alert, system_event), NotificationStatus, Notification, NotificationWithMeta, MarkReadRequest, MarkAllReadResponse, NotificationQuery, CeoNotificationCategory, CeoNotification
+  * leaderboard.ts (40) — LeaderboardPeriod, LeaderboardEntry, LeaderboardResponse, LeaderboardQuery
+  * support.ts (88) — TicketStatus, MessageRole, SupportTicket, SupportMessage, SupportTicketWithMessages, CreateTicketRequest, CreateTicketResponse, ReplyRequest, ReplyResponse, CloseTicketRequest, TicketQuery
+  * ceo.ts (155) — CeoUserEntity, AdminActionType, AccountAction, AdminActionRequest/Response, AuditLog, AuditLogQuery, AuditLogResponse, CeoDashboardStats, CeoUserListItem, CeoUserQuery, CeoUserListResponse, CeoProfile, UpdateCeoProfileRequest, ChangePasswordRequest, ChangePasswordResponse
+  * index.ts (19) — barrel export
+
+- Created src/lib/errors/index.ts (247 lines) — error hierarchy:
+  * ApiError (base), UnauthorizedError (401), ForbiddenError (403), ValidationError (422 with fieldErrors), NotFoundError (404), ConflictError (409), RateLimitError (429 with retryAfterSeconds), ServerError (5xx), NetworkError (status 0)
+  * Type guards: isApiError, isUnauthorizedError, isValidationError, isNetworkError, isServerError
+  * toApiError normalizer (converts any thrown value to ApiError)
+
+- Created src/lib/security/index.ts (144 lines) — RBAC types:
+  * Role = UserRole | "visitor"
+  * CEO_ROLES = ["CEO", "SUPER_ADMIN"], AUTHENTICATED_ROLES = ["USER", "CEO", "SUPER_ADMIN"]
+  * Permission union (27 permissions across user/CEO/admin)
+  * PERMISSION_ROLE_MAP (permission → roles that grant it)
+  * RouteAccessLevel (public, authenticated, ceo, super-admin), ProtectedRoute
+  * Helpers: hasPermission(role, permission), canAccess(role, accessLevel), isCeoRole(role)
+
+- Created src/lib/api/ — typed HTTP client + 10 service modules (727 lines total):
+  * client.ts (236) — typed HttpClient wrapping fetch: JSON serialization, ApiResponse<T> envelope unwrapping, query string builder, AbortSignal/timeout support, credentials: "include" for NextAuth JWT, error mapping (status → ApiError subclass), httpClient singleton (get/post/put/patch/delete), requestRaw for non-JSON, buildListQuery helper
+  * auth.ts (75) — forgotPassword, resetPassword, sendOtp, verifyOtp, ceoLogin, ceoLogout, getActiveSessions, revokeSession, getLoginHistory, setup2FA, verify2FA, disable2FA, getRecoveryCodes, regenerateRecoveryCodes
+  * user.ts (53) — getProfile, updateProfile, checkUsername, uploadAvatar, removeAvatar, getSettings, updateSettings, getStats, deleteAccount
+  * wallet.ts (42) — getWallet, getSummary, getTransactions, getTransaction, adjustBalance (CEO)
+  * rewards.ts (33) — list, get, previewRedeem
+  * redeem.ts (33) — create, list, get, cancel
+  * history.ts (27) — list, get
+  * notifications.ts (32) — list, markRead, markAllRead, delete
+  * leaderboard.ts (19) — get
+  * support.ts (41) — list, get, create, reply, close
+  * ceo.ts (140) — getDashboardStats, listRedeemRequests, getRedeemRequest, approveRedeem, rejectRedeem, listUsers, getUser, performUserAction, listNotifications, markNotificationRead, markAllNotificationsRead, listTickets, getTicket, replyTicket, closeTicket, resolveTicket, listAuditLogs, getProfile, updateProfile, changePassword
+  * index.ts (30) — barrel export
+
+- Created src/lib/validation/index.ts (236 lines) — Zod schemas:
+  * Shared validators: emailSchema, passwordSchema (8+ chars, letter+digit), strongPasswordSchema (12+ chars, upper+lower+digit+symbol), usernameSchema (3-20 alphanumeric+underscore), phoneSchema (10-15 digits), fullNameSchema (2-50 chars), otpCodeSchema (6 digits)
+  * Form schemas: loginSchema, signupSchema (with confirmPassword + terms), forgotPasswordSchema, resetPasswordSchema, verifyOtpSchema, profileUpdateSchema, passwordChangeSchema (currentPassword != newPassword check), createTicketSchema, ticketReplySchema, redeemRequestSchema, ceoLoginSchema, redeemApprovalSchema (reject requires adminMessage), ceoProfileUpdateSchema
+  * Each schema exports a typed FormData type via z.infer
+
+- Created src/lib/realtime/index.ts (323 lines) — Socket.IO-ready integration:
+  * RealtimeEvent union (13 events: wallet.updated, transaction.created, notification.created, redeem.updated, support.reply, session.revoked, ceo:new-user, ceo:redeem-created, ceo:redeem-updated, ceo:support-created, ceo:support-reply, ceo:security-alert, ceo:system-event)
+  * RealtimePayloadMap (event → typed payload)
+  * getSocket() singleton (lazy connect via io("/?XTransformPort=3003"), auto-reconnect, websocket transport)
+  * disconnectSocket() for logout cleanup
+  * useRealtime(event, handler) hook (auto cleanup on unmount, ref-based handler)
+  * Domain hooks: useWalletRealtime, useNotificationRealtime, useRedeemRealtime, useSupportRealtime, useSessionRevoked, useCeoRealtime (all 7 CEO events)
+
+Verification:
+- bun run lint: 0 errors, 0 warnings
+- npx tsc --noEmit: 0 errors in any src/lib/ file (api, models, errors, validation, realtime, security)
+- Dev server compiles successfully (GET / 200)
+- No fake responses, no mock data, no hardcoded values — all functions are typed transport layer ready for OpenCode backend implementation
+- All API services use httpClient which: unwraps ApiResponse<T> envelopes, throws typed ApiError subclasses, forwards NextAuth JWT cookies, supports AbortSignal
+- All validation schemas use Zod, compatible with react-hook-form via zodResolver
+- All realtime events typed via RealtimePayloadMap for type-safe subscriptions
+- All roles/permissions defined in PERMISSION_ROLE_MAP for frontend UI gating
+
+Stage Summary:
+- 29 files created (~2936 lines) across 6 lib modules
+- Complete TypeScript model layer (13 domain files)
+- Complete error hierarchy (9 error classes + type guards + normalizer)
+- Complete security layer (27 permissions, 4 access levels, helper functions)
+- Complete API service layer (typed client + 10 service modules, 60+ typed API functions)
+- Complete validation layer (15 Zod schemas with typed FormData)
+- Complete realtime layer (13 typed events + 6 domain hooks)
+- Frontend is 100% backend-ready: OpenCode just needs to implement the API routes matching these contracts
+- ESLint passes (0 errors); TypeScript passes (0 errors in new files); dev server compiles
