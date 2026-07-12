@@ -5,8 +5,9 @@ import { useNavigationStore, useAuthStore } from "@/stores";
 import { BackgroundEngine, AppShell, pageTransition, RestrictedAccess, CeoLayout } from "@/components/lootloom";
 import { LEGAL_VIEWS, CEO_VIEWS, SYSTEM_VIEWS, AUTH_VIEWS } from "@/config/navigation";
 import { RouteGuard } from "@/components/auth";
-import { lazy, Suspense, useMemo } from "react";
+import { lazy, Suspense, useMemo, Component, type ReactNode } from "react";
 import { GlassLoader } from "@/components/lootloom/states";
+import { RefreshCw, AlertTriangle } from "lucide-react";
 import type { ViewId } from "@/types";
 
 // Lazy-load all feature views for code splitting
@@ -40,17 +41,93 @@ const SYSTEM_SET = new Set(SYSTEM_VIEWS);
 const LEGAL_SET = new Set(LEGAL_VIEWS);
 const CEO_SET = new Set(CEO_VIEWS);
 
+/**
+ * ViewErrorBoundary — catches errors thrown by lazy-loaded views
+ * (especially ChunkLoadError when the dev server recompiles).
+ * Prevents a single failed chunk from crashing the entire app.
+ */
+interface ViewErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ViewErrorBoundary extends Component<
+  { children: ReactNode },
+  ViewErrorBoundaryState
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ViewErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  handleRetry = () => {
+    // For chunk load errors, reload the page to get fresh chunks
+    const isChunkError =
+      this.state.error?.message?.toLowerCase().includes("chunkloaderror") ||
+      this.state.error?.message?.toLowerCase().includes("failed to fetch dynamically imported module") ||
+      this.state.error?.message?.toLowerCase().includes("loading chunk");
+
+    if (isChunkError) {
+      const hasReloaded = sessionStorage.getItem("lootloom-view-reload");
+      if (!hasReloaded) {
+        sessionStorage.setItem("lootloom-view-reload", "1");
+        window.location.reload();
+        return;
+      }
+      sessionStorage.removeItem("lootloom-view-reload");
+    }
+
+    // Otherwise just reset the boundary and try again
+    this.setState({ hasError: false, error: null });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center min-h-[60vh] px-4">
+          <div className="max-w-md w-full text-center">
+            <div className="size-16 rounded-2xl bg-rose-brand/10 ring-1 ring-rose-brand/20 flex items-center justify-center mx-auto mb-4 text-rose-brand">
+              <AlertTriangle size={28} />
+            </div>
+            <h2 className="text-lg font-bold text-foreground mb-2">
+              Failed to load
+            </h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              This section couldn&apos;t load. Please try again.
+            </p>
+            <button
+              onClick={this.handleRetry}
+              className="inline-flex items-center gap-2 h-10 px-5 rounded-xl text-sm font-semibold text-white bg-[linear-gradient(120deg,var(--electric),var(--cyan-brand))] hover:opacity-90 transition-all"
+            >
+              <RefreshCw size={14} />
+              Retry
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function ViewSuspense({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <GlassLoader label="Loading" />
-        </div>
-      }
-    >
-      {children}
-    </Suspense>
+    <ViewErrorBoundary>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <GlassLoader label="Loading" />
+          </div>
+        }
+      >
+        {children}
+      </Suspense>
+    </ViewErrorBoundary>
   );
 }
 

@@ -111,7 +111,7 @@ async function fetchRealNotificationsAndActivity() {
  */
 export function AuthDataSync({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
-  // Connect to real-time service when authenticated
+  // Connect to real-time service when authenticated (best-effort, non-blocking)
   useRealtimeSync();
   const { setAuthenticated, setRole } = useAuthStore();
   const { setUser, resetUser } = useUserStore();
@@ -121,6 +121,9 @@ export function AuthDataSync({ children }: { children: React.ReactNode }) {
   const lastFetchRef = useRef<string | null>(null);
 
   useEffect(() => {
+    // Guard: if session status is loading, do nothing (avoids premature resets)
+    if (status === "loading") return;
+
     if (status === "authenticated" && session?.user) {
       // Mark authenticated
       setAuthenticated(true);
@@ -140,20 +143,26 @@ export function AuthDataSync({ children }: { children: React.ReactNode }) {
       const userId = (session.user as { id?: string }).id;
       if (userId && userId !== lastFetchRef.current) {
         lastFetchRef.current = userId;
+        // Wrap in try-catch so fetch failures don't crash the app
         void (async () => {
-          const data = await fetchRealUserData(userId);
-          if (data) {
-            setUser(data.user);
-            if (data.wallet) {
-              setWallet(data.wallet);
+          try {
+            const data = await fetchRealUserData(userId);
+            if (data) {
+              setUser(data.user);
+              if (data.wallet) {
+                setWallet(data.wallet);
+              }
             }
+            const { notifications, unreadCount, activities } = await fetchRealNotificationsAndActivity();
+            setNotifications(notifications);
+            if (unreadCount !== undefined) {
+              // Update unread count via setItems which recalculates, but we have the real count
+            }
+            setActivities(activities);
+          } catch {
+            // Silent — app still works with session-only data
+            // Realtime + full profile will load on next navigation/focus
           }
-          const { notifications, unreadCount, activities } = await fetchRealNotificationsAndActivity();
-          setNotifications(notifications);
-          if (unreadCount !== undefined) {
-            // Update unread count via setItems which recalculates, but we have the real count
-          }
-          setActivities(activities);
         })();
       }
     } else if (status === "unauthenticated") {

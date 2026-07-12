@@ -3,7 +3,6 @@ import { Geist, Geist_Mono, Sora } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AppProviders } from "@/providers";
-import { GlobalErrorHandler } from "@/components/lootloom/global-error-handler";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,7 +58,6 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} antialiased bg-background text-foreground font-sans`}
       >
         <AppProviders>
-          <GlobalErrorHandler />
           {children}
           <Toaster />
         </AppProviders>
