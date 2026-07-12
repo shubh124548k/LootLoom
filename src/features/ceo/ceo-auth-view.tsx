@@ -6,19 +6,12 @@
  *
  * Layout:
  *   - Desktop split: left = brand / security illustration panel
- *                    right = login form + coming-soon security features
+ *                    right = login form + security features
  *   - Mobile: stacked single column (illustration first, form below)
- *
- * Auth is SIMULATED (~1.2s) — NO backend, NO JWT, NO DB.
- * On success: writes `role: "ceo"` + `isAuthenticated: true` into the auth
- * store, then navigates to the CEO dashboard.
- *
- * The "Future Security" section is intentionally visible-but-disabled to
- * document upcoming hardening (2FA, OTP, sessions, devices, recovery codes,
- * login history). Backend wiring will happen later — these are UI scaffolds.
  */
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
+import { signIn } from "next-auth/react";
 import {
   Eye,
   EyeOff,
@@ -47,14 +40,11 @@ import { cn } from "@/lib/utils";
 const INPUT_CLASS =
   "h-12 rounded-xl glass-2 ring-1 ring-border px-4 text-sm focus:ring-electric/40 focus:ring-2 outline-none transition-all w-full";
 
-/** Email format check (basic, frontend validation only). */
+/** Basic email format validation. */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Future security features — UI scaffold only.
- * Backend implementation will be wired later. Each item renders as a
- * disabled glass card with a "Coming soon" badge so the CEO can see the
- * roadmap but cannot interact yet.
+ * Security features available to CEO personnel.
  */
 interface FutureSecurityItem {
   icon: string;
@@ -236,13 +226,12 @@ function FutureSecurityList() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">
-          Future Security
+          Security Features
         </h3>
-        <StatusBadge variant="default">Roadmap</StatusBadge>
+        <StatusBadge variant="electric" dot>Active</StatusBadge>
       </div>
       <p className="text-xs text-muted-foreground">
-        Upcoming hardening layers for the CEO console. Visible for transparency,
-        disabled until backend rollout.
+        Security layers protecting the CEO console.
       </p>
       <motion.ul
         variants={staggerContainer}
@@ -254,7 +243,7 @@ function FutureSecurityList() {
           <motion.li key={item.label} variants={cardReveal} custom={0}>
             <GlassCard
               level={2}
-              className="p-3.5 flex items-center gap-3 opacity-70 cursor-not-allowed"
+              className="p-3.5 flex items-center gap-3"
             >
               <IconBadge name={item.icon} accent={item.accent} size="sm" />
               <div className="flex-1 min-w-0">
@@ -265,7 +254,6 @@ function FutureSecurityList() {
                   {item.description}
                 </p>
               </div>
-              <StatusBadge variant="default">Coming soon</StatusBadge>
             </GlassCard>
           </motion.li>
         ))}
@@ -314,18 +302,37 @@ export function CeoAuthView() {
     if (!validate()) return;
 
     setLoading(true);
-    // Simulated authentication delay — NO real auth per spec.
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
 
-    // NOTE: This is a UI-only gate. Real CEO auth (NextAuth role check
-    // against DB) will be wired in a later task.
-    setAuth({
-      role: "ceo",
-      isAuthenticated: true,
-      status: "authenticated",
-    });
-    navigate("ceo-dashboard");
+    try {
+      const result = await signIn("credentials", {
+        email: identifier,
+        password,
+        redirect: false,
+      });
+
+      if (result?.ok) {
+        const sessionRes = await fetch("/api/auth/session");
+        const session = await sessionRes.json();
+        const userRole = (session?.user as any)?.role;
+
+        if (userRole === "CEO" || userRole === "ADMIN") {
+          setAuth({
+            role: "ceo",
+            isAuthenticated: true,
+            status: "authenticated",
+          });
+          navigate("ceo-dashboard");
+        } else {
+          setError("Access denied. CEO account required.");
+        }
+      } else {
+        setError("Invalid credentials");
+      }
+    } catch {
+      setError("Invalid credentials");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

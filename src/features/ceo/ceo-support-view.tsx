@@ -1,20 +1,6 @@
 "use client";
 
-/* ============================================================
-   LootLoom — CEO Support View
-   Renders INSIDE the CeoLayout. No sidebar/header/background.
-   Skeleton-first: local typed array initialized to [].
-   All values backend-ready — replace SUPPORT_TICKETS with a
-   fetch from /api/ceo/support to go live.
-
-   Includes:
-   - DataTable with ticket columns + row actions
-   - Ticket detail Dialog with conversation thread
-   - Reply textarea + Send Reply (disabled when closed/empty)
-   - ConfirmModal for Close Ticket
-   ============================================================ */
-
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   CheckCircle2,
@@ -56,6 +42,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cardReveal, staggerContainer } from "@/lib/animations";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 /* ============================================================
    Types
@@ -80,8 +67,33 @@ interface SupportTicket {
   messages: SupportMessage[];
 }
 
+interface ApiSupportMessage {
+  id: string;
+  senderId: string;
+  message: string;
+  createdAt: string;
+  role: string | null;
+}
+
+interface ApiTicket {
+  id: string;
+  subject: string;
+  status: string;
+  priority: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: { id: string; name: string; email: string; avatar: string | null };
+  messages: ApiSupportMessage[];
+}
+
+interface ApiResponse {
+  success: boolean;
+  data: ApiTicket[];
+  pagination: { page: number; pageSize: number; total: number };
+}
+
 /* ============================================================
-   Status meta — label + StatusBadge variant + dot/pulse flags
+   Status meta
    ============================================================ */
 interface StatusMeta {
   label: string;
@@ -111,12 +123,6 @@ const STATUS_FILTERS: AdminFilterOption[] = [
 ];
 
 /* ============================================================
-   Placeholder data — initialized to [] (backend-ready).
-   TODO: replace with fetch from /api/ceo/support
-   ============================================================ */
-const SUPPORT_TICKETS: SupportTicket[] = [];
-
-/* ============================================================
    Helpers
    ============================================================ */
 function formatTicketId(id: string): string {
@@ -125,7 +131,7 @@ function formatTicketId(id: string): string {
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "\u2014";
   return d.toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
@@ -135,7 +141,7 @@ function formatDate(iso: string): string {
 
 function formatMessageTime(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "\u2014";
   return d.toLocaleString(undefined, {
     month: "short",
     day: "numeric",
@@ -151,10 +157,29 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+function mapApiTicket(ticket: ApiTicket): SupportTicket {
+  const userId = ticket.user.id;
+  return {
+    id: ticket.id,
+    username: ticket.user.name,
+    subject: ticket.subject,
+    status: ticket.status.toLowerCase() as TicketStatus,
+    createdAt: ticket.createdAt,
+    updatedAt: ticket.updatedAt,
+    lastMessage: ticket.messages.length > 0
+      ? ticket.messages[ticket.messages.length - 1].message
+      : "",
+    messages: ticket.messages.map((m) => ({
+      id: m.id,
+      role: m.senderId === userId ? "user" : "admin",
+      content: m.message,
+      timestamp: m.createdAt,
+    })),
+  };
+}
+
 /* ============================================================
-   MessageBubble — single chat message in the conversation thread
-   - user: right-aligned gradient bubble with avatar initials
-   - admin: left-aligned glass bubble with "CEO" badge
+   MessageBubble
    ============================================================ */
 interface MessageBubbleProps {
   message: SupportMessage;
@@ -212,7 +237,7 @@ function MessageBubble({ message, username }: MessageBubbleProps) {
 }
 
 /* ============================================================
-   Ticket detail dialog — conversation thread + reply box
+   Ticket detail dialog
    ============================================================ */
 interface TicketDetailDialogProps {
   ticket: SupportTicket | null;
@@ -249,7 +274,6 @@ function TicketDetailDialog({
         showCloseButton
         className="sm:max-w-2xl lg:max-w-3xl max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden"
       >
-        {/* Header */}
         <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-border/60 shrink-0 space-y-2">
           <div className="flex items-start justify-between gap-3 pr-8">
             <div className="min-w-0 space-y-1">
@@ -277,7 +301,6 @@ function TicketDetailDialog({
           </div>
         </DialogHeader>
 
-        {/* Conversation */}
         <div className="flex-1 min-h-0 px-5 sm:px-6 py-4">
           {ticket.messages.length === 0 ? (
             <EmptyState
@@ -305,7 +328,6 @@ function TicketDetailDialog({
           )}
         </div>
 
-        {/* Reply input + footer actions */}
         <div className="border-t border-border/60 px-5 sm:px-6 py-4 shrink-0 space-y-3 bg-muted/20">
           {isClosed ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -321,7 +343,7 @@ function TicketDetailDialog({
               <Textarea
                 value={replyText}
                 onChange={(e) => onReplyChange(e.target.value)}
-                placeholder="Type your reply to the user…"
+                placeholder="Type your reply to the user\u2026"
                 className="min-h-[88px] max-h-[160px] rounded-xl glass-2 ring-1 ring-border text-sm resize-none focus-visible:ring-2 focus-visible:ring-electric/40"
               />
               <div className="flex items-center justify-between gap-2">
@@ -342,7 +364,6 @@ function TicketDetailDialog({
             </div>
           )}
 
-          {/* Footer actions */}
           <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/40">
             <LootButton
               variant="outline"
@@ -373,25 +394,46 @@ function TicketDetailDialog({
    Main view
    ============================================================ */
 export function CeoSupportView() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [tickets, setTickets] = useState<SupportTicket[]>(SUPPORT_TICKETS);
+  const [error, setError] = useState<string | null>(null);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Ticket detail dialog state
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
 
-  // ConfirmModal state for Close Ticket
   const [closeConfirmId, setCloseConfirmId] = useState<string | null>(null);
 
-  // Simulated 600ms load on mount.
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
+  const fetchTickets = useCallback(async (status: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (status !== "all") params.set("status", status);
+      params.set("page", "1");
+      params.set("pageSize", "20");
+
+      const resp = await fetch(`/api/ceo/support?${params.toString()}`);
+      if (!resp.ok) throw new Error(`Request failed (${resp.status})`);
+      const json: ApiResponse = await resp.json();
+      if (!json.success) throw new Error("Failed to load support tickets");
+      setTickets(json.data.map(mapApiTicket));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Network error \u2014 could not reach the server";
+      setError(message);
+      setTickets([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchTickets(statusFilter);
+  }, [statusFilter, fetchTickets]);
 
   const selectedTicket = useMemo(
     () => tickets.find((t) => t.id === selectedTicketId) ?? null,
@@ -403,7 +445,6 @@ export function CeoSupportView() {
     [tickets, closeConfirmId]
   );
 
-  // Filter by status + search query (ticket ID, username, subject).
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return tickets.filter((t) => {
@@ -420,9 +461,7 @@ export function CeoSupportView() {
   /* ---------- Handlers ---------- */
 
   function handleRefresh() {
-    setLoading(true);
-    // TODO: replace with real fetch + setLoading(false) in finally block.
-    setTimeout(() => setLoading(false), 600);
+    fetchTickets(statusFilter);
   }
 
   function handleViewTicket(ticket: SupportTicket) {
@@ -431,71 +470,107 @@ export function CeoSupportView() {
     setDialogOpen(true);
   }
 
-  function handleSendReply() {
+  async function handleSendReply() {
     if (!selectedTicket || !replyText.trim()) return;
     setSendingReply(true);
-    // Simulated reply append — preserves premium feel while backend is pending.
-    // TODO: POST /api/ceo/support/{id}/reply with { content: replyText }
-    setTimeout(() => {
-      const newMessage: SupportMessage = {
-        id: `msg_${Date.now()}`,
-        role: "admin",
-        content: replyText.trim(),
-        timestamp: new Date().toISOString(),
-      };
-      setTickets((prev) =>
-        prev.map((t) =>
-          t.id === selectedTicket.id
-            ? {
-                ...t,
-                status: "answered",
-                updatedAt: newMessage.timestamp,
-                lastMessage: newMessage.content,
-                messages: [...t.messages, newMessage],
-              }
-            : t
-        )
-      );
+    try {
+      const res = await fetch("/api/ceo/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId: selectedTicket.id,
+          message: replyText.trim(),
+        }),
+      });
+      if (!res.ok) throw new Error(`Reply failed (${res.status})`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || "Failed to send reply");
+      toast({
+        title: "Reply sent",
+        description: "Your reply has been sent successfully.",
+        variant: "default",
+      });
       setReplyText("");
+      setDialogOpen(false);
+      setSelectedTicketId(null);
+      fetchTickets(statusFilter);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to send reply";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
       setSendingReply(false);
-    }, 600);
+    }
   }
 
   function handleCloseTicket(id: string) {
-    // Open confirm modal.
     setCloseConfirmId(id);
   }
 
-  function confirmCloseTicket() {
+  async function confirmCloseTicket() {
     if (!closeConfirmId) return;
-    // TODO: POST /api/ceo/support/{id}/close
-    setTickets((prev) =>
-      prev.map((t) =>
-        t.id === closeConfirmId
-          ? {
-              ...t,
-              status: "closed",
-              updatedAt: new Date().toISOString(),
-            }
-          : t
-      )
-    );
-    setCloseConfirmId(null);
+    try {
+      const res = await fetch("/api/ceo/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId: closeConfirmId,
+          message: "Ticket closed",
+          action: "CLOSE",
+        }),
+      });
+      if (!res.ok) throw new Error(`Close failed (${res.status})`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || "Failed to close ticket");
+      toast({
+        title: "Ticket closed",
+        description: `Ticket ${formatTicketId(closeConfirmId)} has been closed.`,
+        variant: "default",
+      });
+      setCloseConfirmId(null);
+      fetchTickets(statusFilter);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to close ticket";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+      setCloseConfirmId(null);
+    }
   }
 
-  function handleResolveTicket(id: string) {
-    // TODO: POST /api/ceo/support/{id}/resolve
-    setTickets((prev) =>
-      prev.map((t) =>
-        t.id === id
-          ? {
-              ...t,
-              status: "resolved",
-              updatedAt: new Date().toISOString(),
-            }
-          : t
-      )
-    );
+  async function handleResolveTicket(id: string) {
+    try {
+      const res = await fetch("/api/ceo/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId: id,
+          message: "Ticket resolved",
+          action: "RESOLVE",
+        }),
+      });
+      if (!res.ok) throw new Error(`Resolve failed (${res.status})`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || "Failed to resolve ticket");
+      toast({
+        title: "Ticket resolved",
+        description: `Ticket ${formatTicketId(id)} has been marked as resolved.`,
+        variant: "default",
+      });
+      fetchTickets(statusFilter);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to resolve ticket";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    }
   }
 
   /* ---------- Column definitions ---------- */
@@ -548,7 +623,7 @@ export function CeoSupportView() {
         hideOnMobile: true,
         cell: (t) => (
           <span className="text-xs text-muted-foreground line-clamp-1 max-w-[260px] italic">
-            {t.lastMessage || "—"}
+            {t.lastMessage || "\u2014"}
           </span>
         ),
       },
@@ -600,13 +675,12 @@ export function CeoSupportView() {
         description="Manage user support tickets"
       />
 
-      {/* Toolbar */}
       <div className="mb-5">
         <AdminToolbar>
           <AdminSearch
             value={query}
             onChange={setQuery}
-            placeholder="Search by ticket ID, username, subject…"
+            placeholder="Search by ticket ID, username, subject\u2026"
             className="sm:flex-1 sm:max-w-md"
           />
           <AdminFilter
@@ -628,15 +702,24 @@ export function CeoSupportView() {
         </AdminToolbar>
       </div>
 
-      {/* Loading / empty / table */}
       {loading ? (
         <SkeletonRow count={5} />
+      ) : error ? (
+        <GlassCard level={1} className="py-12">
+          <div className="flex flex-col items-center gap-3 text-center px-4">
+            <IconBadge name="AlertTriangle" accent="rose" size="md" />
+            <p className="text-sm text-foreground font-semibold">{error}</p>
+            <LootButton variant="glass" size="sm" onClick={handleRefresh}>
+              Try Again
+            </LootButton>
+          </div>
+        </GlassCard>
       ) : filtered.length === 0 ? (
         <GlassCard level={1} className="py-12">
           <EmptyState
             icon="LifeBuoy"
             title="No support tickets"
-            description="User support tickets will appear here once the backend is connected"
+            description="No support tickets match your current filters."
           />
         </GlassCard>
       ) : (
@@ -654,34 +737,6 @@ export function CeoSupportView() {
         </motion.div>
       )}
 
-      {/* Backend hint footer */}
-      {!loading && tickets.length === 0 && (
-        <div className="mt-5">
-          <GlassCard level={1} className="p-4 sm:p-5">
-            <div className="flex items-start gap-3">
-              <IconBadge name="LifeBuoy" accent="rose" size="sm" />
-              <div className="flex-1 min-w-0 space-y-0.5">
-                <p className="text-sm font-semibold text-foreground">
-                  Live tickets will appear once backend is connected
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Wire{" "}
-                  <code className="text-[11px] font-mono px-1 py-0.5 rounded bg-muted text-foreground/80">
-                    /api/ceo/support
-                  </code>{" "}
-                  to surface user support requests. Reply, resolve and close
-                  actions will POST to the same endpoint family.
-                </p>
-              </div>
-              <StatusBadge variant="warning" dot pulse>
-                Awaiting backend
-              </StatusBadge>
-            </div>
-          </GlassCard>
-        </div>
-      )}
-
-      {/* Ticket detail dialog */}
       <TicketDetailDialog
         ticket={selectedTicket}
         open={dialogOpen}
@@ -700,7 +755,6 @@ export function CeoSupportView() {
         onResolveTicket={handleResolveTicket}
       />
 
-      {/* Close ticket confirmation */}
       <ConfirmModal
         open={closeConfirmId !== null}
         onOpenChange={(o) => {
@@ -722,4 +776,3 @@ export function CeoSupportView() {
     </PageContainer>
   );
 }
-

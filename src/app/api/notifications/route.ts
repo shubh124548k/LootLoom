@@ -1,50 +1,67 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-/**
- * GET /api/notifications — real notifications for authenticated user
- * Returns: { items, unreadCount }
- */
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ success: false, message: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const notifications = await db.notification.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const { searchParams } = new URL(req.url);
+  const page = parseInt(searchParams.get("page") || "1");
+  const pageSize = Math.min(parseInt(searchParams.get("pageSize") || "20"), 50);
+  const type = searchParams.get("type");
+  const read = searchParams.get("read");
 
-  const unreadCount = await db.notification.count({
-    where: { userId: session.user.id, read: false },
-  });
+  const where: Record<string, unknown> = { userId: session.user.id };
+  if (type) where.type = type;
+  if (read === "true") where.read = true;
+  else if (read === "false") where.read = false;
+
+  const [items, total, unreadCount] = await Promise.all([
+    db.notification.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    db.notification.count({ where }),
+    db.notification.count({ where: { userId: session.user.id, read: false } }),
+  ]);
 
   return NextResponse.json({
     success: true,
-    data: {
-      items: notifications,
-      unreadCount,
-    },
+    data: { items, unreadCount, total, page, pageSize, hasMore: page * pageSize < total },
   });
 }
 
-/**
- * PATCH /api/notifications — mark all as read
- */
-export async function PATCH() {
+export async function PATCH(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ success: false, message: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
 
+  const body = await req.json();
+  const { notificationId, all } = body;
+
+  if (all) {
+    await db.notification.updateMany({
+      where: { userId: session.user.id, read: false },
+      data: { read: true },
+    });
+    return NextResponse.json({ success: true, message: "All notifications marked as read" });
+  }
+
+  if (!notificationId) {
+    return NextResponse.json({ success: false, message: "notificationId or all required", code: "VALIDATION_ERROR" }, { status: 400 });
+  }
+
   await db.notification.updateMany({
-    where: { userId: session.user.id, read: false },
+    where: { id: notificationId, userId: session.user.id },
     data: { read: true },
   });
 
-  return NextResponse.json({ success: true, message: "All notifications marked as read" });
+  return NextResponse.json({ success: true, message: "Notification marked as read" });
 }

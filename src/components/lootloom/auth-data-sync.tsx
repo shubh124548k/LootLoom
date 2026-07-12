@@ -22,11 +22,15 @@ async function fetchRealUserData(userId: string) {
           user: {
             id: u.id,
             fullName: u.name,
+            username: u.username || "",
             email: u.email,
             avatar: u.avatar,
             role: u.role,
+            status: u.status || "ACTIVE",
+            emailVerified: u.emailVerified || false,
             memberSince: u.memberSince,
             lastLogin: u.lastLogin,
+            passwordChangedAt: u.passwordChangedAt || null,
           },
           wallet: u.wallet
             ? {

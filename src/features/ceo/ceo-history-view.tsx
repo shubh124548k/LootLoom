@@ -1,13 +1,6 @@
 "use client";
 
-/* ============================================================
-   LootLoom — CEO Audit History & Activity Log
-   View renders INSIDE the CeoLayout. No sidebar/header/background.
-   Backend-ready: empty data array + TODO comment.
-   Inherits premium WHITE executive design language (navy + electric).
-   ============================================================ */
-
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { RefreshCw } from "lucide-react";
 import {
@@ -46,7 +39,7 @@ interface CeoAuditEntry {
   actionLabel: string;
   performedBy: string;
   targetUser?: string;
-  date: string; // ISO string
+  date: string;
   details: string;
 }
 
@@ -54,6 +47,36 @@ interface ActionMeta {
   iconName: string;
   accent: Accent;
   label: string;
+}
+
+interface ApiAuditActor {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string | null;
+}
+
+interface ApiAuditEntry {
+  id: string;
+  actor: ApiAuditActor;
+  action: string;
+  targetId: string | null;
+  metadata: string | null;
+  timestamp: string;
+}
+
+interface ApiAuditPagination {
+  page: number;
+  pageSize: number;
+  total: number;
+  hasMore: boolean;
+}
+
+interface ApiAuditResponse {
+  success: boolean;
+  data: ApiAuditEntry[];
+  pagination: ApiAuditPagination;
+  message?: string;
 }
 
 /* ----------------------------- Meta Maps ----------------------------- */
@@ -76,11 +99,6 @@ const FILTER_OPTIONS = [
 ];
 
 const PAGE_SIZE = 10;
-
-/* ----------------------------- Data ----------------------------- */
-
-// TODO: replace with fetch from /api/ceo/audit
-const CEO_HISTORY: CeoAuditEntry[] = [];
 
 /* ----------------------------- Helpers ----------------------------- */
 
@@ -106,19 +124,100 @@ function formatDateTime(iso: string): { date: string; time: string } {
   }
 }
 
+function mapActionType(action: string): ActionType {
+  switch (action) {
+    case "REDEEM_APPROVED":
+      return "redeem_approved";
+    case "REDEEM_REJECTED":
+      return "redeem_rejected";
+    case "SUPPORT_ADMIN_REPLY":
+      return "support_reply";
+    default:
+      if (action.startsWith("USER_") || action.startsWith("ACCOUNT_")) return "account_action";
+      return "user_updated";
+  }
+}
+
+function mapActionLabel(action: string): string {
+  switch (action) {
+    case "REDEEM_APPROVED":
+      return "Redeem Approved";
+    case "REDEEM_REJECTED":
+      return "Redeem Rejected";
+    case "SUPPORT_ADMIN_REPLY":
+      return "Support Reply";
+    default: {
+      const parts = action.replace(/^USER_|^ACCOUNT_/, "").split("_");
+      return parts.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+    }
+  }
+}
+
+function mapEntry(entry: ApiAuditEntry): CeoAuditEntry {
+  let targetUser: string | undefined;
+  let details = mapActionLabel(entry.action);
+
+  if (entry.metadata) {
+    try {
+      const parsed = JSON.parse(entry.metadata);
+      if (parsed.userId) targetUser = parsed.userId;
+      if (parsed.reason) details = parsed.reason;
+      else if (parsed.detail) details = parsed.detail;
+      else if (parsed.description) details = parsed.description;
+    } catch {
+      // invalid JSON in metadata
+    }
+  }
+
+  return {
+    id: entry.id,
+    actionType: mapActionType(entry.action),
+    actionLabel: mapActionLabel(entry.action),
+    performedBy: entry.actor.name || entry.actor.email,
+    targetUser,
+    date: entry.timestamp,
+    details,
+  };
+}
+
 /* ----------------------------- View ----------------------------- */
 
 export function CeoHistoryView() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [entries, setEntries] = useState<CeoAuditEntry[]>([]);
+  const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState(1);
 
-  // Simulated 600ms loading on mount (backend fetch would go here)
+  const fetchLogs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (filter !== "all") params.set("action", filter);
+      params.set("page", String(page));
+      params.set("pageSize", String(PAGE_SIZE));
+
+      const resp = await fetch(`/api/ceo/audit?${params.toString()}`);
+      if (!resp.ok) throw new Error(`Request failed with status ${resp.status}`);
+
+      const json: ApiAuditResponse = await resp.json();
+      if (!json.success) throw new Error(json.message ?? "API returned unsuccessful response");
+
+      setEntries(json.data.map(mapEntry));
+      setTotal(json.pagination.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }, [filter, page]);
+
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
-  }, []);
+    fetchLogs();
+  }, [fetchLogs]);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -132,28 +231,15 @@ export function CeoHistoryView() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return CEO_HISTORY.filter((entry) => {
-      if (filter !== "all" && entry.actionType !== filter) return false;
-      if (!q) return true;
-      return (
+    if (!q) return entries;
+    return entries.filter(
+      (entry) =>
         entry.actionLabel.toLowerCase().includes(q) ||
         entry.performedBy.toLowerCase().includes(q) ||
         (entry.targetUser ?? "").toLowerCase().includes(q) ||
-        entry.details.toLowerCase().includes(q)
-      );
-    });
-  }, [search, filter]);
-
-  const paged = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, page]);
-
-  const handleRefresh = () => {
-    setLoading(true);
-    // TODO: re-fetch /api/ceo/audit
-    setTimeout(() => setLoading(false), 500);
-  };
+        entry.details.toLowerCase().includes(q),
+    );
+  }, [search, entries]);
 
   /* ----------------------------- Columns ----------------------------- */
 
@@ -238,7 +324,7 @@ export function CeoHistoryView() {
             variant="glass"
             size="sm"
             leftIcon={<RefreshCw size={14} />}
-            onClick={handleRefresh}
+            onClick={fetchLogs}
             loading={loading}
           >
             Refresh
@@ -273,25 +359,33 @@ export function CeoHistoryView() {
         <motion.div variants={cardReveal}>
           <DataTable
             columns={columns}
-            rows={paged}
+            rows={filtered}
             rowId={(row) => row.id}
             loading={loading ? <SkeletonRow count={6} /> : undefined}
             emptyState={
-              <EmptyState
-                icon="History"
-                title="No activity yet"
-                description="CEO actions will be logged here once the backend is connected"
-              />
+              error ? (
+                <EmptyState
+                  icon="AlertTriangle"
+                  title="Failed to load audit log"
+                  description={error}
+                />
+              ) : (
+                <EmptyState
+                  icon="History"
+                  title="No activity yet"
+                  description="CEO actions will appear here as they occur"
+                />
+              )
             }
           />
         </motion.div>
 
-        {!loading && filtered.length > 0 && (
+        {!loading && !error && filtered.length > 0 && (
           <motion.div variants={cardReveal}>
             <AdminPagination
               page={page}
               pageSize={PAGE_SIZE}
-              total={filtered.length}
+              total={total}
               onPageChange={setPage}
             />
           </motion.div>

@@ -1,14 +1,6 @@
 "use client";
 
-/* ============================================================
-   LootLoom — CEO Notifications View
-   Renders INSIDE the CeoLayout. No sidebar/header/background.
-   Skeleton-first: local typed array initialized to [].
-   All values backend-ready — replace CEO_NOTIFICATIONS with a
-   fetch from /api/ceo/notifications to go live.
-   ============================================================ */
-
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { CheckCheck, RefreshCw, Search } from "lucide-react";
 import {
@@ -31,9 +23,6 @@ import {
 import { cardReveal, staggerContainer } from "@/lib/animations";
 import { cn } from "@/lib/utils";
 
-/* ============================================================
-   Types
-   ============================================================ */
 type NotificationCategory =
   | "redeem"
   | "user"
@@ -50,9 +39,6 @@ interface CeoNotification {
   read: boolean;
 }
 
-/* ============================================================
-   Category meta — icon name, accent, label, StatusBadge variant
-   ============================================================ */
 type Accent = "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy";
 
 interface CategoryMeta {
@@ -95,9 +81,6 @@ const CATEGORY_META: Record<NotificationCategory, CategoryMeta> = {
   },
 };
 
-/* ============================================================
-   Filter options
-   ============================================================ */
 const CATEGORY_FILTERS: AdminFilterOption[] = [
   { label: "All", value: "all" },
   { label: "New Redeem", value: "redeem" },
@@ -107,20 +90,31 @@ const CATEGORY_FILTERS: AdminFilterOption[] = [
   { label: "System Event", value: "system" },
 ];
 
-/* ============================================================
-   Placeholder data — initialized to [] (backend-ready).
-   TODO: replace with fetch from /api/ceo/notifications
-   ============================================================ */
-const CEO_NOTIFICATIONS: CeoNotification[] = [];
+function mapApiType(type: string | null): NotificationCategory {
+  if (type === "security") return "security";
+  return "system";
+}
 
-/* ============================================================
-   Relative time formatter
-   - Accepts ISO string or epoch ms.
-   - Returns "Just now" / "Xm ago" / "Xh ago" / "Xd ago" / date.
-   ============================================================ */
+interface ApiNotification {
+  id: string;
+  metadata: { title: string; message: string; type: string | null };
+  createdAt: string;
+}
+
+function mapApiNotification(item: ApiNotification): CeoNotification {
+  return {
+    id: item.id,
+    category: mapApiType(item.metadata.type),
+    title: item.metadata.title || "Notification",
+    body: item.metadata.message || "",
+    time: item.createdAt,
+    read: false,
+  };
+}
+
 function formatRelativeTime(time: string): string {
   const t = new Date(time).getTime();
-  if (Number.isNaN(t)) return "—";
+  if (Number.isNaN(t)) return "\u2014";
   const diffMs = Date.now() - t;
   const sec = Math.floor(diffMs / 1000);
   if (sec < 45) return "Just now";
@@ -136,9 +130,6 @@ function formatRelativeTime(time: string): string {
   });
 }
 
-/* ============================================================
-   Single notification card
-   ============================================================ */
 interface NotificationCardProps {
   notification: CeoNotification;
   onMarkRead: (id: string) => void;
@@ -209,27 +200,43 @@ function NotificationCard({ notification, onMarkRead, index }: NotificationCardP
   );
 }
 
-/* ============================================================
-   Main view
-   ============================================================ */
 export function CeoNotificationsView() {
   const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState<CeoNotification[]>(CEO_NOTIFICATIONS);
+  const [error, setError] = useState<string | null>(null);
+  const [items, setItems] = useState<CeoNotification[]>([]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
 
-  // Simulated 600ms load on mount — preserves premium feel while backend is pending.
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
+  const fetchNotifications = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await fetch("/api/ceo/notifications?page=1&pageSize=20");
+      if (!resp.ok) {
+        throw new Error(`Request failed with status ${resp.status}`);
+      }
+      const json = await resp.json();
+      if (!json.success) {
+        throw new Error(json.message ?? "API returned unsuccessful response");
+      }
+      const mapped = (json.data as ApiNotification[]).map(mapApiNotification);
+      setItems(mapped);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   const unreadCount = useMemo(
     () => items.filter((n) => !n.read).length,
     [items]
   );
 
-  // Filter by category + search query (title + body).
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return items.filter((n) => {
@@ -246,18 +253,14 @@ export function CeoNotificationsView() {
     setItems((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
-    // TODO: POST /api/ceo/notifications/{id}/read
   }
 
   function handleMarkAllRead() {
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-    // TODO: POST /api/ceo/notifications/read-all
   }
 
   function handleRefresh() {
-    setLoading(true);
-    // TODO: replace with real fetch + setLoading(false) in finally block.
-    setTimeout(() => setLoading(false), 600);
+    fetchNotifications();
   }
 
   return (
@@ -278,13 +281,12 @@ export function CeoNotificationsView() {
         }
       />
 
-      {/* Toolbar */}
       <div className="mb-5">
         <AdminToolbar>
           <AdminSearch
             value={query}
             onChange={setQuery}
-            placeholder="Search notifications…"
+            placeholder="Search notifications\u2026"
             className="sm:flex-1 sm:max-w-md"
           />
           <AdminFilter
@@ -306,8 +308,7 @@ export function CeoNotificationsView() {
         </AdminToolbar>
       </div>
 
-      {/* Unread count banner */}
-      {!loading && items.length > 0 && (
+      {!loading && !error && items.length > 0 && (
         <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
           <Search size={13} className="text-muted-foreground/60" />
           <span>
@@ -319,15 +320,26 @@ export function CeoNotificationsView() {
         </div>
       )}
 
-      {/* Loading skeleton */}
       {loading ? (
         <SkeletonRow count={5} />
+      ) : error ? (
+        <GlassCard level={1} className="py-12">
+          <EmptyState
+            icon="AlertTriangle"
+            title="Failed to load notifications"
+            description={error}
+          />
+        </GlassCard>
       ) : filtered.length === 0 ? (
         <GlassCard level={1} className="py-12">
           <EmptyState
             icon="BellOff"
             title="No notifications"
-            description="Platform events will appear here once the backend is connected"
+            description={
+              items.length === 0
+                ? "No notifications yet"
+                : "No notifications match your filters"
+            }
           />
         </GlassCard>
       ) : (
@@ -348,34 +360,6 @@ export function CeoNotificationsView() {
           </Grid>
         </motion.div>
       )}
-
-      {/* Backend hint footer */}
-      {!loading && items.length === 0 && (
-        <div className="mt-5">
-          <GlassCard level={1} className="p-4 sm:p-5">
-            <div className="flex items-start gap-3">
-              <IconBadge name="Info" accent="electric" size="sm" />
-              <div className="flex-1 min-w-0 space-y-0.5">
-                <p className="text-sm font-semibold text-foreground">
-                  Live events will appear once backend is connected
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Wire{" "}
-                  <code className="text-[11px] font-mono px-1 py-0.5 rounded bg-muted text-foreground/80">
-                    /api/ceo/notifications
-                  </code>{" "}
-                  to surface new redeems, user signups, support replies, security
-                  alerts and system events.
-                </p>
-              </div>
-              <StatusBadge variant="warning" dot pulse>
-                Awaiting backend
-              </StatusBadge>
-            </div>
-          </GlassCard>
-        </div>
-      )}
     </PageContainer>
   );
 }
-

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: lootloom
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/stats
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          type: postgres
+          name: lootloom-db
+          property: connectionString
+      - key: NEXTAUTH_URL
+        value: https://lootloom.app
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false

@@ -1,20 +1,17 @@
 "use client";
 
-/**
- * LootLoom — ProfileView
- * Premium account overview: profile card + quick wallet stats + edit CTA.
- * All values are store-driven (placeholder-ready for API).
- */
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Mail,
   Calendar,
   User as UserIcon,
-  Wallet,
-  Pencil,
+  LogOut,
   ShieldCheck,
+  LayoutDashboard,
+  Bell,
+  Sparkles,
+  DollarSign,
 } from "lucide-react";
 import {
   PageContainer,
@@ -22,19 +19,14 @@ import {
   SectionHeader,
   GlassCard,
   LootButton,
-  IconBadge,
-  StatusBadge,
-  AnimatedCounter,
-  EmptyState,
   SkeletonCard,
 } from "@/components/lootloom";
-import { useNavigationStore, useUserStore, useWalletStore } from "@/stores";
+import { useUserStore } from "@/stores";
 import { cardReveal, staggerContainer } from "@/lib/animations";
 import { cn } from "@/lib/utils";
-
-/* ============================================================
-   Helpers
-   ============================================================ */
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 function getInitials(name: string): string {
   return (
@@ -50,7 +42,7 @@ function getInitials(name: string): string {
 }
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "\u2014";
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
@@ -63,10 +55,6 @@ function formatDate(iso: string | null): string {
     return iso;
   }
 }
-
-/* ============================================================
-   Avatar — image URL or initials in gradient circle
-   ============================================================ */
 
 function ProfileAvatar({
   avatar,
@@ -109,197 +97,194 @@ function ProfileAvatar({
   );
 }
 
-/* ============================================================
-   Quick Stat Card
-   ============================================================ */
-
-function QuickStat({
-  label,
-  value,
-  prefix,
-  suffix,
-  icon,
-  accent,
-  index,
-}: {
-  label: string;
-  value: number;
-  prefix?: string;
-  suffix?: string;
-  icon: string;
-  accent: "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy";
-  index: number;
-}) {
+function InfoRow({ icon, label, value, className }: { icon: React.ReactNode; label: string; value: React.ReactNode; className?: string }) {
   return (
-    <motion.div variants={cardReveal} custom={index}>
-      <GlassCard level={2} sheen hover className="p-5 h-full">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <IconBadge name={icon} accent={accent} size="md" />
-        </div>
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-          {label}
-        </p>
-        <AnimatedCounter
-          value={value}
-          prefix={prefix}
-          suffix={suffix}
-          className="text-2xl sm:text-3xl font-bold text-foreground"
-        />
+    <div className={cn("flex items-center gap-2.5 text-sm min-w-0", className)}>
+      <span className="text-electric shrink-0">{icon}</span>
+      <span className="text-muted-foreground shrink-0">{label}:</span>
+      <span className="text-foreground font-medium truncate">{value}</span>
+    </div>
+  );
+}
+
+function SectionCard({ title, icon, children, className }: { title: string; icon?: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <motion.div variants={cardReveal}>
+      <GlassCard level={2} sheen className={cn("p-5 sm:p-7", className)}>
+        <SectionHeader title={title} icon={icon} className="mb-5" />
+        {children}
       </GlassCard>
     </motion.div>
   );
 }
 
-/* ============================================================
-   Profile Card
-   ============================================================ */
-
-function ProfileCard() {
-  const { fullName, email, avatar, memberSince } = useUserStore();
-  const navigate = useNavigationStore((s) => s.navigate);
-
-  // Username is not currently in the user store — backend will populate.
-  // Shown as placeholder until then.
-  const username = "—";
-
-  return (
-    <motion.div variants={cardReveal} custom={0}>
-      <GlassCard level={2} sheen glow="electric" className="p-5 sm:p-7">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-          <ProfileAvatar avatar={avatar} fullName={fullName} size="xl" />
-
-          <div className="flex-1 min-w-0 space-y-3">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground truncate">
-                {fullName || "LootLoom Member"}
-              </h2>
-              <StatusBadge variant="success" dot pulse>
-                Active
-              </StatusBadge>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground min-w-0">
-                <UserIcon size={14} className="text-electric shrink-0" />
-                <span className="truncate">{username}</span>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground min-w-0">
-                <Mail size={14} className="text-electric shrink-0" />
-                <span className="truncate">{email || "—"}</span>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground min-w-0">
-                <Calendar size={14} className="text-electric shrink-0" />
-                <span className="truncate">Member since {formatDate(memberSince)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground min-w-0">
-                <ShieldCheck size={14} className="text-emerald-brand shrink-0" />
-                <span className="truncate">Account verified</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="sm:shrink-0">
-            <LootButton
-              variant="electric"
-              size="md"
-              leftIcon={<Pencil size={15} />}
-              onClick={() => navigate("settings")}
-            >
-              Edit Profile
-            </LootButton>
-          </div>
-        </div>
-      </GlassCard>
-    </motion.div>
-  );
+interface PrivacySettings {
+  showOnLeaderboard: boolean;
+  receiveNotifications: boolean;
+  allowPersonalization: boolean;
+  showEarningsPublicly: boolean;
 }
 
-/* ============================================================
-   Main ProfileView
-   ============================================================ */
+const SETTINGS_LABELS: Record<keyof PrivacySettings, { label: string; description: string; icon: React.ReactNode }> = {
+  showOnLeaderboard: {
+    label: "Show profile on leaderboard",
+    description: "Display your name and rank on the public leaderboard",
+    icon: <LayoutDashboard size={16} />,
+  },
+  receiveNotifications: {
+    label: "Receive notifications",
+    description: "Get notified about rewards, updates, and activity",
+    icon: <Bell size={16} />,
+  },
+  allowPersonalization: {
+    label: "Allow personalization",
+    description: "Let us tailor your experience based on your activity",
+    icon: <Sparkles size={16} />,
+  },
+  showEarningsPublicly: {
+    label: "Show earnings publicly",
+    description: "Display your lifetime earnings on your public profile",
+    icon: <DollarSign size={16} />,
+  },
+};
 
 export function ProfileView() {
-  const { fullName, email } = useUserStore();
-  const { availableCoins, lifetimeEarned, lifetimeRedeemed } = useWalletStore();
-  const navigate = useNavigationStore((s) => s.navigate);
-  const [loading] = useState(false);
+  const { fullName, email, memberSince, avatar } = useUserStore();
+  const { toast } = useToast();
 
-  const hasProfile = Boolean(fullName || email);
+  const [settings, setSettings] = useState<PrivacySettings>({
+    showOnLeaderboard: true,
+    receiveNotifications: true,
+    allowPersonalization: false,
+    showEarningsPublicly: false,
+  });
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [saving, setSaving] = useState<Partial<Record<keyof PrivacySettings, boolean>>>({});
+
+  useEffect(() => {
+    fetch("/api/profile/settings")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          setSettings((prev) => ({ ...prev, ...json.data }));
+        }
+      })
+      .catch(() => {
+        toast({ title: "Error", description: "Failed to load settings", variant: "destructive" });
+      })
+      .finally(() => setSettingsLoading(false));
+  }, []);
+
+  const handleToggle = async (key: keyof PrivacySettings, value: boolean) => {
+    setSaving((prev) => ({ ...prev, [key]: true }));
+    setSettings((prev) => ({ ...prev, [key]: value }));
+
+    try {
+      const res = await fetch("/api/profile/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: value }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setSettings((prev) => ({ ...prev, [key]: !value }));
+        toast({ title: "Error", description: json.message || "Failed to update setting", variant: "destructive" });
+      }
+    } catch {
+      setSettings((prev) => ({ ...prev, [key]: !value }));
+      toast({ title: "Error", description: "Network error", variant: "destructive" });
+    } finally {
+      setSaving((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const handleLogout = async () => {
+    const { signOut } = await import("next-auth/react");
+    await signOut({ callbackUrl: "/" });
+  };
 
   return (
     <PageContainer>
       <PageHeader
-        title="Profile"
-        description="Your account overview"
-        actions={
-          <LootButton
-            variant="electric"
-            size="md"
-            leftIcon={<Pencil size={15} />}
-            onClick={() => navigate("settings")}
-          >
-            <span className="hidden sm:inline">Edit Profile</span>
-            <span className="sm:hidden">Edit</span>
-          </LootButton>
-        }
+        title="Settings"
+        description="Manage your profile and privacy preferences"
       />
 
-      {loading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <SkeletonCard className="lg:col-span-3 h-40" />
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
-      ) : !hasProfile ? (
-        <GlassCard level={2} sheen className="py-12">
-          <EmptyState
-            icon="User"
-            title="No profile data"
-            description="Your profile details will appear here once your account is loaded."
-          />
-        </GlassCard>
-      ) : (
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          animate="visible"
-          className="space-y-5 lg:space-y-6"
-        >
-          <ProfileCard />
-
-          <div className="space-y-3">
-            <SectionHeader
-              title="Quick Stats"
-              description="Your wallet at a glance"
-              icon={<Wallet size={18} />}
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
-              <QuickStat
-                label="Current Coins"
-                value={availableCoins}
-                icon="Coins"
-                accent="gold"
-                index={1}
-              />
-              <QuickStat
-                label="Total Earned"
-                value={lifetimeEarned}
-                icon="TrendingUp"
-                accent="emerald"
-                index={2}
-              />
-              <QuickStat
-                label="Total Spent"
-                value={lifetimeRedeemed}
-                icon="TrendingDown"
-                accent="purple"
-                index={3}
-              />
+      <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-5 lg:space-y-6">
+        {/* Profile Card */}
+        <motion.div variants={cardReveal}>
+          <GlassCard level={2} sheen glow="electric" className="p-5 sm:p-7">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+              <ProfileAvatar avatar={avatar} fullName={fullName} size="xl" />
+              <div className="flex-1 min-w-0 space-y-3">
+                <h2 className="text-xl sm:text-2xl font-bold text-foreground truncate">
+                  {fullName || "LootLoom Member"}
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                  <InfoRow icon={<UserIcon size={14} />} label="Full Name" value={fullName || "\u2014"} />
+                  <InfoRow icon={<Mail size={14} />} label="Email" value={email || "\u2014"} />
+                  <InfoRow icon={<Calendar size={14} />} label="Member since" value={formatDate(memberSince)} />
+                </div>
+              </div>
             </div>
-          </div>
+          </GlassCard>
         </motion.div>
-      )}
+
+        {/* Privacy Toggles */}
+        <SectionCard title="Privacy" icon={<ShieldCheck size={18} />}>
+          {settingsLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <SkeletonCard key={i} className="h-14" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {(Object.keys(SETTINGS_LABELS) as Array<keyof PrivacySettings>).map((key) => {
+                const item = SETTINGS_LABELS[key];
+                const isSaving = saving[key];
+                return (
+                  <div key={key} className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <span className="text-electric shrink-0 mt-0.5">{item.icon}</span>
+                      <div className="min-w-0">
+                        <Label htmlFor={`setting-${key}`} className="text-sm font-medium text-foreground cursor-pointer">
+                          {item.label}
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isSaving && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
+                      <Switch
+                        id={`setting-${key}`}
+                        checked={settings[key]}
+                        onCheckedChange={(v) => handleToggle(key, v)}
+                        disabled={isSaving}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </SectionCard>
+
+        {/* Logout */}
+        <motion.div variants={cardReveal}>
+          <GlassCard level={2} sheen className="p-5 sm:p-7">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Sign out</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Sign out of your account on this device</p>
+              </div>
+              <LootButton variant="outline" size="sm" leftIcon={<LogOut size={14} />} onClick={handleLogout}>
+                Logout
+              </LootButton>
+            </div>
+          </GlassCard>
+        </motion.div>
+      </motion.div>
     </PageContainer>
   );
 }

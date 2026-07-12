@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { invalidateEarnConfigCache } from "@/lib/earn/config";
 
 async function requireCEO() {
   const session = await getServerSession(authOptions);
@@ -11,10 +12,6 @@ async function requireCEO() {
   return session.user.id;
 }
 
-/**
- * GET /api/ceo/config — all platform config (CEO).
- * POST /api/ceo/config — set a config value (CEO).
- */
 export async function GET() {
   const ceoId = await requireCEO();
   if (!ceoId) return NextResponse.json({ success: false, message: "CEO access required", code: "FORBIDDEN" }, { status: 403 });
@@ -39,6 +36,8 @@ export async function POST(req: NextRequest) {
     update: { value: String(value), label: label || undefined, type: type || "STRING" },
     create: { key, value: String(value), label: label || null, type: type || "STRING" },
   });
+
+  invalidateEarnConfigCache();
 
   await db.auditLog.create({ data: { actorId: ceoId, action: "CONFIG_UPDATED", metadata: JSON.stringify({ key, value }) } });
 

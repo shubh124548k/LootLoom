@@ -28,10 +28,8 @@ export const NAV_GROUPS: Record<NavItem["group"], string> = {
 export const PAGE_META: Partial<Record<ViewId, PageMeta>> = {
   home: { title: "LootLoom", description: "Premium reward platform", group: "public", breadcrumbs: [] },
   login: { title: "Sign In", description: "Welcome back", group: "auth", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Sign In" }] },
-  register: { title: "Create Account", description: "Join LootLoom", group: "auth", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Register" }] },
   "forgot-password": { title: "Forgot Password", description: "Reset your password", group: "auth", breadcrumbs: [{ label: "Home", view: "home" }, { label: "Sign In", view: "login" }, { label: "Forgot Password" }] },
   "reset-password": { title: "Reset Password", description: "Set a new password", group: "auth", breadcrumbs: [{ label: "Forgot Password", view: "forgot-password" }, { label: "Reset" }] },
-  "verify-email": { title: "Verify Email", description: "Confirm your email address", group: "auth", breadcrumbs: [{ label: "Register", view: "register" }, { label: "Verify" }] },
   dashboard: { title: "Dashboard", description: "Your account overview", group: "app", breadcrumbs: [{ label: "Dashboard" }] },
   earn: { title: "Earn Coins", description: "Complete activities to earn rewards", group: "app", breadcrumbs: [{ label: "Dashboard", view: "dashboard" }, { label: "Earn" }] },
   wallet: { title: "Wallet", description: "Your coin balance & transactions", group: "app", breadcrumbs: [{ label: "Dashboard", view: "dashboard" }, { label: "Wallet" }] },
@@ -93,17 +91,12 @@ export const PAGE_META: Partial<Record<ViewId, PageMeta>> = {
   "ceo-notifications": { title: "Notifications", description: "CEO notification center", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Notifications" }] },
   "ceo-history": { title: "History", description: "CEO audit & activity log", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "History" }] },
   "ceo-settings": { title: "Settings", description: "CEO profile & security", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Settings" }] },
+  "ceo-ad-providers": { title: "Ad Providers", description: "Manage advertisement providers", group: "ceo", breadcrumbs: [{ label: "CEO Dashboard", view: "ceo-dashboard" }, { label: "Ad Providers" }] },
 };
 
 export const PUBLIC_VIEWS: ViewId[] = ["home"];
 export const AUTH_VIEWS: ViewId[] = [
   "login",
-  "register",
-  "forgot-password",
-  "reset-password",
-  "verify-email",
-  "verify-success",
-  "verify-failed",
 ];
 export const APP_VIEWS: ViewId[] = [
   "dashboard",
@@ -168,4 +161,5 @@ export const CEO_VIEWS: ViewId[] = [
   "ceo-support",
   "ceo-history",
   "ceo-settings",
+  "ceo-ad-providers",
 ];

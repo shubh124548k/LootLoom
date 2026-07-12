@@ -53,14 +53,14 @@ const WHAT_YOU_CAN_DO: {
   accent: Accent;
   view: ViewId;
 }[] = [
-  { title: "Earn Coins", desc: "Watch rewarded ads, complete offerwalls, finish missions.", icon: "Coins", accent: "electric", view: "earn" },
-  { title: "Wallet", desc: "Track balances, transactions and lifetime earnings.", icon: "Wallet", accent: "cyan", view: "wallet" },
-  { title: "Redeem Rewards", desc: "Convert coins into UPI, vouchers and gift cards.", icon: "Gift", accent: "purple", view: "redeem" },
-  { title: "Daily Bonus", desc: "Claim a free reward every day and grow your streak.", icon: "CalendarCheck", accent: "gold", view: "daily-bonus" },
-  { title: "Referral", desc: "Invite friends and earn bonus coins on their activity.", icon: "Users", accent: "emerald", view: "referral" },
-  { title: "Leaderboard", desc: "Compete with members worldwide for top ranks.", icon: "Trophy", accent: "rose", view: "leaderboard" },
-  { title: "Achievements", desc: "Unlock badges and milestones as you progress.", icon: "Award", accent: "navy", view: "achievements" },
-  { title: "Support", desc: "Get help from our 24/7 support team anytime.", icon: "LifeBuoy", accent: "electric", view: "support" },
+  { title: "Earn Coins", desc: "Complete rewarded missions and watch ads to earn instantly.", icon: "Coins", accent: "electric", view: "earn" },
+  { title: "Wallet", desc: "Track your balance, transaction history and lifetime earnings.", icon: "Wallet", accent: "cyan", view: "wallet" },
+  { title: "UPI Cashouts", desc: "Redeem coins directly to UPI. No gift cards, no vouchers.", icon: "Banknote", accent: "purple", view: "redeem" },
+  { title: "Daily Missions", desc: "New tasks every day. Complete them to earn bonus coins.", icon: "CalendarCheck", accent: "gold", view: "daily-bonus" },
+  { title: "Referral Rewards", desc: "Invite friends and earn bonus coins when they join.", icon: "Users", accent: "emerald", view: "referral" },
+  { title: "Live Leaderboard", desc: "Compete with earners worldwide for top rankings.", icon: "Trophy", accent: "rose", view: "leaderboard" },
+  { title: "Anti-Fraud Protection", desc: "Fraud detection and secure verification on every transaction.", icon: "ShieldCheck", accent: "navy", view: "achievements" },
+  { title: "24/7 Support", desc: "Dedicated support team to help you whenever needed.", icon: "LifeBuoy", accent: "electric", view: "support" },
 ];
 
 const TIMELINE_STEPS: {
@@ -70,29 +70,23 @@ const TIMELINE_STEPS: {
   accent: Accent;
 }[] = [
   { title: "Create Account", desc: "Sign up free in under 60 seconds.", icon: "UserPlus", accent: "electric" },
-  { title: "Verify Account", desc: "Confirm your email to unlock earning.", icon: "BadgeCheck", accent: "cyan" },
-  { title: "Start Earning", desc: "Watch ads, finish missions, invite friends.", icon: "Rocket", accent: "purple" },
-  { title: "Coins Added", desc: "Coins instantly credited to your wallet.", icon: "Coins", accent: "gold" },
-  { title: "Redeem Rewards", desc: "Cash out via UPI, vouchers or gift cards.", icon: "Gift", accent: "emerald" },
+  { title: "Verify Email", desc: "Confirm your email to unlock earning.", icon: "BadgeCheck", accent: "cyan" },
+  { title: "Start Earning", desc: "Complete missions and watch rewarded ads.", icon: "Rocket", accent: "purple" },
+  { title: "Track Coins", desc: "Coins credited instantly to your wallet.", icon: "Coins", accent: "gold" },
+  { title: "Redeem to UPI", desc: "Cash out directly to your UPI account.", icon: "Banknote", accent: "emerald" },
 ];
 
 // Static marketing catalog of reward tiers — shown to all visitors.
 // Coin costs are reference values used everywhere rewards are marketed.
-const REWARD_TIERS: {
+const POPULAR_REWARDS: {
   name: string;
-  category: "UPI" | "Voucher";
   coins: number;
   icon: string;
   accent: Accent;
 }[] = [
-  { name: "₹10 UPI", category: "UPI", coins: 1000, icon: "HandCoins", accent: "electric" },
-  { name: "₹20 UPI", category: "UPI", coins: 2000, icon: "HandCoins", accent: "cyan" },
-  { name: "₹50 UPI", category: "UPI", coins: 5000, icon: "HandCoins", accent: "purple" },
-  { name: "₹100 UPI", category: "UPI", coins: 10000, icon: "HandCoins", accent: "gold" },
-  { name: "₹200 UPI", category: "UPI", coins: 20000, icon: "HandCoins", accent: "emerald" },
-  { name: "₹500 UPI", category: "UPI", coins: 50000, icon: "HandCoins", accent: "rose" },
-  { name: "Amazon Voucher", category: "Voucher", coins: 5000, icon: "Gift", accent: "cyan" },
-  { name: "Flipkart Voucher", category: "Voucher", coins: 5000, icon: "Gift", accent: "purple" },
+  { name: "₹10 UPI", coins: 300, icon: "HandCoins", accent: "electric" },
+  { name: "₹20 UPI", coins: 600, icon: "HandCoins", accent: "cyan" },
+  { name: "₹50 UPI", coins: 1500, icon: "HandCoins", accent: "purple" },
 ];
 
 const SECURITY_FEATURES: {
@@ -100,18 +94,18 @@ const SECURITY_FEATURES: {
   desc: string;
   icon: string;
 }[] = [
-  { title: "Secure Authentication", desc: "Email verification + future 2FA support.", icon: "Fingerprint" },
-  { title: "Encrypted Sessions", desc: "End-to-end TLS for all session traffic.", icon: "Lock" },
-  { title: "Privacy First", desc: "We never sell your personal data, ever.", icon: "Eye" },
-  { title: "Safe Reward Processing", desc: "Fraud-checked redemptions, every time.", icon: "ShieldCheck" },
+  { title: "Secure Authentication", desc: "Email verification and encrypted sessions keep your account safe.", icon: "Fingerprint" },
+  { title: "Fair Reward System", desc: "Every coin you earn is tracked on-ledger. No hidden deductions.", icon: "Scale" },
+  { title: "Anti-Fraud Protection", desc: "Automated fraud detection on every redemption request.", icon: "ShieldCheck" },
+  { title: "Privacy First", desc: "We never sell your data. Your personal information stays yours.", icon: "Eye" },
 ];
 
 const FAQS: { q: string; a: string }[] = [
-  { q: "Is LootLoom free to use?", a: "Yes. Creating an account and earning coins is completely free. We only require a verified email address to unlock redemptions." },
-  { q: "How do I redeem coins?", a: "Head to the Redeem page, choose a reward (UPI, voucher or gift card), enter the amount, and we'll process your request within the stated timeframe." },
-  { q: "When do coins get credited?", a: "Coins from rewarded ads and missions are credited instantly. Referral bonuses appear as soon as your friend verifies their email." },
-  { q: "Can I use LootLoom on mobile?", a: "Our web app is fully responsive. Native Android and iOS apps are on the roadmap and will be available soon." },
-  { q: "What if I run into issues?", a: "Open a ticket from the Support page and our team will respond within 24 hours. Premium members get priority handling." },
+  { q: "Is LootLoom free to use?", a: "Yes. Creating an account and earning coins is completely free. A verified email is all you need to start earning and redeeming." },
+  { q: "How do I redeem coins?", a: "Go to the Redeem page, choose your UPI reward, enter your UPI ID, and confirm. Coins are deducted instantly and the transfer is processed." },
+  { q: "How long do UPI transfers take?", a: "Most transfers are processed within 24 hours. Peak times may take up to 48 hours. You will be notified once the transfer is complete." },
+  { q: "What can I redeem coins for?", a: "Currently we support UPI cash transfers only — ₹10, ₹20, ₹50, and up. No gift cards, no vouchers, just real money to your bank account." },
+  { q: "How do I earn coins?", a: "Complete daily missions, watch rewarded ads, refer friends, and participate in special events to earn coins." },
 ];
 
 const SUPPORT_OPTIONS: {
@@ -120,10 +114,10 @@ const SUPPORT_OPTIONS: {
   icon: string;
   accent: Accent;
 }[] = [
-  { title: "Support Center", desc: "Browse help articles", icon: "LifeBuoy", accent: "electric" },
-  { title: "Help Center", desc: "Guides & tutorials", icon: "BookOpen", accent: "cyan" },
-  { title: "Contact Us", desc: "Reach our team", icon: "Mail", accent: "purple" },
-  { title: "Open a Ticket", desc: "Get personalized help", icon: "Ticket", accent: "gold" },
+  { title: "Help Center", desc: "Guides and tutorials", icon: "BookOpen", accent: "electric" },
+  { title: "Contact Us", desc: "Reach our support team", icon: "Mail", accent: "cyan" },
+  { title: "Open a Ticket", desc: "Get personalized help", icon: "Ticket", accent: "purple" },
+  { title: "FAQ", desc: "Quick answers", icon: "HelpCircle", accent: "gold" },
   { title: "Live Chat", desc: "Coming soon", icon: "MessageCircle", accent: "emerald" },
 ];
 
@@ -241,14 +235,14 @@ function Hero() {
             <span className="text-gradient-electric">Redeem Joy.</span>
           </motion.h1>
           <motion.p variants={cardReveal} custom={2} className="text-base sm:text-lg text-muted-foreground max-w-xl">
-            LootLoom turns your time into real rewards — watch ads, finish missions, invite
-            friends, and redeem coins for UPI cash, gift cards and vouchers. Built for everyday earners.
+            LootLoom lets you earn real rewards through simple daily activities. Complete missions,
+            watch rewarded ads, and redeem your coins directly to UPI. No gift cards, no vouchers — just cash.
           </motion.p>
           <motion.div variants={cardReveal} custom={3} className="flex flex-wrap items-center gap-3">
             <LootButton
               size="lg"
               variant="electric"
-              onClick={() => navigate("register")}
+              onClick={() => navigate("login")}
               rightIcon={<ArrowRight size={16} />}
             >
               Get Started
@@ -386,7 +380,7 @@ function Hero() {
                 <div className="space-y-1.5">
                   {[
                     { label: "UPI Cashout" },
-                    { label: "Amazon Voucher" },
+                    { label: "Daily Missions" },
                   ].map((r) => (
                     <div key={r.label} className="flex items-center justify-between text-xs">
                       <span className="text-foreground font-medium">{r.label}</span>
@@ -433,9 +427,9 @@ function HowItWorks() {
     <section id="how" className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16 scroll-mt-24">
       <div className="max-w-7xl mx-auto">
         <SectionHeading
-          eyebrow="Process"
-          title="How LootLoom Works"
-          description="From sign-up to redeem in five simple steps. No hidden catches, no complexity."
+          eyebrow="How It Works"
+          title="From Sign-Up to Payout"
+          description="Earn coins, track your balance, redeem to UPI. Straightforward and transparent."
         />
         <motion.div
           variants={staggerContainer}
@@ -508,9 +502,9 @@ function WhatYouCanDo() {
     <section id="overview" className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16 scroll-mt-24">
       <div className="max-w-7xl mx-auto">
         <SectionHeading
-          eyebrow="Features"
-          title="What You Can Do"
-          description="Everything you need to earn, track, redeem and grow your rewards — in one premium platform."
+          eyebrow="Platform Highlights"
+          title="Why LootLoom"
+          description="Earn real rewards through simple, transparent activities. No gimmicks, no hidden terms."
         />
         <motion.div
           variants={staggerContainer}
@@ -533,7 +527,7 @@ function WhatYouCanDo() {
                   sheen
                   glow={item.accent === "navy" ? "none" : (item.accent as "electric" | "cyan" | "purple")}
                   className="p-5 h-full flex flex-col gap-3 shadow-[var(--shadow-md)]"
-                  onClick={() => navigate(isAuthenticated ? item.view : "register")}
+                  onClick={() => navigate(isAuthenticated ? item.view : "login")}
                 >
                   <IconBadge name={item.icon} accent={item.accent} size="lg" />
                   <div>
@@ -560,62 +554,50 @@ function RewardsPreview() {
   const navigate = useNavigationStore((s) => s.navigate);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  const handleRedeem = () => navigate(isAuthenticated ? "redeem" : "register");
-
   return (
     <section id="rewards" className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16 scroll-mt-24">
       <div className="max-w-7xl mx-auto">
         <SectionHeading
-          eyebrow="Rewards"
+          eyebrow="Popular Rewards"
           title="Redeem Your Coins"
-          description="A transparent catalog of rewards available to every member — UPI cash, vouchers and gift cards."
+          description="Convert your coins to real UPI cash. Fast, secure, no hidden fees."
         />
         <motion.div
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-60px" }}
-          className="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"
+          className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto"
         >
-          {REWARD_TIERS.map((reward, i) => (
+          {POPULAR_REWARDS.map((reward, i) => (
             <motion.div key={reward.name} variants={cardReveal} custom={i}>
               <GlassCard
                 level={2}
                 hover
                 sheen
-                glow={reward.accent === "gold" || reward.accent === "emerald" || reward.accent === "rose" || reward.accent === "navy" ? "none" : (reward.accent as "electric" | "cyan" | "purple")}
-                className="p-4 sm:p-5 h-full flex flex-col gap-3 shadow-[var(--shadow-md)]"
+                glow={reward.accent as "electric" | "cyan" | "purple"}
+                className="p-5 flex flex-col items-center text-center gap-3 shadow-[var(--shadow-md)]"
               >
-                <div className="flex items-center justify-between">
-                  <IconBadge name={reward.icon} accent={reward.accent} size="lg" />
-                  <StatusBadge
-                    variant={reward.category === "UPI" ? "emerald" : "purple"}
-                    className="text-[10px]"
-                  >
-                    {reward.category}
-                  </StatusBadge>
-                </div>
+                <IconBadge name={reward.icon} accent={reward.accent} size="lg" />
                 <div>
-                  <h3 className="text-sm sm:text-base font-semibold text-foreground">{reward.name}</h3>
-                  <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                    <Coins size={11} className="text-gold" />
+                  <h3 className="text-base font-bold text-foreground">{reward.name}</h3>
+                  <div className="mt-1 flex items-center justify-center gap-1 text-sm text-muted-foreground">
+                    <Coins size={13} className="text-gold" />
                     <span className="font-semibold text-gold tabular-nums">
                       {reward.coins.toLocaleString("en-IN")}
                     </span>
                     <span>coins</span>
                   </div>
                 </div>
-                <div className="mt-auto pt-1">
-                  <LootButton
-                    size="sm"
-                    variant={isAuthenticated ? "electric" : "outline"}
-                    fullWidth
-                    onClick={handleRedeem}
-                    rightIcon={<ArrowRight size={12} />}
-                  >
-                    {isAuthenticated ? "Redeem" : "Sign up to Redeem"}
-                  </LootButton>
-                </div>
+                <LootButton
+                  size="sm"
+                  variant="electric"
+                  fullWidth
+                  onClick={() => navigate(isAuthenticated ? "redeem" : "login")}
+                  rightIcon={<ArrowRight size={12} />}
+                >
+                  {isAuthenticated ? "Redeem Now" : "Sign Up"}
+                </LootButton>
               </GlassCard>
             </motion.div>
           ))}
@@ -629,10 +611,10 @@ function RewardsPreview() {
         >
           <LootButton
             variant="glass"
-            onClick={() => navigate(isAuthenticated ? "redeem" : "register")}
+            onClick={() => navigate(isAuthenticated ? "redeem" : "login")}
             rightIcon={<ArrowRight size={15} />}
           >
-            {isAuthenticated ? "Open Redeem Page" : "Get Started to Redeem"}
+            View All Rewards
           </LootButton>
         </motion.div>
       </div>
@@ -648,9 +630,9 @@ function SecurityPreview() {
     <section className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16">
       <div className="max-w-7xl mx-auto">
         <SectionHeading
-          eyebrow="Security"
-          title="Built Safe, by Design"
-          description="Your account, data and rewards are protected with industry-standard security."
+          eyebrow="Trust & Safety"
+          title="Built for Trust"
+          description="Your account, earnings and data are protected every step of the way."
         />
         <motion.div
           variants={staggerContainer}
@@ -687,12 +669,12 @@ function SecurityPreview() {
 function FAQPreview() {
   const [open, setOpen] = useState<number | null>(0);
   return (
-    <section className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16">
+    <section id="faq" className="px-3 sm:px-6 lg:px-8 py-12 sm:py-16 scroll-mt-24">
       <div className="max-w-3xl mx-auto">
         <SectionHeading
           eyebrow="FAQ"
-          title="Frequently Asked Questions"
-          description="Quick answers to the things members ask us most."
+          title="Common Questions"
+          description="Quick answers to the most common questions about earning and redeeming."
         />
         <motion.div
           variants={staggerContainer}
@@ -759,8 +741,8 @@ function SupportPreview() {
       <div className="max-w-7xl mx-auto">
         <SectionHeading
           eyebrow="Support"
-          title="We're Here to Help"
-          description="Multiple channels to get the answers you need — fast."
+          title="Need Assistance?"
+          description="Multiple ways to get the help you need, when you need it."
         />
         <motion.div
           variants={staggerContainer}
@@ -771,7 +753,7 @@ function SupportPreview() {
         >
           {SUPPORT_OPTIONS.map((s, i) => {
             const isLiveChat = s.title === "Live Chat";
-            const target: ViewId = isAuthenticated ? "support" : "register";
+            const target: ViewId = isAuthenticated ? "support" : "login";
             return (
               <motion.div key={s.title} variants={cardReveal} custom={i}>
                 <GlassCard
@@ -811,27 +793,35 @@ function SupportPreview() {
 /* ============================================================
    Section 8: Footer
    ============================================================ */
+function scrollToSection(target: string) {
+  const el = document.getElementById(target);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
 function Footer() {
   const navigate = useNavigationStore((s) => s.navigate);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const quickLinks: { label: string; view: ViewId }[] = [
-    { label: "Dashboard", view: "dashboard" },
-    { label: "Earn Coins", view: "earn" },
-    { label: "Wallet", view: "wallet" },
-    { label: "Rewards", view: "rewards" },
-    { label: "Leaderboard", view: "leaderboard" },
+  const currentYear = new Date().getFullYear();
+  const quickLinks: { label: string; onClick: () => void }[] = [
+    { label: "Overview", onClick: () => scrollToSection("overview") },
+    { label: "How It Works", onClick: () => scrollToSection("how") },
+    { label: "Rewards", onClick: () => scrollToSection("rewards") },
+    { label: "FAQ", onClick: () => scrollToSection("faq") },
+    { label: "Support", onClick: () => scrollToSection("support") },
+    { label: "About", onClick: () => navigate("about") },
   ];
-  const legalLinks: { label: string; view: ViewId }[] = [
-    { label: "Privacy Policy", view: "privacy" },
-    { label: "Terms of Service", view: "terms" },
-    { label: "Cookie Policy", view: "cookies" },
-    { label: "Community Guidelines", view: "community-guidelines" },
-    { label: "Security", view: "security-policy" },
+  const legalLinks: { label: string; onClick: () => void }[] = [
+    { label: "Privacy Policy", onClick: () => navigate("privacy") },
+    { label: "Terms & Conditions", onClick: () => navigate("terms") },
+    { label: "Cookie Policy", onClick: () => navigate("cookies") },
+    { label: "Refund Policy", onClick: () => navigate("refund") },
   ];
-  const supportLinks: { label: string; view: ViewId }[] = [
-    { label: "Support Center", view: "support" },
-    { label: "Help Center", view: "support" },
-    { label: "Contact Us", view: "support" },
+  const supportLinks: { label: string; onClick: () => void }[] = [
+    { label: "Contact", onClick: () => navigate("contact") },
+    { label: "Help Center", onClick: () => navigate("help-center") },
+    { label: "Report Issue", onClick: () => navigate("support") },
+    { label: "Email Support", onClick: () => navigate("contact") },
   ];
   const socials = [
     { icon: Twitter, label: "Twitter" },
@@ -840,13 +830,11 @@ function Footer() {
     { icon: Youtube, label: "YouTube" },
     { icon: Send, label: "Telegram" },
   ];
-  const handleQuickLink = (view: ViewId) => navigate(isAuthenticated ? view : "register");
   return (
     <footer className="px-3 sm:px-6 lg:px-8 pb-6 pt-12 mt-auto">
       <div className="max-w-7xl mx-auto">
         <GlassCard level={3} sheen className="p-6 sm:p-8 shadow-[var(--shadow-md)] border-t-2 border-t-electric/20">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
-            {/* Brand */}
             <div className="col-span-2 md:col-span-1 space-y-3">
               <button
                 onClick={() => {
@@ -859,31 +847,30 @@ function Footer() {
                 <Logo size="md" />
               </button>
               <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
-                LootLoom is a premium rewards platform that turns your time into real value —
-                watch, complete, invite and redeem.
+                LootLoom is a rewards platform that lets you earn coins through simple daily activities
+                and redeem them directly to UPI.
               </p>
               <div className="flex items-center gap-2">
                 {socials.map((s) => (
-                  <button
+                  <span
                     key={s.label}
+                    className="size-8 rounded-full glass-2 ring-1 ring-border flex items-center justify-center text-muted-foreground cursor-not-allowed opacity-50"
                     aria-label={s.label}
-                    className="size-8 rounded-full glass-2 ring-1 ring-border flex items-center justify-center text-muted-foreground hover:text-electric hover:ring-electric/30 transition-colors"
                   >
                     <s.icon size={14} />
-                  </button>
+                  </span>
                 ))}
               </div>
             </div>
 
-            {/* Quick Links */}
             <div className="space-y-3">
               <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">Quick Links</h4>
               <ul className="space-y-2">
                 {quickLinks.map((l) => (
                   <li key={l.label}>
                     <button
-                      onClick={() => handleQuickLink(l.view)}
-                      className="text-xs text-muted-foreground hover:text-electric transition-colors text-left"
+                      onClick={l.onClick}
+                      className="text-xs text-muted-foreground hover:text-electric transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                     >
                       {l.label}
                     </button>
@@ -892,15 +879,14 @@ function Footer() {
               </ul>
             </div>
 
-            {/* Legal */}
             <div className="space-y-3">
               <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">Legal</h4>
               <ul className="space-y-2">
                 {legalLinks.map((l) => (
                   <li key={l.label}>
                     <button
-                      onClick={() => navigate(l.view)}
-                      className="text-xs text-muted-foreground hover:text-electric transition-colors text-left"
+                      onClick={l.onClick}
+                      className="text-xs text-muted-foreground hover:text-electric transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                     >
                       {l.label}
                     </button>
@@ -909,15 +895,14 @@ function Footer() {
               </ul>
             </div>
 
-            {/* Support */}
             <div className="space-y-3">
               <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">Support</h4>
               <ul className="space-y-2">
                 {supportLinks.map((l) => (
                   <li key={l.label}>
                     <button
-                      onClick={() => navigate(isAuthenticated ? l.view : "register")}
-                      className="text-xs text-muted-foreground hover:text-electric transition-colors text-left"
+                      onClick={l.onClick}
+                      className="text-xs text-muted-foreground hover:text-electric transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                     >
                       {l.label}
                     </button>
@@ -935,14 +920,14 @@ function Footer() {
 
           <div className="mt-6 pt-5 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} LootLoom. All rights reserved.
+              &copy; {currentYear} LootLoom. All rights reserved.
             </p>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 <ShieldCheck size={12} className="text-emerald-brand" /> Secure Platform
               </span>
               <span className="inline-flex items-center gap-1">
-                <Sparkles size={12} className="text-gold" /> Premium Rewards
+                <Sparkles size={12} className="text-gold" /> UPI Rewards
               </span>
             </div>
           </div>

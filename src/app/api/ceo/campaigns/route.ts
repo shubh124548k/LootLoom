@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 
+const ALLOWED_CAMPAIGN_STATUSES = ["ACTIVE", "INACTIVE", "PAUSED", "COMPLETED", "DRAFT"] as const;
+
 async function requireCEO() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;
@@ -63,6 +65,10 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json();
   const { campaignId, status } = body;
+
+  if (status && !ALLOWED_CAMPAIGN_STATUSES.includes(status)) {
+    return NextResponse.json({ success: false, message: "Invalid campaign status", code: "VALIDATION_ERROR" }, { status: 400 });
+  }
 
   const campaign = await db.campaign.update({ where: { id: campaignId }, data: { status } });
   await db.auditLog.create({ data: { actorId: ceoId, action: "CAMPAIGN_UPDATED", targetId: campaignId, metadata: JSON.stringify({ status }) } });

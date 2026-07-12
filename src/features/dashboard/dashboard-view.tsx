@@ -266,7 +266,7 @@ const QUICK_ACTIONS: Array<{
 }> = [
   { label: "Watch Ads", desc: "Earn coins", icon: PlayCircle, accent: "electric", view: "earn" },
   { label: "Wallet", desc: "Coins & history", icon: Wallet, accent: "cyan", view: "wallet" },
-  { label: "Redeem", desc: "Gift cards · UPI", icon: Gift, accent: "purple", view: "redeem" },
+  { label: "Redeem", desc: "UPI Cashouts", icon: Gift, accent: "purple", view: "redeem" },
   { label: "History", desc: "Activity log", icon: History, accent: "gold", view: "history" },
   { label: "Settings", desc: "Account settings", icon: Settings, accent: "emerald", view: "settings" },
 ];
@@ -409,7 +409,7 @@ function RewardCenterPreview() {
   return (
     <WidgetCard
       title="Available Rewards"
-      description="Redeem coins for cash & gift cards"
+      description="Redeem coins for UPI cash"
       icon={<Gift size={16} />}
       index={2}
       className="xl:col-span-2"

@@ -2,24 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getEarnConfigValue } from "@/lib/earn/config";
 
-/**
- * POST /api/ads/complete — verify ad completion and credit coins.
- * Body: { sessionId }
- *
- * Server-side verification flow:
- * 1. Authenticate user
- * 2. Find the ad session by sessionId + userId (ownership check)
- * 3. Verify session status is STARTED (not already completed — prevents duplicate rewards)
- * 4. Read reward amount from the AdEvent record (never trust frontend amount)
- * 5. Get wallet, compute new balance
- * 6. Atomic: update wallet + create ledger entry + mark ad as VERIFIED + notification + audit
- *
- * Fraud protection:
- * - Duplicate callback rejected (session must be STARTED, not VERIFIED)
- * - User can only complete their own sessions
- * - Reward amount comes from backend-created AdEvent, not frontend
- */
+const ipWatchMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkIpRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = ipWatchMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    ipWatchMap.set(ip, { count: 1, resetAt: now + 60000 });
+    return true;
+  }
+  if (entry.count >= 20) return false;
+  entry.count++;
+  return true;
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -34,13 +32,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Session ID required", code: "VALIDATION_ERROR" }, { status: 400 });
   }
 
-  // Find the ad session — must belong to the authenticated user
   const adEvent = await db.adEvent.findUnique({ where: { id: sessionId } });
   if (!adEvent || adEvent.userId !== userId) {
     return NextResponse.json({ success: false, message: "Invalid ad session", code: "INVALID_SESSION" }, { status: 404 });
   }
 
-  // Fraud check: session must be STARTED (not already completed/verified)
   if (adEvent.status === "VERIFIED" || adEvent.status === "COMPLETED") {
     return NextResponse.json({ success: false, message: "Ad already rewarded", code: "DUPLICATE_REWARD" }, { status: 409 });
   }
@@ -48,96 +44,123 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Ad session failed", code: "SESSION_FAILED" }, { status: 400 });
   }
 
-  // Fraud check: rapid ad completion (ad created less than 5 seconds ago = likely bot)
+  const minDuration = await getEarnConfigValue("MIN_AD_DURATION_MS");
   const sessionAge = Date.now() - adEvent.createdAt.getTime();
-  if (sessionAge < 5000) {
+  if (sessionAge < minDuration) {
     await db.adEvent.update({ where: { id: adEvent.id }, data: { status: "FAILED" } });
-    return NextResponse.json({ success: false, message: "Ad completed too quickly. Please watch the full ad.", code: "FRAUD_TOO_FAST" }, { status: 422 });
+    return NextResponse.json({ success: false, message: "Ad completed too quickly", code: "FRAUD_TOO_FAST" }, { status: 422 });
   }
 
-  // Fraud check: velocity — more than 10 ads in the last minute
+  const velocityLimit = await getEarnConfigValue("AD_VELOCITY_LIMIT");
   const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
   const recentVerifiedCount = await db.adEvent.count({
     where: { userId, status: "VERIFIED", createdAt: { gte: oneMinuteAgo } },
   });
-  if (recentVerifiedCount >= 10) {
+  if (recentVerifiedCount >= velocityLimit) {
     await db.adEvent.update({ where: { id: adEvent.id }, data: { status: "FAILED" } });
-    return NextResponse.json({ success: false, message: "Ad velocity limit reached. Please slow down.", code: "FRAUD_VELOCITY" }, { status: 429 });
+    return NextResponse.json({ success: false, message: "Ad velocity limit reached", code: "FRAUD_VELOCITY" }, { status: 429 });
   }
 
-  // Get user's wallet
+  const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+  if (!checkIpRateLimit(ip)) {
+    await db.adEvent.update({ where: { id: adEvent.id }, data: { status: "FAILED" } });
+    return NextResponse.json({ success: false, message: "IP rate limit exceeded", code: "FRAUD_IP" }, { status: 429 });
+  }
+
   const wallet = await db.wallet.findUnique({ where: { userId } });
   if (!wallet) {
     return NextResponse.json({ success: false, message: "Wallet not found", code: "WALLET_NOT_FOUND" }, { status: 404 });
   }
 
-  // Reward amount from backend-created AdEvent (never from frontend)
   const rewardAmount = adEvent.rewardAmount;
   if (rewardAmount <= 0) {
     return NextResponse.json({ success: false, message: "Invalid reward amount", code: "INVALID_REWARD" }, { status: 400 });
   }
 
-  // Atomic: credit coins + create ledger entry + mark ad verified
-  const balanceBefore = wallet.coinBalance;
-  const balanceAfter = balanceBefore + rewardAmount;
-
-  const [updatedWallet, transaction] = await Promise.all([
-    db.wallet.update({
+  const result = await db.$transaction(async (tx) => {
+    const updatedWallet = await tx.wallet.update({
       where: { id: wallet.id },
       data: {
-        coinBalance: balanceAfter,
+        coinBalance: { increment: rewardAmount },
         totalEarned: { increment: rewardAmount },
       },
-    }),
-    db.transaction.create({
+    });
+
+    const txn = await tx.transaction.create({
       data: {
         userId,
         walletId: wallet.id,
         type: "AD_REWARD",
         amount: rewardAmount,
-        balanceBefore,
-        balanceAfter,
+        balanceBefore: wallet.coinBalance,
+        balanceAfter: wallet.coinBalance + rewardAmount,
         referenceId: adEvent.id,
         description: `Ad reward (${adEvent.adType})`,
         status: "COMPLETED",
       },
-    }),
-    db.adEvent.update({
+    });
+
+    await tx.adEvent.update({
       where: { id: adEvent.id },
       data: { status: "VERIFIED", verificationId: `verified-${Date.now()}` },
-    }),
-  ]);
+    });
 
-  // Create notification
-  await db.notification.create({
-    data: {
-      userId,
-      title: "Ad Reward Earned!",
-      message: `You earned ${rewardAmount} coins from watching an ad.`,
-      type: "REWARD",
-    },
-  });
+    await tx.notification.create({
+      data: {
+        userId,
+        title: "Ad Reward Earned!",
+        message: `You earned ${rewardAmount} coins from watching an ad.`,
+        type: "REWARD",
+      },
+    });
 
-  // Audit log
-  await db.auditLog.create({
-    data: {
-      actorId: userId,
-      action: "AD_REWARD_CREDITED",
-      targetId: transaction.id,
-      metadata: JSON.stringify({ amount: rewardAmount, adEventId: adEvent.id }),
-    },
+    await tx.auditLog.create({
+      data: {
+        actorId: userId,
+        action: "AD_REWARD_CREDITED",
+        targetId: txn.id,
+        metadata: JSON.stringify({ amount: rewardAmount, adEventId: adEvent.id }),
+      },
+    });
+
+    // Update mission progress for WATCH_ADS mission
+    const watchAdMission = await tx.mission.findUnique({ where: { key: "WATCH_ADS" } });
+    if (watchAdMission) {
+      const userMission = await tx.userMission.findUnique({
+        where: { userId_missionId: { userId, missionId: watchAdMission.id } },
+      });
+
+      if (userMission && !userMission.completed) {
+        const newProgress = userMission.progress + 1;
+        await tx.userMission.update({
+          where: { id: userMission.id },
+          data: {
+            progress: newProgress,
+            completed: newProgress >= watchAdMission.requirement,
+          },
+        });
+
+        if (newProgress >= watchAdMission.requirement) {
+          await tx.missionLog.create({
+            data: { userId, missionId: watchAdMission.id, reward: watchAdMission.rewardCoins },
+          });
+        }
+      }
+    }
+
+    return { txn, newBalance: updatedWallet.coinBalance };
   });
 
   return NextResponse.json({
     success: true,
     data: {
       transaction: {
-        id: transaction.id,
-        type: transaction.type,
-        amount: transaction.amount,
-        balanceAfter: transaction.balanceAfter,
+        id: result.txn.id,
+        type: result.txn.type,
+        amount: result.txn.amount,
+        balanceAfter: result.txn.balanceAfter,
       },
-      newBalance: updatedWallet.coinBalance,
+      newBalance: result.newBalance,
       rewardAmount,
     },
     message: `${rewardAmount} coins credited to your wallet`,

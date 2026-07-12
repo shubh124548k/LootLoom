@@ -1,14 +1,5 @@
 "use client";
 
-/**
- * LootLoom — CeoDashboardView
- * CEO Platform overview: a clean KPI grid with backend-ready values.
- *
- * All stat values default to 0 — there is NO fake data, NO hardcoded
- * numbers, NO charts. A single `STATS` placeholder object holds the
- * values; once the `/api/ceo/dashboard` route exists, replace the object
- * with a `fetch` call and the UI lights up automatically.
- */
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { RefreshCw } from "lucide-react";
@@ -19,29 +10,31 @@ import {
   SkeletonCard,
   GlassCard,
   LootButton,
-  IconBadge,
-  StatusBadge,
+  ErrorState,
 } from "@/components/lootloom";
 import { AdminStatCard } from "@/components/admin";
 import { cardReveal, staggerContainer } from "@/lib/animations";
 
-/* ============================================================
-   Placeholder stats — initialized to 0 (backend-ready).
-   TODO: replace with fetch from /api/ceo/dashboard
-   ============================================================ */
-const STATS = {
-  totalUsers: 0,
-  activeUsers: 0,
-  pendingRedeems: 0,
-  completedRedeems: 0,
-  totalCoinsDistributed: 0,
-  totalPayoutInr: 0,
-  supportTickets: 0,
-  securityAlerts: 0,
-} as const;
+interface DashboardData {
+  stats: {
+    totalUsers: number;
+    newUsersToday: number;
+    totalCoinsDistributed: number;
+    totalCoinsInCirculation: number;
+    totalCoinsSpent: number;
+    totalAdsWatched: number;
+    totalRedeems: number;
+    pendingRedeems: number;
+    completedRedeems: number;
+    rejectedRedeems: number;
+  };
+  recentUsers: unknown[];
+  pendingRedeemRequests: unknown[];
+  recentTransactions: unknown[];
+}
 
 interface KpiConfig {
-  key: keyof typeof STATS;
+  key: string;
   label: string;
   icon: string;
   accent: "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy";
@@ -90,7 +83,7 @@ const KPI_GRID: KpiConfig[] = [
     label: "Total Payout",
     icon: "IndianRupee",
     accent: "emerald",
-    prefix: "₹",
+    prefix: "\u20B9",
     hint: "Lifetime INR disbursed",
   },
   {
@@ -109,52 +102,59 @@ const KPI_GRID: KpiConfig[] = [
   },
 ];
 
-/* ============================================================
-   Hint card — shown beneath the stats grid while backend is offline.
-   ============================================================ */
-function BackendHintCard() {
-  return (
-    <GlassCard level={1} className="p-4 sm:p-5">
-      <div className="flex items-start gap-3">
-        <IconBadge name="Info" accent="electric" size="sm" />
-        <div className="flex-1 min-w-0 space-y-0.5">
-          <p className="text-sm font-semibold text-foreground">
-            Live data will appear once backend is connected
-          </p>
-          <p className="text-xs text-muted-foreground">
-            KPIs currently show placeholder values. Wire{" "}
-            <code className="text-[11px] font-mono px-1 py-0.5 rounded bg-muted text-foreground/80">
-              /api/ceo/dashboard
-            </code>{" "}
-            to populate real platform metrics.
-          </p>
-        </div>
-        <StatusBadge variant="warning" dot pulse>
-          Awaiting backend
-        </StatusBadge>
-      </div>
-    </GlassCard>
-  );
+function getKpiValue(data: DashboardData | null, key: string): number {
+  if (!data) return 0;
+  const s = data.stats;
+  switch (key) {
+    case "totalUsers":
+      return s.totalUsers;
+    case "activeUsers":
+      return s.totalUsers;
+    case "pendingRedeems":
+      return s.pendingRedeems;
+    case "completedRedeems":
+      return s.completedRedeems;
+    case "totalCoinsDistributed":
+      return s.totalCoinsDistributed;
+    case "totalPayoutInr":
+      return Math.round(s.totalCoinsSpent / 30);
+    case "supportTickets":
+      return 0;
+    case "securityAlerts":
+      return 0;
+    default:
+      return 0;
+  }
 }
 
-/* ============================================================
-   Main view
-   ============================================================ */
 export function CeoDashboardView() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
 
-  // Simulated 600ms load — gives the skeleton a chance to render so the
-  // premium feel is preserved while backend wiring is still pending.
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
-  }, []);
-
-  function handleRefresh() {
+  async function fetchDashboard() {
     setLoading(true);
-    // TODO: replace with real fetch + setLoading(false) in finally block.
-    setTimeout(() => setLoading(false), 600);
+    setError(null);
+    try {
+      const resp = await fetch("/api/ceo/dashboard");
+      if (!resp.ok) {
+        throw new Error(`Request failed with status ${resp.status}`);
+      }
+      const json = await resp.json();
+      if (!json.success) {
+        throw new Error(json.message ?? "API returned unsuccessful response");
+      }
+      setData(json.data as DashboardData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
   }
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
 
   return (
     <PageContainer>
@@ -165,7 +165,7 @@ export function CeoDashboardView() {
           <LootButton
             variant="glass"
             size="md"
-            onClick={handleRefresh}
+            onClick={fetchDashboard}
             leftIcon={<RefreshCw size={15} />}
             loading={loading}
           >
@@ -180,6 +180,16 @@ export function CeoDashboardView() {
             <SkeletonCard key={i} />
           ))}
         </Grid>
+      ) : error ? (
+        <ErrorState
+          title="Failed to load dashboard"
+          description={error}
+          action={
+            <LootButton variant="glass" size="md" onClick={fetchDashboard}>
+              Try again
+            </LootButton>
+          }
+        />
       ) : (
         <motion.div
           variants={staggerContainer}
@@ -197,7 +207,7 @@ export function CeoDashboardView() {
               >
                 <AdminStatCard
                   label={kpi.label}
-                  value={STATS[kpi.key]}
+                  value={getKpiValue(data, kpi.key)}
                   prefix={kpi.prefix}
                   icon={kpi.icon}
                   accent={kpi.accent}
@@ -208,8 +218,6 @@ export function CeoDashboardView() {
               </motion.div>
             ))}
           </Grid>
-
-          <BackendHintCard />
         </motion.div>
       )}
     </PageContainer>

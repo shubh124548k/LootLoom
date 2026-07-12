@@ -5,7 +5,7 @@ import { useNavigationStore, useAuthStore } from "@/stores";
 import { BackgroundEngine, AppShell, pageTransition, RestrictedAccess, CeoLayout } from "@/components/lootloom";
 import { LEGAL_VIEWS, CEO_VIEWS, SYSTEM_VIEWS, AUTH_VIEWS } from "@/config/navigation";
 import { RouteGuard } from "@/components/auth";
-import { Suspense, useMemo, Component, type ReactNode } from "react";
+import { Suspense, useMemo, useEffect, Component, type ReactNode } from "react";
 import { GlassLoader } from "@/components/lootloom/states";
 import { RefreshCw, AlertTriangle } from "lucide-react";
 import type { ViewId } from "@/types";
@@ -38,6 +38,7 @@ import { CeoSupportView } from "@/features/ceo/ceo-support-view";
 import { CeoNotificationsView } from "@/features/ceo/ceo-notifications-view";
 import { CeoHistoryView } from "@/features/ceo/ceo-history-view";
 import { CeoSettingsView } from "@/features/ceo/ceo-settings-view";
+import { CeoAdProvidersView } from "@/features/ceo/ceo-ad-providers-view";
 
 const AUTH_SET = new Set(AUTH_VIEWS);
 const SYSTEM_SET = new Set(SYSTEM_VIEWS);
@@ -143,6 +144,7 @@ const CEO_APP_VIEWS: ViewId[] = [
   "ceo-support",
   "ceo-history",
   "ceo-settings",
+  "ceo-ad-providers",
 ];
 
 /**
@@ -152,7 +154,36 @@ const CEO_APP_VIEWS: ViewId[] = [
 export function AppRouter() {
   const current = useNavigationStore((s) => s.current);
   const role = useAuthStore((s) => s.role);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const navigate = useNavigationStore((s) => s.navigate);
   const isCeoAuthenticated = role === "ceo";
+
+  // All navigation side-effects in useEffect — NEVER during render
+  useEffect(() => {
+    if (role === "ceo") {
+      fetch("/api/auth/session").then(res => res.json()).then(session => {
+        const userRole = (session?.user as any)?.role;
+        if (userRole !== "CEO" && userRole !== "ADMIN") {
+          useAuthStore.setState({ isAuthenticated: false, role: "user", status: "unauthenticated" });
+          navigate("ceo-login");
+        }
+      }).catch(() => {});
+    }
+  }, [role, navigate]);
+
+  // Navigate authenticated users away from login pages
+  useEffect(() => {
+    if (AUTH_SET.has(current) && isAuthenticated) {
+      navigate("earn");
+    }
+  }, [current, isAuthenticated, navigate]);
+
+  // Navigate non-CEO users away from CEO pages
+  useEffect(() => {
+    if (CEO_SET.has(current) && current !== "ceo-login" && !isCeoAuthenticated) {
+      navigate("ceo-login");
+    }
+  }, [current, isCeoAuthenticated, navigate]);
 
   const isAuthView = AUTH_SET.has(current);
   const isSystemView = SYSTEM_SET.has(current);
@@ -172,21 +203,23 @@ export function AppRouter() {
     if (current === "ceo-login")
       return <CeoAuthView />;
 
-    // CEO authenticated views — guarded by role check
+    // CEO authenticated views — guarded by role check (redirect at top handles denial)
     if (current === "ceo-dashboard")
-      return isCeoAuthenticated ? <CeoDashboardView /> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoDashboardView /> : null;
     if (current === "ceo-redeem")
-      return isCeoAuthenticated ? <CeoRedeemView /> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoRedeemView /> : null;
     if (current === "ceo-users")
-      return isCeoAuthenticated ? <CeoUsersView /> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoUsersView /> : null;
     if (current === "ceo-notifications")
-      return isCeoAuthenticated ? <CeoNotificationsView /> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoNotificationsView /> : null;
     if (current === "ceo-support")
-      return isCeoAuthenticated ? <CeoSupportView /> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoSupportView /> : null;
     if (current === "ceo-history")
-      return isCeoAuthenticated ? <CeoHistoryView /> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoHistoryView /> : null;
     if (current === "ceo-settings")
-      return isCeoAuthenticated ? <CeoSettingsView /> : <RestrictedAccess />;
+      return isCeoAuthenticated ? <CeoSettingsView /> : null;
+    if (current === "ceo-ad-providers")
+      return isCeoAuthenticated ? <CeoAdProvidersView /> : null;
 
     // App views — protected by RouteGuard (redirects to login when unauthenticated)
     switch (current) {
@@ -232,7 +265,7 @@ export function AppRouter() {
   }
 
   // Public, auth, system, legal, ceo-login, ceo-restricted, non-CEO ceo views: full-screen (no shell)
-  const CEO_GUARDED: ViewId[] = ["ceo-dashboard", "ceo-redeem", "ceo-users", "ceo-notifications", "ceo-support", "ceo-history", "ceo-settings"];
+  const CEO_GUARDED: ViewId[] = ["ceo-dashboard", "ceo-redeem", "ceo-users", "ceo-notifications", "ceo-support", "ceo-history", "ceo-settings", "ceo-ad-providers"];
   if (isPublicView || isAuthView || isSystemView || isLegalView || current === "ceo-login" || current === "ceo-restricted" || CEO_GUARDED.includes(current)) {
     return (
       <div className="relative min-h-screen">

@@ -1,16 +1,6 @@
 "use client";
 
-/**
- * Navbar — session-aware top navigation for the public homepage.
- *
- * Desktop (md+): Logo · Overview · How It Works · Rewards · Support · [Sign In · Get Started] OR [UserMenu]
- * Mobile (<md): Logo · Menu button → Sheet drawer with nav links + auth actions
- *
- * Session-aware: uses useAuthStore.isAuthenticated + useUserStore to switch
- * between guest (Sign In / Get Started) and authenticated (Avatar + UserMenu) states.
- * NO hardcoded login state — driven by real NextAuth session via AuthDataSync.
- */
-import { motion } from "framer-motion";
+import { motion, useScroll, useMotionValueEvent } from "framer-motion";
 import * as Icons from "lucide-react";
 import { Logo, LootButton } from "@/components/lootloom";
 import { UserMenu } from "@/components/auth";
@@ -29,22 +19,21 @@ import { signOut } from "next-auth/react";
 
 interface NavLink {
   label: string;
-  target?: string; // for scroll links
-  view?: "rewards" | "support"; // for view-based links
+  target: string;
 }
 
 const NAV_LINKS: NavLink[] = [
-  { label: "Overview", target: "overview" },
+  { label: "Features", target: "overview" },
   { label: "How It Works", target: "how" },
-  { label: "Rewards", view: "rewards" },
-  { label: "Support", view: "support" },
+  { label: "Rewards", target: "rewards" },
+  { label: "FAQ", target: "faq" },
+  { label: "Support", target: "support" },
 ];
 
-function scrollOrNavigate(link: NavLink, navigate: (v: "rewards" | "support") => void) {
-  if (link.view) {
-    navigate(link.view);
-  } else if (link.target) {
-    document.getElementById(link.target)?.scrollIntoView({ behavior: "smooth" });
+function scrollToSection(target: string) {
+  const el = document.getElementById(target);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
 
@@ -53,6 +42,22 @@ export function Navbar() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const logout = useAuthStore((s) => s.logout);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("overview");
+  const [scrolled, setScrolled] = useState(false);
+  const { scrollY } = useScroll();
+
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    setScrolled(latest > 40);
+    const sections = NAV_LINKS.map((l) => l.target);
+    let current = sections[0];
+    for (const id of sections) {
+      const el = document.getElementById(id);
+      if (el && el.offsetTop - 120 <= latest) {
+        current = id;
+      }
+    }
+    setActiveSection(current);
+  });
 
   const handleLogout = async () => {
     logout();
@@ -74,12 +79,14 @@ export function Navbar() {
     >
       <nav
         className={cn(
-          "px-4 sm:px-5 py-2.5 flex items-center justify-between gap-3",
-          "rounded-2xl glass-nav sheen shadow-[var(--shadow-md)] ring-1 ring-border/40"
+          "px-4 sm:px-5 py-2.5 flex items-center justify-between gap-3 transition-shadow duration-300",
+          "rounded-2xl glass-nav sheen ring-1 ring-border/40",
+          scrolled
+            ? "shadow-[var(--shadow-lg)] ring-border/70"
+            : "shadow-[var(--shadow-md)]"
         )}
         aria-label="Primary"
       >
-        {/* Logo */}
         <button
           onClick={() => {
             window.scrollTo({ top: 0, behavior: "smooth" });
@@ -91,20 +98,34 @@ export function Navbar() {
           <Logo size="md" />
         </button>
 
-        {/* Desktop nav links */}
         <div className="hidden md:flex items-center gap-1 text-sm">
-          {NAV_LINKS.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => scrollOrNavigate(item, navigate)}
-              className="px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              {item.label}
-            </button>
-          ))}
+          {NAV_LINKS.map((item) => {
+            const isActive = activeSection === item.target;
+            return (
+              <button
+                key={item.label}
+                onClick={() => scrollToSection(item.target)}
+                className={cn(
+                  "relative px-3 py-1.5 rounded-lg font-medium transition-all duration-200",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  isActive
+                    ? "text-electric"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                )}
+              >
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-active"
+                    className="absolute inset-0 rounded-lg bg-electric/8"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{item.label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Desktop: auth actions */}
         <div className="hidden md:flex items-center gap-2">
           {isAuthenticated ? (
             <UserMenu />
@@ -130,7 +151,6 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Mobile: menu trigger */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger
             aria-label="Open menu"
@@ -152,7 +172,7 @@ export function Navbar() {
                 <button
                   key={item.label}
                   onClick={() => {
-                    scrollOrNavigate(item, navigate);
+                    scrollToSection(item.target);
                     setMobileOpen(false);
                   }}
                   className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
@@ -166,20 +186,14 @@ export function Navbar() {
               {isAuthenticated ? (
                 <>
                   <button
-                    onClick={() => {
-                      navigate("dashboard");
-                      setMobileOpen(false);
-                    }}
+                    onClick={() => { navigate("dashboard"); setMobileOpen(false); }}
                     className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent/60 transition-colors flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
                     <Icons.LayoutDashboard size={16} className="text-electric" aria-hidden="true" />
                     Dashboard
                   </button>
                   <button
-                    onClick={() => {
-                      navigate("profile");
-                      setMobileOpen(false);
-                    }}
+                    onClick={() => { navigate("profile"); setMobileOpen(false); }}
                     className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent/60 transition-colors flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
                     <Icons.User size={16} className="text-cyan-brand" aria-hidden="true" />
@@ -199,10 +213,7 @@ export function Navbar() {
                     size="md"
                     variant="glass"
                     fullWidth
-                    onClick={() => {
-                      navigate("login");
-                      setMobileOpen(false);
-                    }}
+                    onClick={() => { navigate("login"); setMobileOpen(false); }}
                     leftIcon={<Icons.LogIn size={16} />}
                   >
                     Sign In
@@ -211,10 +222,7 @@ export function Navbar() {
                     size="md"
                     variant="electric"
                     fullWidth
-                    onClick={() => {
-                      navigate("register");
-                      setMobileOpen(false);
-                    }}
+                    onClick={() => { navigate("register"); setMobileOpen(false); }}
                     leftIcon={<Icons.UserPlus size={16} />}
                   >
                     Get Started

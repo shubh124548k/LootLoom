@@ -91,14 +91,6 @@ export type AuthStatus =
   | "session-expired"
   | "loading";
 
-export type AppLifecycle =
-  | "authenticating"
-  | "loading-session"
-  | "initializing"
-  | "ready"
-  | "session-expired"
-  | "unauthorized"
-  | "preparing-data";
 
 export interface NavItem {
   id: ViewId;

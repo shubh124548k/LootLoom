@@ -2,130 +2,89 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { emitSupportReply } from "@/lib/realtime";
 
-/**
- * GET /api/support — user's support tickets (real data).
- * CEO can see all tickets.
- */
-export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ success: false, message: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
+const SUPPORT_LIMIT = new Map<string, { count: number; resetAt: number }>();
+const SUPPORT_WINDOW = 60 * 1000;
+const MAX_SUPPORT_TICKETS = 5;
+
+function checkSupportRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = SUPPORT_LIMIT.get(userId);
+  if (!entry || now > entry.resetAt) {
+    SUPPORT_LIMIT.set(userId, { count: 1, resetAt: now + SUPPORT_WINDOW });
+    return true;
   }
-
-  const currentUser = await db.user.findUnique({ where: { id: session.user.id } });
-  if (!currentUser) {
-    return NextResponse.json({ success: false, message: "User not found", code: "NOT_FOUND" }, { status: 404 });
-  }
-
-  const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status");
-
-  // CEO sees all tickets; users see only their own
-  const where: Record<string, unknown> = {};
-  if (currentUser.role !== "CEO") {
-    where.userId = session.user.id;
-  }
-  if (status && status !== "ALL") where.status = status;
-
-  const tickets = await db.supportTicket.findMany({
-    where,
-    include: { user: true, messages: true },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
-
-  return NextResponse.json({
-    success: true,
-    data: tickets.map((t) => ({
-      id: t.id,
-      user: { id: t.user.id, name: t.user.name, email: t.user.email, avatar: t.user.avatar },
-      subject: t.subject,
-      category: t.category,
-      status: t.status,
-      priority: t.priority,
-      createdAt: t.createdAt,
-      updatedAt: t.updatedAt,
-      messages: t.messages.map((m) => ({
-        id: m.id,
-        senderId: m.senderId,
-        message: m.message,
-        createdAt: m.createdAt,
-      })),
-    })),
-  });
+  if (entry.count >= MAX_SUPPORT_TICKETS) return false;
+  entry.count++;
+  return true;
 }
 
-/**
- * POST /api/support — create a support ticket (user) or reply to a ticket (CEO).
- * Body: { subject?, category?, message, ticketId? }
- * If ticketId is provided → it's a reply. Otherwise → new ticket.
- */
-export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ success: false, message: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
-  }
-
-  const body = await req.json();
-  const { subject, category, message, ticketId } = body;
-
-  if (!message) {
-    return NextResponse.json({ success: false, message: "message required", code: "VALIDATION_ERROR" }, { status: 400 });
-  }
-
-  // If ticketId → reply to existing ticket
-  if (ticketId) {
-    const ticket = await db.supportTicket.findUnique({ where: { id: ticketId }, include: { user: true } });
-    if (!ticket) {
-      return NextResponse.json({ success: false, message: "Ticket not found", code: "NOT_FOUND" }, { status: 404 });
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, message: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    // Create message
-    const msg = await db.supportMessage.create({
-      data: { ticketId, senderId: session.user.id, message },
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const pageSize = Math.min(parseInt(searchParams.get("pageSize") || "10"), 50);
+
+    const where: Record<string, unknown> = { userId: session.user.id };
+    const [tickets, total] = await Promise.all([
+      db.supportTicket.findMany({
+        where,
+        orderBy: { updatedAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { messages: { orderBy: { createdAt: "asc" } } },
+      }),
+      db.supportTicket.count({ where }),
+    ]);
+
+    return NextResponse.json({ success: true, data: tickets, pagination: { page, pageSize, total } });
+  } catch (error) {
+    console.error("Support GET error:", error);
+    return NextResponse.json({ success: false, message: "An unexpected error occurred", code: "INTERNAL_ERROR" }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, message: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
+    }
+
+    if (!checkSupportRateLimit(session.user.id)) {
+      return NextResponse.json({ success: false, message: "Too many requests. Please try again later.", code: "RATE_LIMITED" }, { status: 429 });
+    }
+
+    const body = await req.json();
+    const { subject, category, message } = body;
+
+    if (!subject || !message) {
+      return NextResponse.json({ success: false, message: "subject and message required", code: "VALIDATION_ERROR" }, { status: 400 });
+    }
+
+    const ticket = await db.supportTicket.create({
+      data: {
+        userId: session.user.id,
+        subject,
+        category: category || "GENERAL",
+        status: "OPEN",
+        messages: { create: { senderId: session.user.id, message } },
+      },
+      include: { messages: true },
     });
 
-    // If CEO replied → notify user + realtime
-    const sender = await db.user.findUnique({ where: { id: session.user.id } });
-    if (sender?.role === "CEO") {
-      await db.notification.create({
-        data: {
-          userId: ticket.userId,
-          title: "Support Reply Received",
-          message: `You have a new reply on your ticket: ${ticket.subject}`,
-          type: "SUPPORT",
-        },
-      });
-      void emitSupportReply(ticket.userId, { ticketId, message, createdAt: msg.createdAt.toISOString() });
-    }
+    await db.auditLog.create({
+      data: { actorId: session.user.id, action: "SUPPORT_TICKET_CREATED", targetId: ticket.id },
+    });
 
-    return NextResponse.json({ success: true, data: { messageId: msg.id }, message: "Reply sent" });
+    return NextResponse.json({ success: true, data: ticket, message: "Support ticket created" });
+  } catch (error) {
+    console.error("Support POST error:", error);
+    return NextResponse.json({ success: false, message: "An unexpected error occurred", code: "INTERNAL_ERROR" }, { status: 500 });
   }
-
-  // New ticket
-  if (!subject) {
-    return NextResponse.json({ success: false, message: "subject required for new ticket", code: "VALIDATION_ERROR" }, { status: 400 });
-  }
-
-  const ticket = await db.supportTicket.create({
-    data: {
-      userId: session.user.id,
-      subject,
-      category: category || "GENERAL",
-      status: "OPEN",
-      priority: "MEDIUM",
-    },
-  });
-
-  await db.supportMessage.create({
-    data: { ticketId: ticket.id, senderId: session.user.id, message },
-  });
-
-  return NextResponse.json({
-    success: true,
-    data: { ticketId: ticket.id },
-    message: "Support ticket created",
-  });
 }

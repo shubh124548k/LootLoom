@@ -91,18 +91,21 @@ export const useAuthStore = create<AuthState>()(
 interface RealUserState {
   id: string | null;
   fullName: string;
+  username: string;
   email: string;
   avatar: string | null;
   role: string;
+  status: string;
+  emailVerified: boolean;
   memberSince: string | null;
   lastLogin: string | null;
+  passwordChangedAt: string | null;
   // Gamification fields (kept for UI compatibility, default to 0)
   level: number;
   xp: number;
   xpToNext: number;
   rank: number;
   dailyStreak: number;
-  // Removed: referralCode (referral system removed per requirements)
   setUser: (data: Partial<RealUserState>) => void;
   resetUser: () => void;
 }
@@ -112,11 +115,15 @@ export const useUserStore = create<RealUserState>()(
     (set) => ({
       id: null,
       fullName: "",
+      username: "",
       email: "",
       avatar: null,
       role: "USER",
+      status: "ACTIVE",
+      emailVerified: false,
       memberSince: null,
       lastLogin: null,
+      passwordChangedAt: null,
       level: 1,
       xp: 0,
       xpToNext: 1000,
@@ -127,11 +134,15 @@ export const useUserStore = create<RealUserState>()(
         set({
           id: null,
           fullName: "",
+          username: "",
           email: "",
           avatar: null,
           role: "USER",
+          status: "ACTIVE",
+          emailVerified: false,
           memberSince: null,
           lastLogin: null,
+          passwordChangedAt: null,
           level: 1,
           xp: 0,
           xpToNext: 1000,
@@ -282,17 +293,3 @@ export const useActivityStore = create<ActivityState>((set) => ({
   setItems: (items) => set({ items }),
 }));
 
-/* ============================================================
-   App Lifecycle Store — boot sequence
-   ============================================================ */
-import type { AppLifecycle } from "@/types";
-
-interface AppLifecycleState {
-  lifecycle: AppLifecycle;
-  setLifecycle: (l: AppLifecycle) => void;
-}
-
-export const useAppLifecycleStore = create<AppLifecycleState>((set) => ({
-  lifecycle: "ready",
-  setLifecycle: (l) => set({ lifecycle: l }),
-}));

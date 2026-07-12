@@ -17,13 +17,17 @@ datasource db {
 
 model User {
   id          String   @id @default(cuid())
-  googleId    String   @unique
-  name        String
+  googleId    String?  @unique
   email       String   @unique
+  password    String?
+  username    String?  @unique
+  name        String
   avatar      String?
   role        String   @default("USER") // USER | CEO | ADMIN
   status      String   @default("ACTIVE") // ACTIVE | SUSPENDED | BANNED
-  lastLoginAt DateTime?
+  emailVerified    Boolean   @default(false)
+  passwordChangedAt DateTime?
+  lastLoginAt       DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -36,17 +40,106 @@ model User {
   supportTickets  SupportTicket[]
   auditLogs       AuditLog[]       @relation("AuditActor")
   feedback        UserFeedback[]   @relation("UserFeedback")
+  referralCode    ReferralCode?
+  referralsGiven  Referral[]       @relation("Referrer")
+  referralsUsed   Referral[]       @relation("Referee")
+  userMissions    UserMission[]
+  missionLogs     MissionLog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model UserProfile {
   id        String  @id @default(cuid())
   userId    String  @unique
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  phone     String?
+  firstName String?
+  lastName  String?
   country   String?
   timezone  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ============================================================
+// REFERRAL DOMAIN
+// ============================================================
+
+model ReferralCode {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([code])
+}
+
+model Referral {
+  id          String   @id @default(cuid())
+  referrerId  String
+  referrer    User     @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  refereeId   String   @unique
+  referee     User     @relation("Referee", fields: [refereeId], references: [id], onDelete: Cascade)
+  rewardGiven Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([referrerId])
+  @@index([refereeId])
+}
+
+// ============================================================
+// MISSION DOMAIN
+// ============================================================
+
+model Mission {
+  id            String   @id @default(cuid())
+  key           String   @unique // DAILY_LOGIN | WATCH_ADS | REFERRAL | WEEKLY_BONUS | MILESTONE
+  name          String
+  description   String?
+  rewardCoins   Int      @default(0)
+  requirement   Int      @default(1) // number of actions required
+  cooldownHours Int?     // hours before repeatable (null = one-time)
+  status        String   @default("ACTIVE") // ACTIVE | DISABLED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userMissions UserMission[]
+  missionLogs  MissionLog[]
+}
+
+model UserMission {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  missionId  String
+  mission    Mission  @relation(fields: [missionId], references: [id])
+  progress   Int      @default(0)
+  completed  Boolean  @default(false)
+  claimedAt  DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, missionId])
+  @@index([userId])
+}
+
+model MissionLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  missionId String
+  mission   Mission  @relation(fields: [missionId], references: [id])
+  reward    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 // ============================================================
@@ -80,7 +173,7 @@ model Transaction {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   walletId       String
   wallet         Wallet   @relation(fields: [walletId], references: [id])
-  type           String   // AD_REWARD | REWARD_PURCHASE | REDEEM | BONUS | ADMIN_ADJUSTMENT
+  type           String   // AD_REWARD | MISSION_REWARD | REFERRAL_BONUS | REDEEM | ADMIN_ADJUSTMENT | REFUND
   amount         Int      // positive = credit, negative = debit
   balanceBefore  Int
   balanceAfter   Int
@@ -93,6 +186,9 @@ model Transaction {
   @@index([walletId])
   @@index([type])
   @@index([createdAt])
+  @@index([userId, type])
+  @@index([userId, status])
+  @@index([userId, createdAt])
 }
 
 // ============================================================
@@ -103,14 +199,48 @@ model AdEvent {
   id              String   @id @default(cuid())
   userId          String
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  network         String   // e.g. "admob", "unity", "custom"
+  providerKey     String?  @default("waterfall") // which provider served this ad
   adType          String   // REWARDED_VIDEO | INTERSTITIAL | BANNER
   rewardAmount    Int      @default(0)
   status          String   @default("STARTED") // STARTED | COMPLETED | FAILED | VERIFIED
   verificationId  String?
+  errorCode       String?  // provider error code on failure
+  startedAt       DateTime?
+  completedAt     DateTime?
   createdAt       DateTime @default(now())
 
   @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([providerKey])
+}
+
+model AdProvider {
+  id            String   @id @default(cuid())
+  key           String   @unique           // monetag, a-ads, yllix, etc.
+  name          String
+  enabled       Boolean  @default(true)
+  priority      Int      @default(0)       // lower = higher priority
+  publisherId   String?  // provider-specific
+  zoneId        String?  // provider-specific
+  apiKey        String?  // provider-specific
+  rewardAmount  Int      @default(25)
+  dailyLimit    Int      @default(100)
+  timeoutMs     Int      @default(8000)
+  status        String   @default("ACTIVE") // ACTIVE | DISABLED | ERROR
+  successRate   Float    @default(0.0)
+  fillRate      Float    @default(0.0)
+  todayRevenue  Int      @default(0)
+  totalRevenue  Int      @default(0)
+  completedAds  Int      @default(0)
+  failedAds     Int      @default(0)
+  lastErrorAt   DateTime?
+  lastSuccessAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([priority])
   @@index([status])
 }
 
@@ -124,7 +254,7 @@ model Reward {
   description String?
   image       String?
   coinCost    Int
-  category    String   // UPI | GIFT_CARD | GAMING | VOUCHER | RECHARGE | SHOPPING | MEMBERSHIP
+  category    String   // UPI
   stock       Int      @default(-1) // -1 = unlimited
   status      String   @default("ACTIVE") // ACTIVE | DISABLED | SOLD_OUT
   createdAt   DateTime @default(now())
@@ -134,6 +264,7 @@ model Reward {
 
   @@index([category])
   @@index([status])
+  @@index([coinCost])
 }
 
 // ============================================================
@@ -142,6 +273,7 @@ model Reward {
 
 model RedeemRequest {
   id             String   @id @default(cuid())
+  redeemId       String   @unique @default(cuid())
   userId         String
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   rewardId       String
@@ -151,14 +283,21 @@ model RedeemRequest {
   coinsUsed      Int
   paymentMethod  String?
   paymentDetails String?
-  status         String   @default("PENDING") // PENDING | APPROVED | REJECTED | COMPLETED
+  userNote       String?  // optional message from user
+  status         String   @default("PENDING") // PENDING | APPROVED | PROCESSING | PAID | REJECTED | COMPLETED | CANCELLED | REFUNDED
   adminNote      String?
+  transactionId  String?  // CEO enters payment transaction ID when marking PAID
+  paymentDate    DateTime? // date of actual payment
+  processedBy    String?
+  processedAt    DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
+  @@index([status, createdAt])
   @@index([createdAt])
+  @@index([redeemId])
 }
 
 // ============================================================
@@ -171,13 +310,30 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   message   String
-  type      String   // WALLET | REWARD | REDEEM | SUPPORT | SECURITY | SYSTEM
+  type      String   // WALLET | REWARD | REDEEM | SUPPORT | SECURITY | SYSTEM | MISSION
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([read])
   @@index([createdAt])
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@index([type])
+}
+
+model VerificationToken {
+  id         String   @id @default(cuid())
+  identifier String   // email or userId
+  token      String   @unique
+  type       String   // EMAIL_VERIFY | PASSWORD_RESET
+  expiresAt  DateTime
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([identifier])
+  @@index([token])
+  @@index([expiresAt])
 }
 
 // ============================================================
@@ -199,6 +355,7 @@ model SupportTicket {
 
   @@index([userId])
   @@index([status])
+  @@index([status, createdAt])
 }
 
 model SupportMessage {
@@ -210,6 +367,8 @@ model SupportMessage {
   createdAt DateTime @default(now())
 
   @@index([ticketId])
+  @@index([senderId])
+  @@index([ticketId, createdAt])
 }
 
 // ============================================================
@@ -220,7 +379,7 @@ model AuditLog {
   id        String   @id @default(cuid())
   actorId   String
   actor     User     @relation("AuditActor", fields: [actorId], references: [id])
-  action    String   // USER_REGISTERED | USER_LOGIN | USER_LOGOUT | WALLET_CREDIT | WALLET_DEBIT | REDEEM_APPROVED | etc.
+  action    String   // USER_REGISTERED | USER_LOGIN | WALLET_CREDIT | WALLET_DEBIT | REDEEM_REQUESTED | REDEEM_APPROVED | REDEEM_REJECTED | REDEEM_REFUNDED | etc.
   targetId  String?
   metadata  String?
   createdAt DateTime @default(now())

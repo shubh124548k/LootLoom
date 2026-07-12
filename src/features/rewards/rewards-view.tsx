@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Gift,
@@ -27,6 +27,7 @@ import {
   ErrorState,
 } from "@/components/lootloom";
 import { useWalletStore } from "@/stores";
+import { useToast } from "@/hooks/use-toast";
 import { cardReveal, staggerContainer, modalPop, overlayFade } from "@/lib/animations";
 
 // ============================================================
@@ -48,6 +49,10 @@ interface RedeemDialogProps {
   onConfirm: () => void;
   loading: boolean;
   currentCoins: number;
+  upiId: string;
+  onUpiIdChange: (value: string) => void;
+  note: string;
+  onNoteChange: (value: string) => void;
 }
 
 interface SuccessDialogProps {
@@ -60,7 +65,7 @@ interface SuccessDialogProps {
 // Constants — coin to cash conversion (backend will provide)
 // ============================================================
 
-const COIN_TO_INR = 100; // 100 coins = ₹1 (placeholder — backend will set actual rate)
+const COIN_TO_INR = 30;
 
 // ============================================================
 // REWARD CARD
@@ -152,7 +157,7 @@ function RewardCard({
 // REDEEM CONFIRMATION DIALOG
 // ============================================================
 
-function RedeemDialog({ reward, open, onClose, onConfirm, loading, currentCoins }: RedeemDialogProps) {
+function RedeemDialog({ reward, open, onClose, onConfirm, loading, currentCoins, upiId, onUpiIdChange, note, onNoteChange }: RedeemDialogProps) {
   const remaining = reward ? currentCoins - reward.requiredCoins : 0;
 
   return (
@@ -213,6 +218,30 @@ function RedeemDialog({ reward, open, onClose, onConfirm, loading, currentCoins 
                     <p className="text-xs text-muted-foreground">After Redeem</p>
                     <p className="text-lg font-bold text-emerald-brand">{remaining.toLocaleString("en-IN")}</p>
                   </div>
+                </div>
+
+                {/* UPI ID Input */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">UPI ID</label>
+                  <input
+                    type="text"
+                    value={upiId}
+                    onChange={(e) => onUpiIdChange(e.target.value)}
+                    placeholder="example@upi"
+                    className="w-full h-10 rounded-xl border border-border bg-background/50 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-electric"
+                  />
+                </div>
+
+                {/* Note Input */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Note <span className="text-muted-foreground font-normal">(optional)</span></label>
+                  <textarea
+                    value={note}
+                    onChange={(e) => onNoteChange(e.target.value)}
+                    placeholder="Add a note for the CEO..."
+                    rows={2}
+                    className="w-full rounded-xl border border-border bg-background/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-electric resize-none"
+                  />
                 </div>
 
                 {/* Buttons */}
@@ -308,43 +337,76 @@ function SuccessDialog({ open, onClose, onViewHistory }: SuccessDialogProps) {
 
 export function RewardsView() {
   const { availableCoins } = useWalletStore();
+  const { toast } = useToast();
   const [selectedReward, setSelectedReward] = useState<RewardItem | null>(null);
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const [redeeming, setRedeeming] = useState(false);
+  const [upiId, setUpiId] = useState("");
+  const [note, setNote] = useState("");
 
-  // Placeholder rewards — backend will provide these via API
-  // These are UI-ready placeholders that will be replaced by GET /api/rewards
-  const [rewards] = useState<RewardItem[]>([
-    { id: "r1", name: "₹10 UPI Cash", cashValue: 10, requiredCoins: 1000, availability: "available" },
-    { id: "r2", name: "₹20 UPI Cash", cashValue: 20, requiredCoins: 2000, availability: "available" },
-    { id: "r3", name: "₹30 UPI Cash", cashValue: 30, requiredCoins: 3000, availability: "available" },
-    { id: "r4", name: "₹40 UPI Cash", cashValue: 40, requiredCoins: 4000, availability: "available" },
-    { id: "r5", name: "₹50 UPI Cash", cashValue: 50, requiredCoins: 5000, availability: "available" },
-    { id: "r6", name: "₹100 UPI Cash", cashValue: 100, requiredCoins: 10000, availability: "available" },
-    { id: "r7", name: "₹200 UPI Cash", cashValue: 200, requiredCoins: 20000, availability: "available" },
-    { id: "r8", name: "₹500 UPI Cash", cashValue: 500, requiredCoins: 50000, availability: "available" },
-    { id: "r9", name: "₹1000 UPI Cash", cashValue: 1000, requiredCoins: 100000, availability: "available" },
-  ]);
+  const [rewards, setRewards] = useState<RewardItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [loading] = useState(false);
-  const [error] = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/rewards")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          setRewards(json.data.map((rw: { id: string; name: string; coinCost: number; status: string }) => ({
+            id: rw.id,
+            name: rw.name,
+            cashValue: Math.round(rw.coinCost / 30),
+            requiredCoins: rw.coinCost,
+            availability: rw.status === "ACTIVE" ? "available" : "disabled",
+          })));
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setError("Failed to load rewards");
+        setLoading(false);
+      });
+  }, []);
+
+  // loading and error state managed in useEffect above
 
   const cashValue = (availableCoins / COIN_TO_INR).toFixed(2);
 
   const handleRedeemClick = (reward: RewardItem) => {
     setSelectedReward(reward);
+    setUpiId("");
+    setNote("");
     setRedeemOpen(true);
   };
 
   const handleConfirmRedeem = async () => {
+    if (!selectedReward) return;
     setRedeeming(true);
-    // Backend will handle: validate balance, debit coins, create redeem request, notify CEO
-    // Frontend just simulates the loading state for now
-    await new Promise((r) => setTimeout(r, 1500));
-    setRedeeming(false);
-    setRedeemOpen(false);
-    setSuccessOpen(true);
+    try {
+      const res = await fetch("/api/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rewardId: selectedReward.id,
+          paymentMethod: "UPI",
+          paymentDetails: upiId,
+          userNote: note || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setRedeeming(false);
+        setRedeemOpen(false);
+        setSuccessOpen(true);
+      } else {
+        throw new Error(json.message || "Redeem failed");
+      }
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Redeem failed", variant: "destructive" });
+      setRedeeming(false);
+    }
   };
 
   const handleCloseSuccess = () => {
@@ -435,6 +497,10 @@ export function RewardsView() {
         onConfirm={handleConfirmRedeem}
         loading={redeeming}
         currentCoins={availableCoins}
+        upiId={upiId}
+        onUpiIdChange={setUpiId}
+        note={note}
+        onNoteChange={setNote}
       />
 
       {/* Success Dialog */}

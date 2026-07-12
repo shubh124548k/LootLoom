@@ -4,45 +4,28 @@
  * LootLoom — AuthView
  * Renders ALL authentication screens based on `useNavigationStore().current`.
  *
- * Screens handled (10):
- *   login, register, forgot-password, reset-password,
- *   verify-email, verify-success, verify-failed,
- *   auth-loading, session-expired, unauthorized
+ * Screens handled:
+ *   login, auth-loading, session-expired, unauthorized
  *
  * Layout: split on lg+ — LEFT = AuthPreview with floating glass widgets
  * (decorative marketing visuals, NO real user data), RIGHT = auth form in
  * GlassCard. Mobile: single column with form only.
  *
  * Auth wiring:
- *   - Login: signIn("credentials", { email, password, redirect: false })
- *   - Google: signIn("google", { callbackUrl: window.location.origin })
- *   - Register: CSRF token + POST to /api/auth/callback/credentials
+ *   - Google: signIn("google", { callbackUrl: window.location.origin + "/" })
  *   - Sign-out (session-expired): useAuthStore.logout() + navigate("login")
- *   - Verify-success: useAuthStore.login() + navigate("dashboard")
- *
- * Validation states supported on every form:
- *   Empty / Loading / Success / Error / Invalid Input / Server Error
  *
  * BackgroundEngine is global and intentionally NOT rendered here.
  */
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Mail,
-  User,
-  AtSign,
   ArrowRight,
   ArrowLeft,
-  CheckCircle2,
-  XCircle,
-  ShieldCheck,
-  KeyRound,
   LockKeyhole,
   ShieldAlert,
   Sparkles,
   Bell,
-  RefreshCw,
-  Phone,
   AlertCircle,
 } from "lucide-react";
 import {
@@ -54,54 +37,19 @@ import {
   AnimatedCounter,
 } from "@/components/lootloom";
 import {
-  FormInput,
-  PasswordInput,
   FormButton,
   GoogleButton,
-  OtpInput,
-  PremiumCheckbox,
 } from "@/components/auth";
 import { useNavigationStore, useAuthStore } from "@/stores";
 import { signIn } from "next-auth/react";
-import type { ViewId } from "@/types";
 import {
   pageTransition,
   slideUp,
   floating,
   staggerContainer,
   modalPop,
-  successCheck,
 } from "@/lib/animations";
 import { cn } from "@/lib/utils";
-
-/* ============================================================
-   Validation helpers
-   ============================================================ */
-const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const usernameRe = /^[a-zA-Z0-9_]{3,20}$/;
-
-const required = (v: string, label: string) =>
-  v.trim().length === 0 ? `${label} is required` : null;
-const validateEmail = (v: string) => {
-  if (!v.trim()) return "Email is required";
-  return emailRe.test(v.trim()) ? null : "Enter a valid email address";
-};
-const validatePassword = (v: string) => {
-  if (!v) return "Password is required";
-  return v.length >= 8 ? null : "Use at least 8 characters";
-};
-const validateUsername = (v: string) => {
-  if (!v.trim()) return "Username is required";
-  if (v.trim().length < 3) return "Username must be 3+ characters";
-  return usernameRe.test(v.trim())
-    ? null
-    : "Letters, numbers, underscores only";
-};
-const validatePhone = (v: string) => {
-  if (!v.trim()) return null; // optional
-  const digits = v.replace(/\D/g, "");
-  return digits.length >= 10 ? null : "Enter a valid phone number";
-};
 
 /* ============================================================
    ServerErrorBanner — form-level red glass card
@@ -162,54 +110,6 @@ function AuthHeader({
         </p>
       )}
     </div>
-  );
-}
-
-/* ============================================================
-   Divider — "or continue with"
-   ============================================================ */
-function Divider({ label = "or continue with" }: { label?: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
-      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
-    </div>
-  );
-}
-
-/* ============================================================
-   AuthFooter — switch link line
-   ============================================================ */
-function AuthFooter({
-  text,
-  actionText,
-  onAction,
-}: {
-  text: string;
-  actionText: string;
-  onAction: () => void;
-}) {
-  return (
-    <motion.div
-      variants={slideUp}
-      className="text-center text-sm text-muted-foreground"
-    >
-      {text}{" "}
-      <button
-        type="button"
-        onClick={onAction}
-        className="font-semibold text-electric hover:text-electric/80 transition-colors inline-flex items-center gap-1 group"
-      >
-        {actionText}
-        <ArrowRight
-          size={14}
-          className="transition-transform group-hover:translate-x-0.5"
-        />
-      </button>
-    </motion.div>
   );
 }
 
@@ -294,7 +194,7 @@ function AuthPreview() {
             <span className="text-xs font-semibold text-foreground">Rewards</span>
           </div>
           <div className="mt-2 space-y-1.5">
-            {["UPI cashout", "Gift cards", "Vouchers"].map((r) => (
+            {["UPI Cashout", "Daily Bonus", "Streak Rewards"].map((r) => (
               <div
                 key={r}
                 className="flex items-center justify-between text-[11px]"
@@ -464,951 +364,67 @@ function AuthShell({ children }: { children: React.ReactNode }) {
 }
 
 /* ============================================================
-   Hook: simulate API call (used by non-backend-wired screens)
-   ============================================================ */
-function useSimulatedApi() {
-  const [loading, setLoading] = useState(false);
-  const run = (cb: () => void, ms = 1200) => {
-    setLoading(true);
-    window.setTimeout(() => {
-      setLoading(false);
-      cb();
-    }, ms);
-  };
-  return { loading, run };
-}
-
-/* ============================================================
    SCREEN: Login
    ============================================================ */
 function LoginScreen() {
   const navigate = useNavigationStore((s) => s.navigate);
   const setAuthenticated = useAuthStore((s) => s.setAuthenticated);
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(true);
-  const [errors, setErrors] = useState<{ email?: string | null; password?: string | null }>({});
   const [serverError, setServerError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const onEmailChange = (v: string) => {
-    setEmail(v);
-    if (errors.email) setErrors((e) => ({ ...e, email: null }));
-    if (serverError) setServerError(null);
-  };
-  const onPasswordChange = (v: string) => {
-    setPassword(v);
-    if (errors.password) setErrors((e) => ({ ...e, password: null }));
-    if (serverError) setServerError(null);
-  };
-
-  const validate = () => {
-    const next: typeof errors = {};
-    next.email = validateEmail(email);
-    next.password = required(password, "Password");
-    setErrors(next);
-    return !next.email && !next.password;
-  };
-
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-    setLoading(true);
-    setServerError(null);
-    try {
-      const result = await signIn("credentials", {
-        email: email.trim().toLowerCase(),
-        password,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        setServerError(
-          "Invalid email or password. If you don't have an account, please register first."
-        );
-        setLoading(false);
-      } else if (result?.ok) {
-        const sessionResp = await fetch("/api/auth/session");
-        const session = await sessionResp.json();
-        if (session?.user) {
-          setAuthenticated(true);
-          navigate("dashboard");
-        } else {
-          setServerError("Login failed. Please try again.");
-          setLoading(false);
-        }
-      } else {
-        setServerError("Login failed. Please try again.");
-        setLoading(false);
-      }
-    } catch {
-      setServerError("Network error. Please check your connection.");
-      setLoading(false);
+  // Clean OAuth callback params from URL and check for errors on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get("error");
+    const callbackUrl = params.get("callbackUrl");
+    if (oauthError) {
+      setServerError("Google sign-in encountered an error. Please try again.");
     }
-  };
+    if (callbackUrl || oauthError || params.has("code")) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     setServerError(null);
     try {
-      // Full-page redirect — NextAuth handles the rest
-      await signIn("google", {
-        callbackUrl: window.location.origin,
-        redirect: true,
+      const result = await signIn("google", {
+        redirect: false,
       });
+      if (result?.ok) {
+        setAuthenticated(true);
+        navigate("earn");
+      } else {
+        setServerError("Google sign-in failed. Please try again.");
+        setGoogleLoading(false);
+      }
     } catch {
       setServerError("Google sign-in failed. Please try again.");
       setGoogleLoading(false);
     }
   };
 
-  const busy = loading || googleLoading;
-
   return (
     <AuthShell>
-      <motion.form
+      <motion.div
         variants={slideUp}
-        onSubmit={handleSignIn}
         className="space-y-5"
-        noValidate
       >
         <AuthHeader
-          icon={<IconBadge name="KeyRound" accent="electric" size="lg" />}
-          title="Welcome back"
-          subtitle="Sign in to your LootLoom account."
+          title="Welcome to LootLoom"
+          subtitle="Sign in with Google to get started."
         />
 
         <AnimatePresence>
           {serverError && <ServerErrorBanner message={serverError} />}
         </AnimatePresence>
 
-        {/* Google Sign-In */}
         <GoogleButton
           onClick={handleGoogleSignIn}
           loading={googleLoading}
           fullWidth
         />
-
-        <Divider />
-
-        <FormInput
-          id="login-email"
-          label="Email"
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={onEmailChange}
-          icon={<AtSign size={16} />}
-          error={errors.email ?? null}
-          autoComplete="email"
-          disabled={busy}
-        />
-
-        <PasswordInput
-          id="login-password"
-          label="Password"
-          value={password}
-          onChange={onPasswordChange}
-          error={errors.password ?? null}
-          autoComplete="current-password"
-          disabled={busy}
-        />
-
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <PremiumCheckbox
-            id="remember"
-            checked={remember}
-            onChange={setRemember}
-            label={
-              <span className="text-xs font-medium text-foreground/80">
-                Remember me
-              </span>
-            }
-          />
-          <button
-            type="button"
-            onClick={() => navigate("forgot-password")}
-            className="text-xs font-semibold text-electric hover:text-electric/80 transition-colors"
-          >
-            Forgot password?
-          </button>
-        </div>
-
-        <FormButton
-          type="submit"
-          variant="electric"
-          size="lg"
-          loading={loading}
-          disabled={busy}
-          rightIcon={<ArrowRight size={16} />}
-        >
-          {loading ? "Signing in…" : "Sign In"}
-        </FormButton>
-
-        <AuthFooter
-          text="New to LootLoom?"
-          actionText="Create Account"
-          onAction={() => navigate("register")}
-        />
-      </motion.form>
-    </AuthShell>
-  );
-}
-
-/* ============================================================
-   SCREEN: Register
-   ============================================================ */
-function RegisterScreen() {
-  const navigate = useNavigationStore((s) => s.navigate);
-  const setAuthenticated = useAuthStore((s) => s.setAuthenticated);
-
-  const [form, setForm] = useState({
-    fullName: "",
-    username: "",
-    email: "",
-    password: "",
-    confirm: "",
-    phone: "",
-  });
-  const [terms, setTerms] = useState(false);
-  const [errors, setErrors] = useState<{
-    fullName?: string | null;
-    username?: string | null;
-    email?: string | null;
-    password?: string | null;
-    confirm?: string | null;
-    phone?: string | null;
-    terms?: string | null;
-  }>({});
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const update =
-    (field: keyof typeof form) =>
-    (v: string) => {
-      setForm((s) => ({ ...s, [field]: v }));
-      if (errors[field]) setErrors((e) => ({ ...e, [field]: null }));
-      if (serverError) setServerError(null);
-      // Confirm-match should re-validate when either field changes
-      if (field === "password" && errors.confirm) {
-        setErrors((e) => ({
-          ...e,
-          confirm:
-            v && form.confirm && form.confirm !== v
-              ? "Passwords do not match"
-              : null,
-        }));
-      }
-      if (field === "confirm" && errors.confirm) {
-        setErrors((e) => ({
-          ...e,
-          confirm: v !== form.password ? "Passwords do not match" : null,
-        }));
-      }
-    };
-
-  const onTermsChange = (v: boolean) => {
-    setTerms(v);
-    if (errors.terms) setErrors((e) => ({ ...e, terms: null }));
-  };
-
-  const validate = () => {
-    const next: typeof errors = {};
-    next.fullName = required(form.fullName, "Full name");
-    next.username = validateUsername(form.username);
-    next.email = validateEmail(form.email);
-    next.password = validatePassword(form.password);
-    next.confirm = !form.confirm
-      ? "Please confirm your password"
-      : form.confirm !== form.password
-      ? "Passwords do not match"
-      : null;
-    next.phone = validatePhone(form.phone);
-    next.terms = !terms ? "You must accept the Terms to continue" : null;
-    setErrors(next);
-    return Object.values(next).every((v) => !v);
-  };
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-    setLoading(true);
-    setServerError(null);
-    try {
-      // Get CSRF token
-      const csrfResp = await fetch("/api/auth/csrf");
-      const { csrfToken } = await csrfResp.json();
-
-      // POST to credentials callback — backend authorize() handles registration
-      const formData = new URLSearchParams();
-      formData.append("name", form.fullName.trim());
-      formData.append("username", form.username.trim().toLowerCase());
-      formData.append("email", form.email.trim().toLowerCase());
-      formData.append("password", form.password);
-      if (form.phone.trim()) formData.append("phone", form.phone.trim());
-      formData.append("csrfToken", csrfToken);
-      formData.append("callbackUrl", window.location.origin);
-      formData.append("json", "true");
-
-      const resp = await fetch("/api/auth/callback/credentials", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: formData.toString(),
-      });
-
-      if (resp.ok) {
-        const sessionResp = await fetch("/api/auth/session");
-        const session = await sessionResp.json();
-        if (session?.user) {
-          setAuthenticated(true);
-          navigate("dashboard");
-        } else {
-          setServerError(
-            "Registration failed — session not created. Please try again."
-          );
-          setLoading(false);
-        }
-      } else {
-        const errText = await resp.text().catch(() => "");
-        setServerError(
-          errText || "Registration failed. Please try a different email or username."
-        );
-        setLoading(false);
-      }
-    } catch {
-      setServerError("Network error. Please try again.");
-      setLoading(false);
-    }
-  };
-
-  return (
-    <AuthShell>
-      <motion.form
-        variants={slideUp}
-        onSubmit={submit}
-        className="space-y-4"
-        noValidate
-      >
-        <AuthHeader
-          icon={<IconBadge name="UserPlus" accent="purple" size="lg" />}
-          title="Create your account"
-          subtitle="Join thousands earning rewards every day."
-          badge={
-            <StatusBadge variant="purple" dot>
-              Free
-            </StatusBadge>
-          }
-        />
-
-        <AnimatePresence>
-          {serverError && <ServerErrorBanner message={serverError} />}
-        </AnimatePresence>
-
-        <FormInput
-          id="fullName"
-          label="Full Name"
-          placeholder="Aarav Sharma"
-          value={form.fullName}
-          onChange={update("fullName")}
-          icon={<User size={16} />}
-          error={errors.fullName ?? null}
-          autoComplete="name"
-          disabled={loading}
-        />
-
-        <FormInput
-          id="username"
-          label="Username"
-          placeholder="aarav_s"
-          value={form.username}
-          onChange={update("username")}
-          icon={<AtSign size={16} />}
-          error={errors.username ?? null}
-          autoComplete="username"
-          maxLength={20}
-          disabled={loading}
-        />
-
-        <FormInput
-          id="email"
-          label="Email"
-          type="email"
-          placeholder="you@example.com"
-          value={form.email}
-          onChange={update("email")}
-          icon={<Mail size={16} />}
-          error={errors.email ?? null}
-          autoComplete="email"
-          disabled={loading}
-        />
-
-        <PasswordInput
-          id="register-password"
-          label="Password"
-          value={form.password}
-          onChange={update("password")}
-          error={errors.password ?? null}
-          showStrength
-          autoComplete="new-password"
-          disabled={loading}
-        />
-
-        <PasswordInput
-          id="register-confirm"
-          label="Confirm Password"
-          value={form.confirm}
-          onChange={update("confirm")}
-          error={errors.confirm ?? null}
-          autoComplete="new-password"
-          disabled={loading}
-        />
-
-        <FormInput
-          id="phone"
-          label="Phone Number (optional)"
-          type="tel"
-          placeholder="+91 98765 43210"
-          value={form.phone}
-          onChange={update("phone")}
-          icon={<Phone size={16} />}
-          error={errors.phone ?? null}
-          autoComplete="tel"
-          inputMode="tel"
-          maxLength={20}
-          disabled={loading}
-        />
-
-        <PremiumCheckbox
-          id="terms"
-          checked={terms}
-          onChange={onTermsChange}
-          label={
-            <span className="text-xs text-muted-foreground leading-relaxed">
-              I agree to the{" "}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate("terms");
-                }}
-                className="font-semibold text-electric hover:text-electric/80 transition-colors"
-              >
-                Terms of Service
-              </button>{" "}
-              and{" "}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate("privacy");
-                }}
-                className="font-semibold text-electric hover:text-electric/80 transition-colors"
-              >
-                Privacy Policy
-              </button>
-            </span>
-          }
-          error={errors.terms ?? null}
-        />
-
-        <FormButton
-          type="submit"
-          variant="electric"
-          size="lg"
-          loading={loading}
-          disabled={loading}
-          rightIcon={<ArrowRight size={16} />}
-        >
-          {loading ? "Creating account…" : "Create Account"}
-        </FormButton>
-
-        <div className="rounded-xl glass-2 ring-1 ring-border p-4 text-center">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Your account and wallet will be created automatically.
-            Start earning coins by completing missions.
-          </p>
-        </div>
-
-        <AuthFooter
-          text="Already have an account?"
-          actionText="Sign In"
-          onAction={() => navigate("login")}
-        />
-      </motion.form>
-    </AuthShell>
-  );
-}
-
-/* ============================================================
-   SCREEN: Forgot Password
-   ============================================================ */
-function ForgotPasswordScreen() {
-  const navigate = useNavigationStore((s) => s.navigate);
-  const { loading, run } = useSimulatedApi();
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const ve = validateEmail(email);
-    if (ve) return setError(ve);
-    setError(null);
-    run(() => setSent(true));
-  };
-
-  return (
-    <AuthShell>
-      <motion.div variants={slideUp} className="space-y-5">
-        <AuthHeader
-          icon={<IconBadge name="MailQuestion" accent="gold" size="lg" />}
-          title="Forgot password?"
-          subtitle={sent ? undefined : "Enter your email and we'll send you a reset link."}
-        />
-
-        <AnimatePresence mode="wait">
-          {sent ? (
-            <motion.div
-              key="success"
-              variants={modalPop}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="space-y-5"
-            >
-              <GlassCard level={2} className="p-5 space-y-3">
-                <motion.div
-                  variants={successCheck}
-                  initial="initial"
-                  animate="animate"
-                  className="size-12 rounded-2xl bg-emerald-brand/15 ring-1 ring-emerald-brand/25 flex items-center justify-center text-emerald-brand"
-                >
-                  <CheckCircle2 size={26} />
-                </motion.div>
-                <div>
-                  <h3 className="font-semibold text-foreground">Check your inbox</h3>
-                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-                    If an account exists for{" "}
-                    <span className="font-semibold text-foreground">{email}</span>,
-                    a reset link has been sent. The link expires in 30 minutes.
-                  </p>
-                </div>
-              </GlassCard>
-
-              <FormButton
-                variant="electric"
-                size="lg"
-                onClick={() => navigate("reset-password")}
-                rightIcon={<ArrowRight size={16} />}
-              >
-                Continue to Reset
-              </FormButton>
-            </motion.div>
-          ) : (
-            <motion.form
-              key="form"
-              onSubmit={submit}
-              className="space-y-5"
-              noValidate
-            >
-              <FormInput
-                id="forgotEmail"
-                label="Email"
-                type="email"
-                placeholder="you@lootloom.app"
-                value={email}
-                onChange={(v) => {
-                  setEmail(v);
-                  if (error) setError(null);
-                }}
-                icon={<Mail size={16} />}
-                error={error}
-                autoComplete="email"
-                disabled={loading}
-              />
-              <FormButton
-                type="submit"
-                variant="electric"
-                size="lg"
-                loading={loading}
-                disabled={loading}
-                leftIcon={<Mail size={16} />}
-              >
-                {loading ? "Sending reset link…" : "Send Reset Link"}
-              </FormButton>
-            </motion.form>
-          )}
-        </AnimatePresence>
-
-        <AuthFooter
-          text="Remembered your password?"
-          actionText="Back to Sign In"
-          onAction={() => navigate("login")}
-        />
-      </motion.div>
-    </AuthShell>
-  );
-}
-
-/* ============================================================
-   SCREEN: Reset Password
-   ============================================================ */
-function ResetPasswordScreen() {
-  const navigate = useNavigationStore((s) => s.navigate);
-  const { loading, run } = useSimulatedApi();
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [errors, setErrors] = useState<{
-    password?: string | null;
-    confirm?: string | null;
-  }>({});
-
-  const onPasswordChange = (v: string) => {
-    setPassword(v);
-    if (errors.password) setErrors((e) => ({ ...e, password: null }));
-    if (errors.confirm && confirm && confirm !== v) {
-      setErrors((e) => ({ ...e, confirm: "Passwords do not match" }));
-    } else if (errors.confirm && confirm === v) {
-      setErrors((e) => ({ ...e, confirm: null }));
-    }
-    if (serverError) setServerError(null);
-  };
-
-  const onConfirmChange = (v: string) => {
-    setConfirm(v);
-    if (errors.confirm) {
-      setErrors((e) => ({
-        ...e,
-        confirm: v !== password ? "Passwords do not match" : null,
-      }));
-    }
-    if (serverError) setServerError(null);
-  };
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const next: typeof errors = {};
-    next.password = validatePassword(password);
-    next.confirm = !confirm
-      ? "Please confirm your password"
-      : confirm !== password
-      ? "Passwords do not match"
-      : null;
-    setErrors(next);
-    if (Object.values(next).some(Boolean)) return;
-    run(() => navigate("login"));
-  };
-
-  return (
-    <AuthShell>
-      <motion.form
-        variants={slideUp}
-        onSubmit={submit}
-        className="space-y-5"
-        noValidate
-      >
-        <AuthHeader
-          icon={<IconBadge name="LockKeyhole" accent="emerald" size="lg" />}
-          title="Reset password"
-          subtitle="Choose a strong new password for your account."
-        />
-
-        <AnimatePresence>
-          {serverError && <ServerErrorBanner message={serverError} />}
-        </AnimatePresence>
-
-        <PasswordInput
-          id="newPassword"
-          label="New Password"
-          value={password}
-          onChange={onPasswordChange}
-          error={errors.password ?? null}
-          showStrength
-          autoComplete="new-password"
-          disabled={loading}
-        />
-
-        <PasswordInput
-          id="confirmReset"
-          label="Confirm Password"
-          value={confirm}
-          onChange={onConfirmChange}
-          error={errors.confirm ?? null}
-          autoComplete="new-password"
-          disabled={loading}
-        />
-
-        <FormButton
-          type="submit"
-          variant="electric"
-          size="lg"
-          loading={loading}
-          disabled={loading}
-          leftIcon={<KeyRound size={16} />}
-        >
-          {loading ? "Resetting…" : "Reset Password"}
-        </FormButton>
-
-        <AuthFooter
-          text="Back to"
-          actionText="Sign In"
-          onAction={() => navigate("login")}
-        />
-      </motion.form>
-    </AuthShell>
-  );
-}
-
-/* ============================================================
-   SCREEN: Verify Email (OTP)
-   ============================================================ */
-function VerifyEmailScreen() {
-  const navigate = useNavigationStore((s) => s.navigate);
-  const { loading, run } = useSimulatedApi();
-  const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
-  const [error, setError] = useState<string | null>(null);
-  const [resendIn, setResendIn] = useState(0);
-
-  useEffect(() => {
-    if (resendIn <= 0) return;
-    const t = window.setTimeout(() => setResendIn((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [resendIn]);
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (code.some((c) => !c)) {
-      setError("Enter the 6-digit code");
-      return;
-    }
-    setError(null);
-    run(() => {
-      // Demo: deterministic success path. Backend wiring will validate the OTP.
-      navigate("verify-success");
-    });
-  };
-
-  const handleResend = () => {
-    setResendIn(30);
-    setCode(["", "", "", "", "", ""]);
-    setError(null);
-  };
-
-  const filled = code.filter(Boolean).length;
-  const progress = (filled / 6) * 100;
-
-  return (
-    <AuthShell>
-      <motion.div variants={slideUp} className="space-y-5">
-        <AuthHeader
-          icon={<IconBadge name="ShieldCheck" accent="electric" size="lg" />}
-          title="Verify your email"
-          subtitle={
-            <>
-              We sent a 6-digit code to{" "}
-              <span className="font-semibold text-foreground">your email</span>.
-              Enter it below.
-            </>
-          }
-          badge={
-            <StatusBadge variant="info" dot pulse>
-              Code expires in 9:58
-            </StatusBadge>
-          }
-        />
-
-        {/* Progress */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
-            <span>Verification progress</span>
-            <span className="tabular-nums">{filled}/6</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-            <motion.div
-              className="h-full rounded-full bg-[linear-gradient(90deg,var(--electric),var(--cyan-brand),var(--purple-brand))]"
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-            />
-          </div>
-        </div>
-
-        <form onSubmit={submit} className="space-y-5" noValidate>
-          <OtpInput value={code} onChange={setCode} hasError={!!error} />
-          <AnimatePresence>
-            {error && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                className="text-xs font-medium text-rose-brand flex items-center gap-1"
-              >
-                <XCircle size={12} />
-                {error}
-              </motion.p>
-            )}
-          </AnimatePresence>
-
-          <FormButton
-            type="submit"
-            variant="electric"
-            size="lg"
-            loading={loading}
-            disabled={loading}
-            rightIcon={<ArrowRight size={16} />}
-          >
-            {loading ? "Verifying…" : "Verify"}
-          </FormButton>
-        </form>
-
-        <div className="flex items-center justify-between text-xs">
-          <button
-            type="button"
-            onClick={() => navigate("register")}
-            className="font-semibold text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
-          >
-            <ArrowLeft size={12} />
-            Change email
-          </button>
-          <button
-            type="button"
-            disabled={resendIn > 0}
-            onClick={handleResend}
-            className={cn(
-              "font-semibold inline-flex items-center gap-1 transition-colors",
-              resendIn > 0
-                ? "text-muted-foreground/60 cursor-not-allowed"
-                : "text-electric hover:text-electric/80"
-            )}
-          >
-            <RefreshCw size={12} />
-            {resendIn > 0 ? `Resend in ${resendIn}s` : "Resend code"}
-          </button>
-        </div>
-      </motion.div>
-    </AuthShell>
-  );
-}
-
-/* ============================================================
-   SCREEN: Verify Success
-   ============================================================ */
-function VerifySuccessScreen() {
-  const navigate = useNavigationStore((s) => s.navigate);
-  const login = useAuthStore((s) => s.login);
-
-  return (
-    <AuthShell>
-      <motion.div variants={slideUp} className="space-y-6 text-center">
-        <motion.div
-          variants={successCheck}
-          initial="initial"
-          animate="animate"
-          className="mx-auto inline-flex"
-        >
-          <div className="relative">
-            <motion.div
-              animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.2, 0] }}
-              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute inset-0 rounded-full bg-emerald-brand/30 blur-xl"
-            />
-            <div className="relative size-20 rounded-3xl bg-gradient-to-br from-emerald-brand to-cyan-brand flex items-center justify-center text-white shadow-[var(--shadow-glow)]">
-              <CheckCircle2 size={42} strokeWidth={2.2} />
-            </div>
-          </div>
-        </motion.div>
-
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Email Verified!
-          </h1>
-          <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-            Your account is now active. Welcome to LootLoom — your rewards
-            journey begins now.
-          </p>
-        </div>
-
-        <StatusBadge variant="success" dot pulse className="mx-auto">
-          Account Activated
-        </StatusBadge>
-
-        <FormButton
-          variant="electric"
-          size="lg"
-          onClick={() => {
-            login();
-            navigate("dashboard");
-          }}
-          rightIcon={<ArrowRight size={16} />}
-        >
-          Continue to Dashboard
-        </FormButton>
-      </motion.div>
-    </AuthShell>
-  );
-}
-
-/* ============================================================
-   SCREEN: Verify Failed
-   ============================================================ */
-function VerifyFailedScreen() {
-  const navigate = useNavigationStore((s) => s.navigate);
-  return (
-    <AuthShell>
-      <motion.div variants={slideUp} className="space-y-6 text-center">
-        <motion.div
-          initial={{ scale: 0, rotate: 20 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 280, damping: 16, delay: 0.1 }}
-          className="mx-auto inline-flex"
-        >
-          <div className="relative">
-            <motion.div
-              animate={{ scale: [1, 1.18, 1], opacity: [0.4, 0.15, 0] }}
-              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute inset-0 rounded-full bg-rose-brand/30 blur-xl"
-            />
-            <div className="relative size-20 rounded-3xl bg-gradient-to-br from-rose-brand to-rose-400 flex items-center justify-center text-white shadow-[0_0_40px_-8px_rgb(244_63_94/0.5)]">
-              <XCircle size={42} strokeWidth={2.2} />
-            </div>
-          </div>
-        </motion.div>
-
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Verification Failed
-          </h1>
-          <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-            The code you entered is invalid or has expired. Please try again or
-            request a new code.
-          </p>
-        </div>
-
-        <StatusBadge variant="error" dot className="mx-auto">
-          Invalid Code
-        </StatusBadge>
-
-        <div className="space-y-3">
-          <FormButton
-            variant="electric"
-            size="lg"
-            onClick={() => navigate("verify-email")}
-            leftIcon={<RefreshCw size={16} />}
-          >
-            Try Again
-          </FormButton>
-          <button
-            type="button"
-            onClick={() => navigate("verify-email")}
-            className="text-xs font-semibold text-electric hover:text-electric/80 transition-colors inline-flex items-center gap-1 mx-auto"
-          >
-            <RefreshCw size={12} />
-            Resend code
-          </button>
-        </div>
       </motion.div>
     </AuthShell>
   );
@@ -1652,12 +668,6 @@ export function AuthView() {
     <AnimatePresence mode="wait">
       <motion.div key={current} className="w-full">
         {current === "login" && <LoginScreen />}
-        {current === "register" && <RegisterScreen />}
-        {current === "forgot-password" && <ForgotPasswordScreen />}
-        {current === "reset-password" && <ResetPasswordScreen />}
-        {current === "verify-email" && <VerifyEmailScreen />}
-        {current === "verify-success" && <VerifySuccessScreen />}
-        {current === "verify-failed" && <VerifyFailedScreen />}
         {current === "auth-loading" && <AuthLoadingScreen />}
         {current === "session-expired" && <SessionExpiredScreen />}
         {current === "unauthorized" && <UnauthorizedScreen />}

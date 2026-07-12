@@ -2,16 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getEarnConfig } from "@/lib/earn/config";
 
-/**
- * POST /api/ads/session — create a new ad session for the user.
- * Body: { adType?: "REWARDED_VIDEO" }
- *
- * Flow: User clicks "Watch Ad" → frontend requests session → backend validates
- * (auth, daily limit, account status) → returns session ID + reward amount.
- *
- * The reward amount is determined by the BACKEND, never the frontend.
- */
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -22,36 +14,55 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const adType = body.adType || "REWARDED_VIDEO";
 
-  // Check account status
   const user = await db.user.findUnique({ where: { id: userId } });
   if (!user || user.status !== "ACTIVE") {
     return NextResponse.json({ success: false, message: "Account not active", code: "ACCOUNT_INACTIVE" }, { status: 403 });
   }
 
-  // Daily ad limit check (100 ads per day for free users)
+  const config = await getEarnConfig();
+  const dailyAdLimit = parseInt(config.DAILY_AD_LIMIT, 10);
+  const dailyCoinLimit = parseInt(config.DAILY_COIN_LIMIT, 10);
+  const rewardAmount = parseInt(config.AD_REWARD_AMOUNT, 10);
+
   const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
-  const todayAdCount = await db.adEvent.count({
-    where: { userId, createdAt: { gte: todayStart }, status: "VERIFIED" },
-  });
-  const DAILY_LIMIT = 100;
-  if (todayAdCount >= DAILY_LIMIT) {
+
+  const [todayAdCount, todayCoinEarned] = await Promise.all([
+    db.adEvent.count({
+      where: { userId, createdAt: { gte: todayStart }, status: "VERIFIED" },
+    }),
+    db.transaction.aggregate({
+      where: {
+        userId,
+        type: "AD_REWARD",
+        createdAt: { gte: todayStart },
+      },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  if (todayAdCount >= dailyAdLimit) {
     return NextResponse.json({
       success: false,
-      message: `Daily ad limit (${DAILY_LIMIT}) reached. Try again tomorrow.`,
+      message: `Daily ad limit (${dailyAdLimit}) reached. Try again tomorrow.`,
       code: "DAILY_LIMIT_REACHED",
-      data: { watchedToday: todayAdCount, limit: DAILY_LIMIT },
+      data: { watchedToday: todayAdCount, limit: dailyAdLimit },
     }, { status: 429 });
   }
 
-  // Backend determines reward amount (never frontend)
-  // Standard rewarded video = 25 coins (configurable in future via RewardConfig table)
-  const rewardAmount = 25;
+  const earnedToday = todayCoinEarned._sum.amount || 0;
+  if (earnedToday + rewardAmount > dailyCoinLimit) {
+    return NextResponse.json({
+      success: false,
+      message: `Daily coin earning limit (${dailyCoinLimit}) reached.`,
+      code: "DAILY_COIN_LIMIT_REACHED",
+      data: { earnedToday, limit: dailyCoinLimit },
+    }, { status: 429 });
+  }
 
-  // Create ad session
   const adEvent = await db.adEvent.create({
     data: {
       userId,
-      network: "waterfall", // determined by waterfall selection
+      network: "waterfall",
       adType,
       rewardAmount,
       status: "STARTED",
@@ -65,16 +76,15 @@ export async function POST(req: Request) {
       rewardAmount,
       adType,
       watchedToday: todayAdCount,
-      limit: DAILY_LIMIT,
-      remaining: DAILY_LIMIT - todayAdCount,
+      limit: dailyAdLimit,
+      remaining: Math.max(0, dailyAdLimit - todayAdCount),
+      dailyCoinLimit,
+      earnedToday,
     },
     message: "Ad session created. Complete the ad to earn coins.",
   });
 }
 
-/**
- * GET /api/ads/session — get user's ad stats for today.
- */
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -83,6 +93,7 @@ export async function GET() {
 
   const userId = session.user.id;
   const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
+  const config = await getEarnConfig();
 
   const [todayCount, todayEarned, totalEarned, totalWatched] = await Promise.all([
     db.adEvent.count({ where: { userId, createdAt: { gte: todayStart }, status: "VERIFIED" } }),
@@ -97,7 +108,9 @@ export async function GET() {
     db.adEvent.count({ where: { userId, status: "VERIFIED" } }),
   ]);
 
-  const DAILY_LIMIT = 100;
+  const dailyAdLimit = parseInt(config.DAILY_AD_LIMIT, 10);
+  const dailyCoinLimit = parseInt(config.DAILY_COIN_LIMIT, 10);
+  const rewardAmount = parseInt(config.AD_REWARD_AMOUNT, 10);
 
   return NextResponse.json({
     success: true,
@@ -106,8 +119,11 @@ export async function GET() {
       todayEarnings: todayEarned._sum.rewardAmount || 0,
       totalAdsWatched: totalWatched,
       totalAdEarnings: totalEarned._sum.rewardAmount || 0,
-      dailyLimit: DAILY_LIMIT,
-      remaining: Math.max(0, DAILY_LIMIT - todayCount),
+      dailyLimit: dailyAdLimit,
+      dailyCoinLimit,
+      rewardPerAd: rewardAmount,
+      remaining: Math.max(0, dailyAdLimit - todayCount),
+      remainingCoins: Math.max(0, dailyCoinLimit - (todayEarned._sum.rewardAmount || 0)),
     },
   });
 }

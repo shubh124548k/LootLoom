@@ -1,13 +1,6 @@
 "use client";
 
-/**
- * LootLoom — CeoUsersView
- * CEO User Management — manage platform users and account status.
- *
- * Backend-ready: ADMIN_USERS is initialized to [].
- * TODO: replace with fetch from /api/ceo/users
- */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Eye,
   Mail,
@@ -23,6 +16,7 @@ import {
   StatusBadge,
   SkeletonRow,
   EmptyState,
+  ErrorState,
 } from "@/components/lootloom";
 import {
   DataTable,
@@ -30,6 +24,7 @@ import {
   AdminSearch,
   AdminFilter,
   AdminToolbar,
+  AdminPagination,
   ActionButton,
   type AdminActionItem,
   ConfirmModal,
@@ -42,11 +37,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-/* ============================================================
-   Types
-   ============================================================ */
 export interface AdminUser {
   id: string;
   username: string;
@@ -62,15 +55,28 @@ export interface AdminUser {
 type UserStatus = AdminUser["status"];
 type UserAction = "suspend" | "activate" | "freeze";
 
-/* ============================================================
-   Placeholder data — initialized to [] (backend-ready).
-   TODO: replace with fetch from /api/ceo/users
-   ============================================================ */
-const ADMIN_USERS: AdminUser[] = [];
+interface ApiUser {
+  id: string;
+  name: string;
+  email: string;
+  username: string;
+  avatar: string | null;
+  role: string;
+  status: string;
+  emailVerified: boolean;
+  memberSince: string;
+  lastLogin: string | null;
+  profile: { firstName: string | null; lastName: string | null } | null;
+  wallet: { coinBalance: number; totalEarned: number; totalSpent: number } | null;
+  stats: { transactions: number; redeems: number; ads: number };
+}
 
-/* ============================================================
-   Constants
-   ============================================================ */
+interface ApiResponse {
+  success: boolean;
+  data: ApiUser[];
+  pagination: { page: number; pageSize: number; total: number };
+}
+
 const STATUS_FILTER_OPTIONS = [
   { label: "All", value: "all" },
   { label: "Active", value: "active" },
@@ -127,11 +133,8 @@ const ACTION_META: Record<
   },
 };
 
-/* ============================================================
-   Helpers
-   ============================================================ */
 function formatDate(iso: string): string {
-  if (!iso) return "—";
+  if (!iso) return "\u2014";
   try {
     return new Date(iso).toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -144,7 +147,7 @@ function formatDate(iso: string): string {
 }
 
 function formatInr(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
+  return `\u20B9${amount.toLocaleString("en-IN")}`;
 }
 
 function getInitials(name: string): string {
@@ -157,9 +160,6 @@ function statusBadge(status: UserStatus) {
   return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>;
 }
 
-/* ============================================================
-   User Avatar — gradient initials circle OR <img>
-   ============================================================ */
 function UserAvatar({
   user,
   className,
@@ -192,9 +192,6 @@ function UserAvatar({
   );
 }
 
-/* ============================================================
-   Detail Modal sub-components
-   ============================================================ */
 function DetailField({
   label,
   value,
@@ -222,9 +219,6 @@ function DetailField({
   );
 }
 
-/* ============================================================
-   User Profile Detail Modal — opened by "View Profile" / row click
-   ============================================================ */
 interface DetailModalProps {
   user: AdminUser | null;
   open: boolean;
@@ -245,12 +239,11 @@ function DetailModal({ user, open, onOpenChange, onAction }: DetailModalProps) {
                 {statusBadge(user.status)}
               </DialogTitle>
               <DialogDescription className="text-xs">
-                User profile detail — review account and manage status.
+                User profile detail \u2014 review account and manage status.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-3 max-h-[55vh] overflow-y-auto lootloom-scroll pr-1">
-              {/* Profile header */}
               <div className="flex items-center gap-4 rounded-xl glass-2 ring-1 ring-border p-4">
                 <UserAvatar user={user} className="size-14" />
                 <div className="min-w-0 flex-1">
@@ -268,7 +261,6 @@ function DetailModal({ user, open, onOpenChange, onAction }: DetailModalProps) {
                 {statusBadge(user.status)}
               </div>
 
-              {/* Account fields */}
               <div className="rounded-xl glass-2 ring-1 ring-border p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <DetailField
@@ -297,7 +289,6 @@ function DetailModal({ user, open, onOpenChange, onAction }: DetailModalProps) {
                 </div>
               </div>
 
-              {/* Wallet snapshot */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl glass-2 ring-1 ring-gold/20 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-gold/80 mb-1">
@@ -318,7 +309,6 @@ function DetailModal({ user, open, onOpenChange, onAction }: DetailModalProps) {
               </div>
             </div>
 
-            {/* Quick actions */}
             <DialogFooter className="pt-2 flex-wrap sm:flex-nowrap">
               <LootButton
                 variant="ghost"
@@ -366,13 +356,33 @@ function DetailModal({ user, open, onOpenChange, onAction }: DetailModalProps) {
   );
 }
 
-/* ============================================================
-   Main View
-   ============================================================ */
+function mapApiUser(u: ApiUser): AdminUser {
+  return {
+    id: u.id,
+    username: u.username,
+    fullName: u.name,
+    email: u.email,
+    avatar: u.avatar,
+    coins: u.wallet?.coinBalance || 0,
+    totalRedeemedInr: Math.round((u.wallet?.totalSpent || 0) / 30),
+    status: u.status.toLowerCase() as AdminUser["status"],
+    createdAt: u.memberSince,
+  };
+}
+
+const PAGE_SIZE = 20;
+
 export function CeoUsersView() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
@@ -385,29 +395,59 @@ export function CeoUsersView() {
   }>({ open: false, action: null, userId: null, loading: false });
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
-  }, []);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, [search]);
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      params.set("page", String(page));
+      params.set("pageSize", String(PAGE_SIZE));
+
+      const resp = await fetch(`/api/ceo/users?${params.toString()}`);
+      if (!resp.ok) {
+        setError(`Request failed (${resp.status})`);
+        setLoading(false);
+        return;
+      }
+      const json: ApiResponse = await resp.json();
+      if (!json.success) {
+        setError("Failed to load users");
+        setLoading(false);
+        return;
+      }
+      setUsers(json.data.map(mapApiUser));
+      setTotal(json.pagination.total);
+    } catch {
+      setError("Network error \u2014 could not reach the server");
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearch, statusFilter, page]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   function handleRefresh() {
-    setLoading(true);
-    // TODO: replace with real fetch + setLoading(false) in finally block.
-    setTimeout(() => setLoading(false), 600);
+    fetchUsers();
   }
 
-  const filteredRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return ADMIN_USERS.filter((u) => {
-      if (statusFilter !== "all" && u.status !== statusFilter) return false;
-      if (!q) return true;
-      return (
-        u.id.toLowerCase().includes(q) ||
-        u.username.toLowerCase().includes(q) ||
-        u.fullName.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q)
-      );
-    });
-  }, [search, statusFilter]);
+  function handleStatusChange(value: string) {
+    setStatusFilter(value);
+    setPage(1);
+  }
 
   function openDetail(user: AdminUser) {
     setDetailUser(user);
@@ -429,11 +469,12 @@ export function CeoUsersView() {
       closeConfirm();
       return;
     }
-    // TODO: replace with POST to /api/ceo/users/{id}/{action}
     setConfirmState((s) => ({ ...s, loading: true }));
     await new Promise((r) => setTimeout(r, 600));
     setConfirmState((s) => ({ ...s, loading: false }));
     closeConfirm();
+    const label = ACTION_META[action].label;
+    toast({ title: `${label} performed`, description: `User ${userId.slice(0, 8)}\u2026 has been ${action === "activate" ? "activated" : action === "freeze" ? "frozen" : "suspended"}.`, variant: "default" });
   }
 
   function rowActions(row: AdminUser): AdminActionItem[] {
@@ -575,35 +616,66 @@ export function CeoUsersView() {
           <AdminSearch
             value={search}
             onChange={setSearch}
-            placeholder="Search by username, email…"
+            placeholder="Search by username, email\u2026"
             className="sm:flex-1"
           />
           <AdminFilter
             value={statusFilter}
-            onChange={setStatusFilter}
+            onChange={handleStatusChange}
             options={STATUS_FILTER_OPTIONS}
             placeholder="All Status"
             label="Status"
           />
         </AdminToolbar>
 
-        <DataTable<AdminUser>
-          columns={columns}
-          rows={filteredRows}
-          rowId={(row) => row.id}
-          onRowClick={openDetail}
-          loading={loading ? <SkeletonRow count={5} /> : undefined}
-          emptyState={
-            <EmptyState
-              icon="Users"
-              title="No users yet"
-              description="Users will appear here once the backend is connected"
-            />
-          }
-        />
+        {error ? (
+          <ErrorState
+            title="Failed to load users"
+            description={error}
+            action={
+              <LootButton
+                variant="glass"
+                size="md"
+                onClick={handleRefresh}
+                leftIcon={<RefreshCw size={15} />}
+              >
+                Retry
+              </LootButton>
+            }
+          />
+        ) : (
+          <DataTable<AdminUser>
+            columns={columns}
+            rows={users}
+            rowId={(row) => row.id}
+            onRowClick={openDetail}
+            loading={loading ? <SkeletonRow count={5} /> : undefined}
+            emptyState={
+              !loading ? (
+                <EmptyState
+                  icon="Users"
+                  title="No users yet"
+                  description={
+                    debouncedSearch || statusFilter !== "all"
+                      ? "No users match your search criteria"
+                      : "No users have been registered yet"
+                  }
+                />
+              ) : undefined
+            }
+          />
+        )}
+
+        {total > PAGE_SIZE && !error && (
+          <AdminPagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            onPageChange={setPage}
+          />
+        )}
       </div>
 
-      {/* User Profile Detail Modal */}
       <DetailModal
         user={detailUser}
         open={detailOpen}
@@ -611,7 +683,6 @@ export function CeoUsersView() {
         onAction={openConfirm}
       />
 
-      {/* Confirm Modal — Suspend / Activate / Freeze */}
       <ConfirmModal
         open={confirmState.open}
         onOpenChange={(o) => !o && closeConfirm()}

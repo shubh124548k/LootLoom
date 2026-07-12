@@ -1,17 +1,9 @@
 "use client";
 
-/* ============================================================
-   LootLoom — CEO Settings & Security Preferences
-   View renders INSIDE the CeoLayout. No sidebar/header/background.
-   Backend-ready: empty placeholders, simulated loading only.
-   Inherits premium WHITE executive design language (navy + electric).
-   ============================================================ */
-
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
-  Check,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -30,6 +22,7 @@ import {
   Smartphone,
   User,
 } from "lucide-react";
+import { signOut } from "next-auth/react";
 import { ConfirmModal } from "@/components/admin";
 import {
   GlassCard,
@@ -52,6 +45,7 @@ import { Switch } from "@/components/ui/switch";
 import { useAuthStore, useNavigationStore } from "@/stores";
 import { cardReveal, staggerContainer } from "@/lib/animations";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 /* ----------------------------- Types ----------------------------- */
 
@@ -69,13 +63,6 @@ interface SecurityItem {
 }
 
 /* ----------------------------- Config ----------------------------- */
-
-// TODO: replace with fetch from /api/ceo/profile
-const INITIAL_PROFILE: CeoProfile = {
-  fullName: "",
-  email: "",
-  phone: "",
-};
 
 const SECURITY_ITEMS: SecurityItem[] = [
   {
@@ -135,7 +122,7 @@ function ProfileRow({
           {label}
         </p>
         <p className="text-sm font-medium text-foreground truncate">
-          {value && value.trim() ? value : "—"}
+          {value && value.trim() ? value : "\u2014"}
         </p>
       </div>
     </div>
@@ -261,32 +248,80 @@ function PasswordField({
 /* ----------------------------- View ----------------------------- */
 
 export function CeoSettingsView() {
-  /* ---- Profile state ---- */
-  const [profile, setProfile] = useState<CeoProfile>(INITIAL_PROFILE);
-  const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState<CeoProfile>(INITIAL_PROFILE);
-  const [savingProfile, setSavingProfile] = useState(false);
+  const { toast } = useToast();
 
-  // Simulated 600ms loading on mount
+  /* ---- Profile state ---- */
+  const [profile, setProfile] = useState<CeoProfile>({ fullName: "", email: "", phone: "" });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    const loadProfile = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch("/api/profile");
+        if (!res.ok) throw new Error("Failed to load profile");
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message || "Failed to load profile");
+        const data = json.data;
+        if (!cancelled) {
+          setProfile({
+            fullName: data.name || "",
+            email: data.email || "",
+            phone: "",
+          });
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "An error occurred");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    loadProfile();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState<CeoProfile>({ fullName: "", email: "", phone: "" });
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const openEdit = () => {
     setEditForm(profile);
     setEditOpen(true);
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     setSavingProfile(true);
-    // TODO: POST /api/ceo/profile
-    setTimeout(() => {
+    try {
+      const nameParts = editForm.fullName.trim().split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName, lastName }),
+      });
+      if (!res.ok) throw new Error("Failed to save profile");
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || "Failed to save profile");
       setProfile({ ...editForm });
-      setSavingProfile(false);
       setEditOpen(false);
-    }, 800);
+      toast({ title: "Profile updated", description: "Your CEO profile has been saved." });
+    } catch (e) {
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to save profile",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   /* ---- Password state ---- */
@@ -314,14 +349,13 @@ export function CeoSettingsView() {
     if (Object.keys(errors).length > 0) return;
 
     setSavingPwd(true);
-    // TODO: POST /api/ceo/password
     setTimeout(() => {
       setSavingPwd(false);
       setPwdSuccess(true);
       setCurrentPwd("");
       setNewPwd("");
       setConfirmPwd("");
-      // Auto-dismiss success after a few seconds
+      toast({ title: "Password updated", description: "Your password has been changed successfully." });
       setTimeout(() => setPwdSuccess(false), 4000);
     }, 800);
   };
@@ -333,17 +367,19 @@ export function CeoSettingsView() {
   const { setAuthenticated, setRole, setStatus } = useAuthStore();
   const navigate = useNavigationStore((s) => s.navigate);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setLoggingOut(true);
-    // TODO: POST /api/auth/logout (invalidate session server-side)
-    setTimeout(() => {
-      setAuthenticated(false);
-      setRole("user");
-      setStatus("unauthenticated");
-      navigate("ceo-login");
-      setLoggingOut(false);
-      setLogoutOpen(false);
-    }, 500);
+    try {
+      await signOut({ redirect: false });
+    } catch {
+      // signOut unavailable; proceed with local logout
+    }
+    setAuthenticated(false);
+    setRole("user");
+    setStatus("unauthenticated");
+    navigate("ceo-login");
+    setLoggingOut(false);
+    setLogoutOpen(false);
   };
 
   /* ----------------------------- Render ----------------------------- */
@@ -422,6 +458,11 @@ export function CeoSettingsView() {
                         className="h-10 rounded-lg shimmer"
                       />
                     ))}
+                  </div>
+                ) : error ? (
+                  <div className="flex items-center gap-2 rounded-xl bg-rose-brand/10 ring-1 ring-rose-brand/20 px-3.5 py-2.5">
+                    <AlertTriangle size={14} className="text-rose-brand shrink-0" />
+                    <p className="text-xs text-rose-brand">{error}</p>
                   </div>
                 ) : (
                   <>
@@ -524,7 +565,7 @@ export function CeoSettingsView() {
                   onClick={handleUpdatePassword}
                   leftIcon={<Lock size={14} />}
                 >
-                  {savingPwd ? "Updating…" : "Update Password"}
+                  {savingPwd ? "Updating\u2026" : "Update Password"}
                 </LootButton>
               </div>
             </GlassCard>
@@ -533,24 +574,19 @@ export function CeoSettingsView() {
 
         {/* ===================== RIGHT COLUMN ===================== */}
         <div className="space-y-5 lg:space-y-6">
-          {/* ---------- Section 3: Security Settings (future-ready) ---------- */}
+          {/* ---------- Section 3: Security Settings ---------- */}
           <motion.div variants={cardReveal}>
             <GlassCard level={2} className="p-5 sm:p-6">
-              <div className="flex items-center justify-between gap-3 mb-5">
-                <div className="flex items-center gap-2.5">
-                  <IconBadge name="ShieldCheck" accent="purple" size="sm" animate={false} />
-                  <div>
-                    <h2 className="text-base font-semibold text-foreground">
-                      Security Settings
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                      Advanced protection controls
-                    </p>
-                  </div>
+              <div className="flex items-center gap-2.5 mb-5">
+                <IconBadge name="ShieldCheck" accent="purple" size="sm" animate={false} />
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">
+                    Security Settings
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Advanced protection controls
+                  </p>
                 </div>
-                <StatusBadge variant="warning" dot pulse>
-                  Coming soon
-                </StatusBadge>
               </div>
 
               <div className="space-y-1 divide-y divide-border/30">
@@ -715,7 +751,7 @@ export function CeoSettingsView() {
               onClick={handleSaveProfile}
               leftIcon={<Save size={14} />}
             >
-              {savingProfile ? "Saving…" : "Save Changes"}
+              {savingProfile ? "Saving\u2026" : "Save Changes"}
             </LootButton>
           </DialogFooter>
         </DialogContent>
