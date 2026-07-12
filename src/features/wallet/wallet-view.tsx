@@ -16,6 +16,7 @@ import {
   Download,
   Banknote,
   PlayCircle,
+  Hash,
 } from "lucide-react";
 
 import {
@@ -28,8 +29,12 @@ import {
   StatusBadge,
   WidgetCard,
   StatCard,
+  EmptyState,
+  SkeletonCard,
+  SkeletonRow,
 } from "@/components/lootloom";
 import { useNavigationStore, useWalletStore } from "@/stores";
+import type { TransactionItem } from "@/types";
 import { cardReveal, staggerContainer, hoverLift, floating } from "@/lib/animations";
 import { cn } from "@/lib/utils";
 
@@ -80,8 +85,17 @@ function MiniStatTile({
    1. Wallet Overview Hero
    ============================================================ */
 
-function WalletOverview() {
+function WalletOverview({ loading }: { loading: boolean }) {
   const { availableCoins, lifetimeEarned } = useWalletStore();
+
+  if (loading) {
+    return (
+      <motion.div variants={cardReveal} initial="hidden" animate="visible" custom={0}>
+        <SkeletonCard className="h-32" />
+      </motion.div>
+    );
+  }
+
   const estimatedValue = availableCoins / 100; // 100 coins = ₹1 placeholder
   const redeemableBalance = availableCoins; // coins available for redemption
 
@@ -229,7 +243,7 @@ function WalletOverview() {
    2. Wallet Statistics (simple stat cards — API-ready)
    ============================================================ */
 
-function WalletStatistics() {
+function WalletStatistics({ loading }: { loading: boolean }) {
   const { availableCoins, lifetimeEarned } = useWalletStore();
   // Ads watched & today's ads are placeholders — populated by future API.
   const adsWatched = 0;
@@ -279,29 +293,102 @@ function WalletStatistics() {
       level={2}
       index={1}
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {stats.map((s, i) => (
-          <StatCard
-            key={s.label}
-            label={s.label}
-            value={s.value}
-            suffix={s.suffix}
-            icon={s.icon}
-            accent={s.accent}
-            index={i}
-          />
-        ))}
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {stats.map((s, i) => (
+            <StatCard
+              key={s.label}
+              label={s.label}
+              value={s.value}
+              suffix={s.suffix}
+              icon={s.icon}
+              accent={s.accent}
+              index={i}
+            />
+          ))}
+        </div>
+      )}
     </WidgetCard>
   );
 }
 
 /* ============================================================
-   3. Recent Transactions (skeleton — no fake data)
+   Transaction Row (renders a real TransactionItem from the store)
    ============================================================ */
 
-function RecentTransactions() {
+const TX_TYPE_COLOR: Record<TransactionItem["type"], string> = {
+  credit: "text-emerald-brand",
+  debit: "text-rose-brand",
+  redeem: "text-purple-brand",
+  bonus: "text-gold",
+  referral: "text-cyan-brand",
+};
+
+const TX_STATUS_VARIANT: Record<
+  TransactionItem["status"],
+  "default" | "success" | "warning" | "error" | "info"
+> = {
+  completed: "success",
+  pending: "warning",
+  failed: "error",
+  processing: "info",
+};
+
+function TransactionRow({ tx }: { tx: TransactionItem }) {
+  const isOutgoing = tx.type === "debit" || tx.type === "redeem";
+  const typeColor = TX_TYPE_COLOR[tx.type];
+  const statusVariant = TX_STATUS_VARIANT[tx.status];
+
+  return (
+    <div className="grid grid-cols-12 gap-3 items-center px-3 py-3 rounded-xl glass-1 ring-1 ring-border/60">
+      <div className="col-span-2 md:col-span-2 flex items-center gap-2.5 min-w-0">
+        <div className="size-9 rounded-lg bg-electric/10 ring-1 ring-electric/20 flex items-center justify-center shrink-0">
+          <Hash size={14} className="text-electric" />
+        </div>
+        <span className="text-xs font-mono text-foreground truncate">
+          #{tx.id.slice(-6)}
+        </span>
+      </div>
+      <div className="hidden md:block col-span-2 text-xs text-muted-foreground truncate">
+        {tx.date}
+      </div>
+      <div className="hidden md:block col-span-1">
+        <StatusBadge variant="default">{tx.type}</StatusBadge>
+      </div>
+      <div
+        className={cn(
+          "col-span-3 md:col-span-2 text-sm font-bold text-right tabular-nums",
+          typeColor
+        )}
+      >
+        {isOutgoing ? "-" : "+"}
+        {tx.amount.toLocaleString("en-IN")}
+      </div>
+      <div className="hidden md:block col-span-2">
+        <StatusBadge variant={statusVariant} dot>
+          {tx.status}
+        </StatusBadge>
+      </div>
+      <div className="hidden md:block col-span-3 text-xs text-muted-foreground truncate">
+        {tx.description}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   3. Recent Transactions (loading / empty / content states)
+   ============================================================ */
+
+function RecentTransactions({ loading }: { loading: boolean }) {
   const navigate = useNavigationStore((s) => s.navigate);
+  const transactions = useWalletStore((s) => s.transactions);
 
   const columns = ["Transaction ID", "Date", "Type", "Amount", "Status", "Description"];
 
@@ -337,49 +424,43 @@ function RecentTransactions() {
         </LootButton>
       }
     >
-      {/* Column header row */}
-      <div className="hidden md:grid grid-cols-12 gap-3 px-4 pb-2 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold border-b border-border">
-        {columns.map((c, i) => (
-          <div
-            key={c}
-            className={cn(
-              i === 0 && "col-span-2",
-              i === 1 && "col-span-2",
-              i === 2 && "col-span-1",
-              i === 3 && "col-span-2 text-right",
-              i === 4 && "col-span-2",
-              i === 5 && "col-span-3"
-            )}
-          >
-            {c}
-          </div>
-        ))}
-      </div>
-
-      {/* Skeleton rows */}
-      <div className="space-y-2.5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            className="grid grid-cols-12 gap-3 items-center px-3 py-3 rounded-xl glass-1 ring-1 ring-border/60"
-          >
-            <div className="col-span-2 md:col-span-2 flex items-center gap-2.5">
-              <div className="size-9 rounded-lg shimmer shrink-0" />
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <div className="h-2.5 w-16 rounded shimmer" />
+      {loading ? (
+        <SkeletonRow count={5} />
+      ) : transactions.length === 0 ? (
+        <EmptyState
+          icon="Receipt"
+          title="No transactions yet"
+          description="Your earning and redemption history will appear here."
+        />
+      ) : (
+        <>
+          {/* Column header row */}
+          <div className="hidden md:grid grid-cols-12 gap-3 px-4 pb-2 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold border-b border-border">
+            {columns.map((c, i) => (
+              <div
+                key={c}
+                className={cn(
+                  i === 0 && "col-span-2",
+                  i === 1 && "col-span-2",
+                  i === 2 && "col-span-1",
+                  i === 3 && "col-span-2 text-right",
+                  i === 4 && "col-span-2",
+                  i === 5 && "col-span-3"
+                )}
+              >
+                {c}
               </div>
-            </div>
-            <div className="hidden md:block col-span-2 h-2.5 w-20 rounded shimmer" />
-            <div className="hidden md:block col-span-1 h-5 w-12 rounded-md shimmer" />
-            <div className="col-span-3 md:col-span-2 h-3 w-14 rounded shimmer justify-self-end" />
-            <div className="hidden md:block col-span-2 h-5 w-16 rounded-full shimmer" />
-            <div className="hidden md:block col-span-3 space-y-1.5">
-              <div className="h-2.5 w-3/4 rounded shimmer" />
-              <div className="h-2 w-1/2 rounded shimmer" />
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+
+          {/* Transaction rows */}
+          <div className="space-y-2.5">
+            {transactions.slice(0, 5).map((tx) => (
+              <TransactionRow key={tx.id} tx={tx} />
+            ))}
+          </div>
+        </>
+      )}
     </WidgetCard>
   );
 }
@@ -467,6 +548,8 @@ function QuickWalletActions() {
 
 export function WalletView() {
   const navigate = useNavigationStore((s) => s.navigate);
+  // Derive loading state: walletId is null until AuthDataSync fetches wallet data.
+  const loading = !useWalletStore((s) => s.walletId);
 
   return (
     <PageContainer>
@@ -502,13 +585,13 @@ export function WalletView() {
         className="space-y-5 lg:space-y-6"
       >
         {/* 1. Wallet Overview Hero */}
-        <WalletOverview />
+        <WalletOverview loading={loading} />
 
         {/* 2. Wallet Statistics */}
-        <WalletStatistics />
+        <WalletStatistics loading={loading} />
 
         {/* 3. Recent Transactions */}
-        <RecentTransactions />
+        <RecentTransactions loading={loading} />
 
         {/* 4. Quick Actions */}
         <QuickWalletActions />

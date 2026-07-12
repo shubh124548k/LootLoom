@@ -9,32 +9,36 @@ import { cn } from "@/lib/utils";
 
 export function PageLoader({ label = "Loading" }: { label?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 gap-6">
+    <div className="flex flex-col items-center justify-center py-20 gap-6" role="status" aria-live="polite">
       <motion.div
         animate={{ rotate: 360 }}
         transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
         className="relative size-14"
+        aria-hidden="true"
       >
         <div className="absolute inset-0 rounded-full border-4 border-electric/15" />
         <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-electric" />
       </motion.div>
       <p className="text-sm text-muted-foreground font-medium animate-pulse">{label}…</p>
+      <span className="sr-only">{label}</span>
     </div>
   );
 }
 
 export function GlassLoader({ label = "Loading" }: { label?: string }) {
   return (
-    <GlassCard level={2} className="p-8 flex flex-col items-center justify-center gap-4">
+    <GlassCard level={2} className="p-8 flex flex-col items-center justify-center gap-4" role="status" aria-live="polite">
       <motion.div
         animate={{ rotate: 360 }}
         transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
         className="relative size-10"
+        aria-hidden="true"
       >
         <div className="absolute inset-0 rounded-full border-[3px] border-electric/15" />
         <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-electric" />
       </motion.div>
       <p className="text-xs text-muted-foreground font-medium">{label}…</p>
+      <span className="sr-only">{label}</span>
     </GlassCard>
   );
 }
@@ -100,11 +104,12 @@ export function EmptyState({ icon = "Inbox", title, description, action, classNa
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
+      role="status"
       className={cn("flex flex-col items-center justify-center text-center py-12 px-6", className)}
     >
       <div className="relative mb-4">
-        <div className="absolute inset-0 blur-2xl bg-electric/20 rounded-full" />
-        <div className="relative size-16 rounded-2xl glass-2 flex items-center justify-center ring-1 ring-electric/15">
+        <div className="absolute inset-0 blur-2xl bg-electric/20 rounded-full" aria-hidden="true" />
+        <div className="relative size-16 rounded-2xl glass-2 flex items-center justify-center ring-1 ring-electric/15" aria-hidden="true">
           <LucideIcon className="text-electric" size={28} />
         </div>
       </div>
@@ -146,9 +151,11 @@ export function ErrorState({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
+      role={variant === "error" ? "alert" : "status"}
+      aria-live={variant === "error" ? "assertive" : "polite"}
       className={cn("flex flex-col items-center justify-center text-center py-12 px-6", className)}
     >
-      <div className={cn("size-16 rounded-2xl flex items-center justify-center ring-1 mb-4", color)}>
+      <div className={cn("size-16 rounded-2xl flex items-center justify-center ring-1 mb-4", color)} aria-hidden="true">
         <LucideIcon size={28} />
       </div>
       <h3 className="text-base font-semibold text-foreground mb-1">{title}</h3>

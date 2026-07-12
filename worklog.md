@@ -2205,3 +2205,234 @@ Stage Summary:
 - ESLint passes (0 errors, 0 warnings)
 - Browser-verified: home page renders at 320px/375px/1440px with no overflow, mobile drawer works, Sign In + Register pages render with full validation
 - All values backend-ready (real /api/stats fetch, NextAuth signIn/signOut, no hardcoded login state)
+
+---
+Task ID: p8-foundation
+Agent: main
+Task: Prompt 8 foundation — dead code removal, console.log cleanup, dark mode CSS
+
+Work Log:
+- Deleted dead code: src/features/pages/system-view.tsx (670 lines, not imported anywhere — duplicate of src/features/system/system-view.tsx which is the active system view)
+- Cleaned up console.log debug statements in src/lib/auth.ts (5 console.log + 1 console.error removed from authorize function — production auth should not log credentials/IDs to console)
+- Added dark mode scrollbar CSS to src/app/globals.css:
+  * .dark ::-webkit-scrollbar-thumb (dark variant for main scrollbar)
+  * .dark ::-webkit-scrollbar-thumb:hover (dark hover)
+  * .dark ::selection (dark text selection highlight)
+- Added .lootloom-scroll utility class (used in 9 files but never defined):
+  * Thin 6px scrollbar with rounded thumb
+  * Light mode: oklch(0.85 0.02 250) thumb
+  * Dark mode: oklch(0.35 0.02 256) thumb
+  * Hover states for both modes
+- Added .dark .shimmer variant (dark mode skeleton loading background)
+- Ran bun run lint: 0 errors
+
+Stage Summary:
+- Dead code removed (670 lines)
+- Console.log debug statements removed from auth
+- Dark mode scrollbar + lootloom-scroll + dark shimmer CSS added
+- All glass-nav, glass-1/2/3/4 already have dark mode via CSS variables
+- ESLint passes (0 errors)
+
+---
+Task ID: 8a
+Agent: full-stack-developer
+Task: Add loading/empty/error states to earn-view + wallet-view
+
+Work Log:
+- Read /home/z/my-project/worklog.md to understand prior work (p7-foundation, p8-foundation, 7a, 7b contexts)
+- Read target files: src/features/earn/earn-view.tsx (586 lines) and src/features/wallet/wallet-view.tsx (519 lines)
+- Read reference pattern from src/features/rewards/rewards-view.tsx (loading ? skeleton : error ? ErrorState : empty ? EmptyState : content)
+- Verified available components in src/components/lootloom/index.ts: EmptyState, ErrorState, SkeletonCard, SkeletonRow all exported from states.tsx
+- Verified EmptyState/ErrorState accept `icon` as string (resolved via lucide-react namespace) so no extra icon imports needed
+- Verified useWalletStore has walletId field (null by default, populated by AuthDataSync) for deriving loading state
+- Verified TransactionItem type in src/types/index.ts: { id, date, type: credit|debit|redeem|bonus|referral, amount, status: completed|pending|failed|processing, description }
+- Verified StatusBadge variants: default, success, warning, error, info, gold, electric, purple, cyan
+
+FILE 1 — src/features/earn/earn-view.tsx (586 → 591 lines, +5):
+  - Updated React import: `useState` → `useEffect, useState`
+  - Added EmptyState, ErrorState to @/components/lootloom imports
+  - Replaced hardcoded OFFER_PROVIDERS (4 entries) with `const OFFER_PROVIDERS: OfferProvider[] = [];` + `// TODO: replace with fetch from /api/earn/offerwall/providers`
+  - Replaced hardcoded ANALYTICS_WEEKLY (6 weekly data points) with `const ANALYTICS_WEEKLY: { label: string; value: number }[] = [];` + `// TODO: replace with fetch from /api/earn/analytics?period=weekly`
+  - Kept TIPS as static content (genuine earning tips, not data — per spec)
+  - Added loading/error/retryCount state in EarnView with useEffect (600ms simulated load) — initial loading=true, transitions to false after 600ms; retryCount re-triggers effect
+  - Fixed react-hooks/set-state-in-effect lint error: moved setLoading(true) out of effect body into the handleRetry user-event handler; effect only schedules the loading→false transition via setTimeout
+  - Wrapped Offerwall grid in conditional: loading → SkeletonRow count=3 / error → ErrorState icon="AlertCircle" title="Unable to load offers" with Retry LootButton (electric) / empty → EmptyState icon="Target" title="No offers available" description="New offerwall tasks will appear here once available." / content → existing Grid cols=4 with OfferProviderCard
+  - Preserved the "Provider inventory loads from the offerwall API." info note below the conditional (always visible — contextual to WidgetCard)
+  - Wrapped Earn Analytics chart in conditional: ANALYTICS_WEEKLY.length === 0 → EmptyState icon="TrendingUp" title="No analytics data yet" description="Your weekly earnings chart will appear here once you start earning." className="h-64" / content → existing recharts BarChart
+  - Kept ad-watching hero section, reward history preview section, tips section, overall layout, and all framer-motion animations (cardReveal, staggerContainer, floating, floatingSmall) untouched
+
+FILE 2 — src/features/wallet/wallet-view.tsx (519 → 602 lines, +83):
+  - Added Hash icon to lucide-react imports (used in TransactionRow)
+  - Added EmptyState, SkeletonCard, SkeletonRow to @/components/lootloom imports
+  - Added `import type { TransactionItem } from "@/types"` for the transaction row renderer
+  - WalletView: derived `const loading = !useWalletStore((s) => s.walletId)` — walletId is null until AuthDataSync fetches wallet data from /api/wallet
+  - Passed `loading` prop to WalletOverview, WalletStatistics, RecentTransactions (QuickWalletActions kept as-is — static navigation buttons)
+  - WalletOverview({ loading }): if loading, returns SkeletonCard className="h-32" wrapped in motion.div with cardReveal animation (preserves entrance animation); otherwise renders existing hero
+  - WalletStatistics({ loading }): kept WidgetCard frame; if loading, renders 3 SkeletonCards in `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` grid inside WidgetCard; otherwise renders existing 4 StatCards grid
+  - Added new TransactionRow component (renders a real TransactionItem from the store): uses TX_TYPE_COLOR map (credit→emerald, debit→rose, redeem→purple, bonus→gold, referral→cyan) and TX_STATUS_VARIANT map (completed→success, pending→warning, failed→error, processing→info); renders Hash icon + truncated tx.id (last 6 chars), date, type StatusBadge, color-coded amount with +/- prefix, status StatusBadge with dot, description
+  - RecentTransactions({ loading }): now reads `transactions` from useWalletStore; conditional rendering: loading → SkeletonRow count=5 / transactions.length === 0 → EmptyState icon="Receipt" title="No transactions yet" description="Your earning and redemption history will appear here." / content → column header row + transactions.slice(0,5).map(TransactionRow)
+  - Removed the old inline 5-row custom skeleton grid (replaced by SkeletonRow component for loading state and TransactionRow for content state)
+  - Kept WidgetCard wrapper, action buttons (Filter/Search/Export), and "View all transactions" footer LootButton unchanged
+  - Kept all framer-motion animations (cardReveal, staggerContainer, hoverLift, floating) and premium design (glass cards, gradients, sheen, glow) untouched
+
+Verification:
+- bun run lint: 0 errors, 1 warning (pre-existing warning in src/components/lootloom/header.tsx — aria-autoComplete typo, NOT my file)
+- Fixed react-hooks/set-state-in-effect error in earn-view.tsx by moving setLoading(true) from effect body to handleRetry user-event handler
+- Dev server (dev.log): ✓ Compiled successfully multiple times after changes, no errors; GET / 200 serving cleanly
+- No fake data added: OFFER_PROVIDERS=[], ANALYTICS_WEEKLY=[], wallet store defaults (availableCoins=0, transactions=[], walletId=null) all preserved
+- All empty arrays initialized to [] with TODO comments referencing the future API endpoints
+
+Stage Summary:
+- earn-view.tsx: 586 → 591 lines (+5). Added loading/error/empty states to Offerwall grid (SkeletonRow count=3 / ErrorState "AlertCircle" with Retry / EmptyState "Target" / content) and Earn Analytics chart (EmptyState "TrendingUp" h-64 / BarChart). Replaced hardcoded OFFER_PROVIDERS (4 providers) and ANALYTICS_WEEKLY (6 data points) with empty arrays + TODO comments. Hero, Reward History Preview, Tips sections untouched.
+- wallet-view.tsx: 519 → 602 lines (+83). Derived loading state from !useWalletStore(s=>s.walletId). WalletOverview shows SkeletonCard h-32 when loading. WalletStatistics shows 3 SkeletonCards in grid when loading. RecentTransactions shows SkeletonRow count=5 (loading) / EmptyState "Receipt" (empty) / TransactionRow grid (content). Added TransactionRow component with type-color and status-variant maps. QuickWalletActions kept as-is.
+- Lint: 0 errors, 1 pre-existing warning (header.tsx, not my file)
+- Dev server compiles cleanly, no errors
+- Pattern matches rewards-view.tsx: loading ? skeleton : error ? ErrorState : empty ? EmptyState : content
+- All premium UI (glass cards, gradients, framer-motion animations) preserved
+- No fake data created — all empty arrays initialized to [] with TODO comments
+
+---
+Task ID: 8b
+Agent: full-stack-developer
+Task: Accessibility audit + improvements across all views
+
+Work Log:
+- Read /home/z/my-project/worklog.md to understand prior work (Tasks 0-foundation through p8-foundation)
+- Read all 8 target files for accessibility audit: header.tsx (429), sidebar.tsx (283), ceo-layout.tsx (257), navbar.tsx (229), user-menu.tsx (136), data-table.tsx (208), action-button.tsx (93), states.tsx (159)
+- Verified global `:focus-visible` CSS rule exists in globals.css (line 254) but added explicit focus-visible classes on icon-only custom buttons for reliability
+
+- src/components/lootloom/header.tsx (14 improvements):
+  * ThemeController: added focus-visible ring-2 ring-ring ring-offset classes
+  * SearchButton: added aria-label="Open search" + focus-visible ring classes
+  * SearchModal overlay div: added aria-hidden="true" (decorative backdrop)
+  * SearchModal modal: added role="dialog" aria-modal="true" aria-label="Search LootLoom"
+  * SearchModal input: added aria-label="Search query", aria-autocomplete="list", aria-controls="search-results"
+  * SearchModal results container: added id="search-results" role="listbox" aria-label="Search results"
+  * Search result buttons: added aria-label={`Open ${item.label}`} + focus-visible ring classes
+  * WalletShortcut: added focus-visible ring classes + aria-hidden on decorative coin icon + sr-only "coins available" text
+  * NotificationShortcut: enhanced aria-label to dynamic "Close/Open notifications" + aria-expanded + focus-visible ring + aria-hidden on Bell icon + aria-label on unread badge
+  * NotificationCenter backdrop: added aria-hidden="true"
+  * NotificationCenter popover: added role="dialog" aria-modal="true" aria-label="Notifications"
+  * "Mark all read" button: added focus-visible ring classes
+  * Notification item buttons: added dynamic aria-label (read/unread + title) + focus-visible ring-inset
+  * "View all notifications" button: added focus-visible ring-inset
+  * ProfileMenu trigger: added aria-expanded + aria-haspopup="menu" + focus-visible ring classes
+  * ProfileMenu popover: added role="menu" aria-label="Profile menu"
+  * ProfileMenu item buttons: added role="menuitem" + focus-visible ring-inset
+  * Logout button (ProfileMenu): added role="menuitem" + focus-visible ring-inset
+  * Breadcrumb: converted <span> list to semantic <ol>/<li>, added aria-hidden on ChevronRight separators, aria-current="page" on current page span, focus-visible ring on breadcrumb links
+  * Header mobile menu button: added aria-expanded + focus-visible ring + aria-hidden on Menu icon
+  * Header: added useUIStore selector for mobileDrawerOpen to support aria-expanded
+
+- src/components/lootloom/sidebar.tsx (5 improvements):
+  * "Learn More" button: added aria-label="Learn more about LootLoom Pro" + focus-visible ring classes
+  * Logo button: added aria-label="Go to home" + focus-visible ring-offset classes
+  * Collapse/Expand toggle: added focus-visible ring classes
+  * Footer user mini button: added aria-label="Open settings" + focus-visible ring classes + aria-hidden on decorative "LM" avatar
+  * Mobile drawer overlay: added aria-hidden="true"
+  * Mobile close button: added focus-visible ring classes + aria-hidden on X icon
+
+- src/components/lootloom/ceo-layout.tsx (6 improvements):
+  * CEO nav item motion.button: added aria-label={item.label} + focus-visible ring classes
+  * Logout motion.button: added aria-label="Logout of CEO session" + focus-visible ring classes
+  * Mobile SheetTrigger: added focus-visible ring classes + aria-hidden on Menu icon
+  * Dashboard label button: added aria-label={`Navigate to ${currentLabel}`} + focus-visible ring classes
+  * Notifications button: added focus-visible ring classes + aria-hidden on Bell icon + aria-label on unread badge
+  * CEO profile button: added focus-visible ring classes + aria-hidden on "CEO" avatar + aria-hidden on ChevronDown icon
+
+- src/components/navbar/navbar.tsx (5 improvements):
+  * Desktop nav link buttons: added focus-visible ring classes
+  * Mobile SheetTrigger: added aria-expanded={mobileOpen} + focus-visible ring classes + aria-hidden on Menu icon
+  * Mobile nav link buttons: added focus-visible ring-inset classes
+  * Mobile Dashboard button: added focus-visible ring-inset classes + aria-hidden on LayoutDashboard icon
+  * Mobile Profile button: added focus-visible ring-inset classes + aria-hidden on User icon
+  * Mobile Logout button: added focus-visible ring-inset classes + aria-hidden on LogOut icon
+
+- src/components/auth/user-menu.tsx (2 improvements):
+  * DropdownMenuTrigger: added aria-haspopup="menu", changed focus:outline-none focus:ring-2 to focus-visible:outline-none focus-visible:ring-2 (keyboard-only focus ring)
+  * UserAvatar img: enhanced alt text from bare `name` to descriptive `${name}'s avatar`
+
+- src/components/admin/data-table.tsx (4 improvements):
+  * Added useId import + useCallback import for keyboard handler
+  * Table: added aria-labelledby + sr-only <caption> for screen reader identification
+  * Desktop clickable rows (motion.tr): added role="button" tabIndex={0} onKeyDown (Enter/Space activation) aria-label={`Open row ${id}`} + focus-visible ring-inset classes
+  * Mobile clickable cards (motion.div): added role="button" tabIndex={0} onKeyDown aria-label + focus-visible ring-inset classes
+
+- src/components/admin/action-button.tsx (3 improvements):
+  * DropdownMenuTrigger: added aria-haspopup="menu", changed focus: to focus-visible: classes (keyboard-only focus ring)
+  * MoreHorizontal icon: added aria-hidden="true" (decorative; trigger has aria-label)
+
+- src/components/lootloom/states.tsx (6 improvements):
+  * PageLoader: added role="status" aria-live="polite" on container + aria-hidden="true" on decorative spinner + sr-only text label for screen reader announcement
+  * GlassLoader: added role="status" aria-live="polite" + aria-hidden on decorative spinner + sr-only text
+  * EmptyState: added role="status" + aria-hidden="true" on decorative blur background and icon container
+  * ErrorState: added role="alert" (for error variant) or role="status" (for warning/info) + aria-live="assertive"/"polite" matching variant + aria-hidden="true" on decorative icon container
+
+Verification:
+- Verified all 5 `<img>` usages across the codebase (pages-view, user-menu, profile-view, gamification-view, ceo-users-view) have descriptive alt text (not empty alt=""). user-menu enhanced from `alt={name}` to `alt={`${name}'s avatar`}` for clarity.
+- Verified all `<nav>` elements have aria-label: header Breadcrumb ("Breadcrumb"), sidebar SidebarContent ("Main navigation"), ceo-layout NavList ("CEO navigation"), navbar ("Primary"). All confirmed.
+- Verified all icon-only buttons have aria-label (theme toggle, search, wallet, notifications, profile menu, mobile menu open/close, sidebar collapse/expand, CEO menu/profile/notifications, action dropdown, user menu, sidebar footer user).
+- bun run lint: 0 errors, 0 warnings (clean exit code 0) — fixed 1 initial warning (aria-autoComplete → aria-autocomplete camelCase)
+- Dev server log: ✓ Compiled successfully across multiple GET / 200 responses, no compile errors after changes
+- Verified no functionality changed: all click handlers, animations, navigation logic preserved; only accessibility attributes (aria-label, role, aria-hidden, aria-expanded, aria-haspopup, aria-current, aria-live, aria-modal, aria-controls, aria-autocomplete), focus-visible ring classes, semantic HTML upgrades (ol/li for breadcrumb, caption for table), and 1 new keyboard handler (Enter/Space on table rows) added.
+
+Stage Summary:
+- 8 files modified with 45 total accessibility improvements (additive only)
+- 25+ icon-only buttons now have explicit aria-labels
+- 18+ interactive elements enhanced with focus-visible ring classes for keyboard navigation
+- 4 dialog/popover regions marked with role="dialog"/role="menu" + aria-modal + aria-label (SearchModal, NotificationCenter, ProfileMenu dropdown)
+- 1 keyboard handler added to data-table for Enter/Space row activation (WCAG 2.1.1 Keyboard)
+- 4 decorative icons/spinners marked aria-hidden to reduce screen reader noise
+- 3 loader/empty/error states given proper ARIA roles (role="status"/role="alert" + aria-live) for screen reader announcements
+- Breadcrumb markup upgraded to semantic <ol>/<li> structure with aria-current="page"
+- All 5 user avatar `<img>` tags verified to have descriptive alt text
+- ESLint passes with 0 errors, 0 warnings; dev server compiles cleanly
+- Premium UI fully preserved — no visual changes, no animations removed, no functionality changed
+
+---
+Task ID: p8-verification
+Agent: main
+Task: Prompt 8 final verification + responsive browser testing
+
+Work Log:
+- Ran bun run lint: 0 errors, 0 warnings (exit 0) — clean
+- Verified dead code removal: pages/system-view.tsx confirmed DELETED
+- Verified console.log cleanup: lib/auth.ts has 0 console statements (only auth-data-sync.tsx console.error remains — legitimate error logging)
+- Browser responsive verification with Agent Browser:
+  * 320px (smallest): Home page renders with NO OVERFLOW, navbar shows Logo + hamburger, hero section readable
+  * 375px (iPhone X): Home page renders with NO OVERFLOW, hamburger menu opens drawer with all nav items (Overview, How It Works, Rewards, Support, Sign In, Get Started, Close), ESC key closes drawer correctly
+  * 1440px (desktop): Home page renders with NO OVERFLOW, full desktop navbar (Logo, Overview, How It Works, Rewards, Support, Sign In, Get Started)
+- Dark mode verification:
+  * Set theme to 'dark' via localStorage, reloaded page
+  * Confirmed: document.documentElement.classList contains 'dark' → "DARK MODE ACTIVE"
+  * Confirmed: body background-color is dark (lab values indicate near-black background)
+  * Navbar, hero, cards all render in dark mode with proper CSS variable overrides
+  * Dark scrollbar CSS added (dark thumb + hover)
+  * Dark shimmer CSS added for skeleton loading states
+- Accessibility verification (from subagent 8b):
+  * 45 accessibility improvements across 8 component files
+  * aria-labels on 25+ icon-only buttons
+  * focus-visible rings on 18+ interactive elements
+  * Semantic HTML: breadcrumb → ol/li with aria-current, table → caption + aria-labelledby
+  * Dialog roles + aria-modal on popovers/dialogs
+  * ARIA state attributes: aria-expanded, aria-haspopup, aria-controls, aria-autocomplete, aria-current, aria-live
+  * Screen reader text: sr-only labels for wallet coins and loaders
+  * Decorative markup: aria-hidden on 10+ decorative icons/spinners
+  * Live regions: loaders → role="status" aria-live="polite", errors → role="alert" aria-live="assertive"
+  * Keyboard navigation: data-table rows keyboard-activatable via Enter/Space
+- Loading/empty/error states (from subagent 8a):
+  * earn-view: offerwall grid now has loading/error/empty states; analytics chart shows empty state when no data; OFFER_PROVIDERS + ANALYTICS_WEEKLY changed to empty arrays with TODO comments
+  * wallet-view: WalletOverview + WalletStatistics + RecentTransactions now have loading skeleton + empty states; derived loading from walletId being null
+
+Stage Summary:
+Quality improvements delivered:
+1. Responsive: verified NO OVERFLOW at 320px, 375px, 1440px; mobile drawer works with ESC close
+2. Mobile: hamburger menu, touch-friendly buttons, proper spacing, no hidden navigation
+3. Loading: earn-view + wallet-view now have consistent loading skeletons (SkeletonRow/SkeletonCard)
+4. Error: earn-view now has ErrorState with retry; rewards-view pattern followed
+5. Empty states: earn-view (offers + analytics), wallet-view (transactions) now have professional empty states with icon + message
+6. Accessibility: 45 improvements — aria-labels, focus rings, semantic HTML, keyboard nav, screen reader support, live regions
+7. Dark mode: dark scrollbar, dark shimmer, all glass-nav/glass-1/2/3/4 have dark CSS variable overrides; verified active in browser
+8. Code cleanup: deleted 670 lines dead code (pages/system-view.tsx), removed 6 console.log debug statements from lib/auth.ts
+- ESLint passes (0 errors, 0 warnings)
+- Dev server running on port 3000

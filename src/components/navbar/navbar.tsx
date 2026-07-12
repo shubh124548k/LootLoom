@@ -97,7 +97,7 @@ export function Navbar() {
             <button
               key={item.label}
               onClick={() => scrollOrNavigate(item, navigate)}
-              className="px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors font-medium"
+              className="px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {item.label}
             </button>
@@ -134,9 +134,10 @@ export function Navbar() {
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger
             aria-label="Open menu"
-            className="md:hidden inline-flex items-center justify-center size-10 rounded-xl glass-2 ring-1 ring-border text-foreground hover:bg-accent/60 transition-all"
+            aria-expanded={mobileOpen}
+            className="md:hidden inline-flex items-center justify-center size-10 rounded-xl glass-2 ring-1 ring-border text-foreground hover:bg-accent/60 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            <Icons.Menu size={18} />
+            <Icons.Menu size={18} aria-hidden="true" />
           </SheetTrigger>
           <SheetContent
             side="right"
@@ -154,7 +155,7 @@ export function Navbar() {
                     scrollOrNavigate(item, navigate);
                     setMobileOpen(false);
                   }}
-                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors"
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                 >
                   {item.label}
                 </button>
@@ -169,9 +170,9 @@ export function Navbar() {
                       navigate("dashboard");
                       setMobileOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent/60 transition-colors flex items-center gap-2.5"
+                    className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent/60 transition-colors flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
-                    <Icons.LayoutDashboard size={16} className="text-electric" />
+                    <Icons.LayoutDashboard size={16} className="text-electric" aria-hidden="true" />
                     Dashboard
                   </button>
                   <button
@@ -179,16 +180,16 @@ export function Navbar() {
                       navigate("profile");
                       setMobileOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent/60 transition-colors flex items-center gap-2.5"
+                    className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent/60 transition-colors flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
-                    <Icons.User size={16} className="text-cyan-brand" />
+                    <Icons.User size={16} className="text-cyan-brand" aria-hidden="true" />
                     Profile
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-rose-brand hover:bg-rose-brand/10 transition-colors flex items-center gap-2.5"
+                    className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-rose-brand hover:bg-rose-brand/10 transition-colors flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
-                    <Icons.LogOut size={16} />
+                    <Icons.LogOut size={16} aria-hidden="true" />
                     Logout
                   </button>
                 </>

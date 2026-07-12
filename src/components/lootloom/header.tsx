@@ -18,7 +18,7 @@ function ThemeController() {
     <button
       onClick={toggleTheme}
       aria-label={isLight ? "Switch to dark mode" : "Switch to light mode"}
-      className="size-10 inline-flex items-center justify-center rounded-xl glass-2 text-foreground hover:glass-3 ring-1 ring-border transition-all"
+      className="size-10 inline-flex items-center justify-center rounded-xl glass-2 text-foreground hover:glass-3 ring-1 ring-border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
@@ -40,7 +40,8 @@ function SearchButton() {
   return (
     <button
       onClick={() => setSearch(true)}
-      className="hidden md:inline-flex items-center gap-2 h-10 px-3 rounded-xl glass-2 ring-1 ring-border text-muted-foreground hover:text-foreground hover:glass-3 transition-all min-w-[200px] lg:min-w-[280px]"
+      aria-label="Open search"
+      className="hidden md:inline-flex items-center gap-2 h-10 px-3 rounded-xl glass-2 ring-1 ring-border text-muted-foreground hover:text-foreground hover:glass-3 transition-all min-w-[200px] lg:min-w-[280px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <Icons.Search size={16} />
       <span className="text-sm flex-1 text-left">Search…</span>
@@ -92,6 +93,7 @@ function SearchModal() {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={close}
+        aria-hidden="true"
         className="fixed inset-0 z-[70] bg-foreground/30 backdrop-blur-md flex items-start justify-center pt-[12vh] px-4"
       >
         <motion.div
@@ -100,6 +102,9 @@ function SearchModal() {
           exit={{ opacity: 0, y: -10, scale: 0.98 }}
           transition={{ type: "spring", stiffness: 280, damping: 26 }}
           onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Search LootLoom"
           className="w-full max-w-xl rounded-2xl glass-3 shadow-[var(--shadow-xl)] ring-1 ring-border overflow-hidden"
         >
           <div className="flex items-center gap-3 px-4 h-14 border-b border-border">
@@ -109,11 +114,14 @@ function SearchModal() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search pages, rewards, activities…"
+              aria-label="Search query"
+              aria-autocomplete="list"
+              aria-controls="search-results"
               className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
             />
             <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">ESC</kbd>
           </div>
-          <div className="max-h-80 overflow-y-auto p-2">
+          <div className="max-h-80 overflow-y-auto p-2" id="search-results" role="listbox" aria-label="Search results">
             {results.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-8">No results found</p>
             )}
@@ -126,7 +134,8 @@ function SearchModal() {
                     navigate(item.id);
                     close();
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-left"
+                  aria-label={`Open ${item.label}`}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   <span className="size-8 rounded-lg bg-electric/10 text-electric flex items-center justify-center">
                     <Lucide size={16} />
@@ -154,13 +163,14 @@ function WalletShortcut() {
       whileHover={{ y: -1 }}
       whileTap={{ scale: 0.97 }}
       onClick={() => navigate("wallet")}
-      className="inline-flex items-center gap-2 h-10 pl-2 pr-3 rounded-xl glass-2 ring-1 ring-border hover:glass-3 hover:ring-electric/30 transition-all"
+      className="inline-flex items-center gap-2 h-10 pl-2 pr-3 rounded-xl glass-2 ring-1 ring-border hover:glass-3 hover:ring-electric/30 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       aria-label="Open wallet"
     >
-      <span className="size-7 rounded-lg bg-[linear-gradient(135deg,var(--gold),oklch(0.75_0.18_60))] flex items-center justify-center">
+      <span className="size-7 rounded-lg bg-[linear-gradient(135deg,var(--gold),oklch(0.75_0.18_60))] flex items-center justify-center" aria-hidden="true">
         <Icons.Coins size={15} className="text-white" />
       </span>
       <AnimatedCounter value={coins} className="text-sm font-bold text-foreground" />
+      <span className="sr-only">coins available</span>
     </motion.button>
   );
 }
@@ -172,12 +182,13 @@ function NotificationShortcut() {
   return (
     <button
       onClick={() => setNotificationCenter(!centerOpen)}
-      aria-label="Notifications"
-      className="relative size-10 inline-flex items-center justify-center rounded-xl glass-2 ring-1 ring-border text-foreground hover:glass-3 hover:ring-electric/30 transition-all"
+      aria-label={centerOpen ? "Close notifications" : "Open notifications"}
+      aria-expanded={centerOpen}
+      className="relative size-10 inline-flex items-center justify-center rounded-xl glass-2 ring-1 ring-border text-foreground hover:glass-3 hover:ring-electric/30 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <Icons.Bell size={18} />
+      <Icons.Bell size={18} aria-hidden="true" />
       {unread > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-rose-brand text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-background">
+        <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-rose-brand text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-background" aria-label={`${unread} unread`}>
           {unread > 9 ? "9+" : unread}
         </span>
       )}
@@ -203,17 +214,20 @@ function NotificationCenter() {
 
   return (
     <>
-      <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
+      <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} aria-hidden="true" />
       <motion.div
         initial={{ opacity: 0, y: -8, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -8, scale: 0.97 }}
         transition={{ type: "spring", stiffness: 300, damping: 26 }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Notifications"
         className="absolute right-0 top-12 z-[65] w-[340px] max-w-[calc(100vw-2rem)] rounded-2xl glass-3 shadow-[var(--shadow-xl)] ring-1 ring-border overflow-hidden"
       >
         <div className="flex items-center justify-between px-4 h-12 border-b border-border">
           <p className="text-sm font-semibold text-foreground">Notifications</p>
-          <button onClick={markAllRead} className="text-xs text-electric font-medium hover:underline">
+          <button onClick={markAllRead} className="text-xs text-electric font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded">
             Mark all read
           </button>
         </div>
@@ -231,8 +245,9 @@ function NotificationCenter() {
                     navigate("notifications");
                     setOpen(false);
                   }}
+                  aria-label={`${n.read ? "Read" : "Unread"} notification: ${n.title}`}
                   className={cn(
-                    "w-full flex items-start gap-3 px-4 py-3 hover:bg-accent/60 transition-colors text-left border-b border-border/40 last:border-0",
+                    "w-full flex items-start gap-3 px-4 py-3 hover:bg-accent/60 transition-colors text-left border-b border-border/40 last:border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                     !n.read && "bg-electric/5"
                   )}
                 >
@@ -257,7 +272,7 @@ function NotificationCenter() {
             navigate("notifications");
             setOpen(false);
           }}
-          className="w-full h-11 border-t border-border text-xs font-semibold text-electric hover:bg-accent/60 transition-colors"
+          className="w-full h-11 border-t border-border text-xs font-semibold text-electric hover:bg-accent/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         >
           View all notifications
         </button>
@@ -297,7 +312,9 @@ function ProfileMenu() {
       <button
         onClick={() => setOpen(!open)}
         aria-label="Profile menu"
-        className="inline-flex items-center gap-2 h-10 pl-1.5 pr-2 rounded-xl glass-2 ring-1 ring-border hover:glass-3 hover:ring-electric/30 transition-all"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className="inline-flex items-center gap-2 h-10 pl-1.5 pr-2 rounded-xl glass-2 ring-1 ring-border hover:glass-3 hover:ring-electric/30 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <span className="size-7 rounded-full bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))] flex items-center justify-center text-white text-xs font-bold">
           {user.fullName.charAt(0)}
@@ -311,6 +328,8 @@ function ProfileMenu() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 300, damping: 26 }}
+            role="menu"
+            aria-label="Profile menu"
             className="absolute right-0 top-12 z-[65] w-60 rounded-2xl glass-3 shadow-[var(--shadow-xl)] ring-1 ring-border overflow-hidden"
           >
             <div className="p-4 border-b border-border">
@@ -331,7 +350,8 @@ function ProfileMenu() {
                       if (it.action) it.action();
                       setOpen(false);
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-accent transition-colors text-sm text-foreground"
+                    role="menuitem"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-accent transition-colors text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
                     <Lucide size={15} className="text-muted-foreground" />
                     {it.label}
@@ -342,7 +362,8 @@ function ProfileMenu() {
             <div className="p-1.5 border-t border-border">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-rose-brand/10 transition-colors text-sm text-rose-brand"
+                role="menuitem"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-rose-brand/10 transition-colors text-sm text-rose-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               >
                 <Icons.LogOut size={15} />
                 Sign out
@@ -362,18 +383,20 @@ function Breadcrumb() {
   if (!meta?.breadcrumbs?.length) return null;
   return (
     <nav aria-label="Breadcrumb" className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground">
-      {meta.breadcrumbs.map((b, i) => (
-        <span key={i} className="inline-flex items-center gap-1.5">
-          {i > 0 && <Icons.ChevronRight size={12} className="text-muted-foreground/50" />}
-          {b.view ? (
-            <button onClick={() => navigate(b.view!)} className="hover:text-foreground transition-colors">
-              {b.label}
-            </button>
-          ) : (
-            <span className="text-foreground font-medium">{b.label}</span>
-          )}
-        </span>
-      ))}
+      <ol className="flex items-center gap-1.5">
+        {meta.breadcrumbs.map((b, i) => (
+          <li key={i} className="inline-flex items-center gap-1.5">
+            {i > 0 && <Icons.ChevronRight size={12} className="text-muted-foreground/50" aria-hidden="true" />}
+            {b.view ? (
+              <button onClick={() => navigate(b.view!)} className="hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded">
+                {b.label}
+              </button>
+            ) : (
+              <span className="text-foreground font-medium" aria-current="page">{b.label}</span>
+            )}
+          </li>
+        ))}
+      </ol>
     </nav>
   );
 }
@@ -384,6 +407,7 @@ function Breadcrumb() {
  */
 export function Header() {
   const setMobileDrawer = useUIStore((s) => s.setMobileDrawer);
+  const mobileDrawerOpen = useUIStore((s) => s.mobileDrawerOpen);
 
   return (
     <motion.header
@@ -397,9 +421,10 @@ export function Header() {
         <button
           onClick={() => setMobileDrawer(true)}
           aria-label="Open menu"
-          className="lg:hidden size-10 inline-flex items-center justify-center rounded-xl glass-2 text-foreground"
+          aria-expanded={mobileDrawerOpen}
+          className="lg:hidden size-10 inline-flex items-center justify-center rounded-xl glass-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          <Icons.Menu size={18} />
+          <Icons.Menu size={18} aria-hidden="true" />
         </button>
 
         {/* Mobile logo */}

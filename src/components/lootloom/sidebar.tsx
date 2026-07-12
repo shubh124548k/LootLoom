@@ -171,7 +171,8 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
             </p>
             <button
               onClick={() => navigate("rewards")}
-              className="w-full h-8 rounded-lg text-xs font-semibold text-white bg-[linear-gradient(120deg,var(--electric),var(--purple-brand))]"
+              aria-label="Learn more about LootLoom Pro"
+              className="w-full h-8 rounded-lg text-xs font-semibold text-white bg-[linear-gradient(120deg,var(--electric),var(--purple-brand))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               Learn More
             </button>
@@ -204,13 +205,13 @@ export function Sidebar() {
         <div className="h-full w-full rounded-3xl glass-nav shadow-[var(--shadow-lg)] flex flex-col overflow-hidden">
           {/* Logo header */}
           <div className="flex items-center justify-between px-4 h-16 shrink-0 border-b border-sidebar-border">
-            <button onClick={() => navigate("home")} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg">
+            <button onClick={() => navigate("home")} aria-label="Go to home" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg">
               {collapsed ? <Logo withText={false} /> : <Logo />}
             </button>
             <button
               onClick={toggleSidebar}
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               <Icons.PanelLeftClose
                 size={16}
@@ -225,12 +226,13 @@ export function Sidebar() {
           <div className="px-3 py-3 border-t border-sidebar-border">
             <button
               onClick={() => navigate("settings")}
+              aria-label="Open settings"
               className={cn(
-                "w-full flex items-center gap-3 rounded-xl p-2 hover:bg-accent/60 transition-colors",
+                "w-full flex items-center gap-3 rounded-xl p-2 hover:bg-accent/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 collapsed && "justify-center"
               )}
             >
-              <div className="size-8 rounded-full bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))] flex items-center justify-center text-white text-xs font-bold shrink-0">
+              <div className="size-8 rounded-full bg-[linear-gradient(135deg,var(--electric),var(--purple-brand))] flex items-center justify-center text-white text-xs font-bold shrink-0" aria-hidden="true">
                 LM
               </div>
               {!collapsed && (
@@ -254,6 +256,7 @@ export function Sidebar() {
               animate="animate"
               exit="exit"
               onClick={() => setMobileDrawer(false)}
+              aria-hidden="true"
               className="lg:hidden fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm"
             />
             <motion.aside
@@ -268,9 +271,9 @@ export function Sidebar() {
                 <button
                   onClick={() => setMobileDrawer(false)}
                   aria-label="Close menu"
-                  className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
+                  className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
-                  <Icons.X size={18} />
+                  <Icons.X size={18} aria-hidden="true" />
                 </button>
               </div>
               <SidebarContent collapsed={false} />

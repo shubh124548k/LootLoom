@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Bar,
@@ -25,6 +25,8 @@ import {
 
 import {
   AnimatedCounter,
+  EmptyState,
+  ErrorState,
   GlassCard,
   Grid,
   IconBadge,
@@ -78,55 +80,11 @@ interface AdStats {
 /* ============================================================
    Placeholder data (backend-ready — replace with API responses)
    ============================================================ */
-// Placeholder offerwall providers — replace with GET /api/earn/offerwall/providers
-const OFFER_PROVIDERS: OfferProvider[] = [
-  {
-    id: "p-a",
-    name: "Provider A",
-    description: "App installs, sign-ups, and trial subscriptions.",
-    rewardRange: "120 – 2,400 coins",
-    completionRate: 68,
-    status: "active",
-    accent: "electric",
-  },
-  {
-    id: "p-b",
-    name: "Provider B",
-    description: "Survey panels and product feedback studies.",
-    rewardRange: "80 – 1,200 coins",
-    completionRate: 42,
-    status: "low-inventory",
-    accent: "cyan",
-  },
-  {
-    id: "p-c",
-    name: "Provider C",
-    description: "Game milestones and in-game level achievements.",
-    rewardRange: "300 – 4,800 coins",
-    completionRate: 75,
-    status: "active",
-    accent: "purple",
-  },
-  {
-    id: "p-d",
-    name: "Provider D",
-    description: "Video ad bundles and short brand experiences.",
-    rewardRange: "60 – 600 coins",
-    completionRate: 0,
-    status: "coming-soon",
-    accent: "gold",
-  },
-];
+// TODO: replace with fetch from /api/earn/offerwall/providers
+const OFFER_PROVIDERS: OfferProvider[] = [];
 
-// Placeholder weekly earnings — replace with GET /api/earn/analytics?period=weekly
-const ANALYTICS_WEEKLY = [
-  { label: "W1", value: 980 },
-  { label: "W2", value: 1240 },
-  { label: "W3", value: 870 },
-  { label: "W4", value: 1580 },
-  { label: "W5", value: 1320 },
-  { label: "W6", value: 980 },
-];
+// TODO: replace with fetch from /api/earn/analytics?period=weekly
+const ANALYTICS_WEEKLY: { label: string; value: number }[] = [];
 
 const TIPS: TipDef[] = [
   {
@@ -258,6 +216,23 @@ function ChartTooltip({ active, payload, label }: {
    ============================================================ */
 export function EarnView() {
   const navigate = useNavigationStore((s) => s.navigate);
+
+  // Simulated loading state — replace with real fetch from /api/earn/offerwall/providers
+  const [loading, setLoading] = useState(true);
+  const [error] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    // Only schedule the loading→false transition; loading is reset to true by the
+    // retry handler (a user event) so we never call setState synchronously in the effect.
+    const timer = setTimeout(() => setLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, [retryCount]);
+
+  const handleRetry = () => {
+    setLoading(true);
+    setRetryCount((c) => c + 1);
+  };
 
   // Placeholder ad stats — replace with GET /api/earn/ads
   const [adStats] = useState<AdStats>({
@@ -450,11 +425,32 @@ export function EarnView() {
           glow="cyan"
           index={0}
         >
-          <Grid cols={4}>
-            {OFFER_PROVIDERS.map((p, i) => (
-              <OfferProviderCard key={p.id} provider={p} index={i} />
-            ))}
-          </Grid>
+          {loading ? (
+            <SkeletonRow count={3} />
+          ) : error ? (
+            <ErrorState
+              icon="AlertCircle"
+              title="Unable to load offers"
+              description={error}
+              action={
+                <LootButton variant="electric" size="sm" onClick={handleRetry}>
+                  Retry
+                </LootButton>
+              }
+            />
+          ) : OFFER_PROVIDERS.length === 0 ? (
+            <EmptyState
+              icon="Target"
+              title="No offers available"
+              description="New offerwall tasks will appear here once available."
+            />
+          ) : (
+            <Grid cols={4}>
+              {OFFER_PROVIDERS.map((p, i) => (
+                <OfferProviderCard key={p.id} provider={p} index={i} />
+              ))}
+            </Grid>
+          )}
 
           <div className="mt-5 flex items-center justify-center gap-2 pt-4 border-t border-border/60">
             <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
@@ -506,32 +502,41 @@ export function EarnView() {
               </p>
               <span className="text-xs text-muted-foreground">in coins</span>
             </div>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={ANALYTICS_WEEKLY} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-                  <defs>
-                    <linearGradient id="earnBar" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="oklch(0.62 0.22 255)" />
-                      <stop offset="100%" stopColor="oklch(0.72 0.15 200)" />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                    width={40}
-                  />
-                  <Tooltip cursor={{ fill: "var(--muted)" }} content={<ChartTooltip />} />
-                  <Bar dataKey="value" fill="url(#earnBar)" radius={[6, 6, 0, 0]} maxBarSize={48} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {ANALYTICS_WEEKLY.length === 0 ? (
+              <EmptyState
+                icon="TrendingUp"
+                title="No analytics data yet"
+                description="Your weekly earnings chart will appear here once you start earning."
+                className="h-64"
+              />
+            ) : (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={ANALYTICS_WEEKLY} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                    <defs>
+                      <linearGradient id="earnBar" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="oklch(0.62 0.22 255)" />
+                        <stop offset="100%" stopColor="oklch(0.72 0.15 200)" />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                      width={40}
+                    />
+                    <Tooltip cursor={{ fill: "var(--muted)" }} content={<ChartTooltip />} />
+                    <Bar dataKey="value" fill="url(#earnBar)" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </GlassCard>
         </WidgetCard>
       </section>

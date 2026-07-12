@@ -79,8 +79,10 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                 onNavigate?.();
               }}
               aria-current={active ? "page" : undefined}
+              aria-label={item.label}
               className={cn(
                 "group relative w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 active
                   ? "bg-[linear-gradient(120deg,var(--electric)/12,var(--purple-brand)/10)] text-foreground ring-1 ring-electric/20 shadow-[var(--shadow-sm)]"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
@@ -105,9 +107,11 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
         whileHover={{ x: 2 }}
         whileTap={{ scale: 0.97 }}
         onClick={handleLogout}
+        aria-label="Logout of CEO session"
         className={cn(
           "group relative w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
-          "text-rose-brand hover:bg-rose-brand/10 hover:ring-1 hover:ring-rose-brand/20"
+          "text-rose-brand hover:bg-rose-brand/10 hover:ring-1 hover:ring-rose-brand/20",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         )}
       >
         <Icons.LogOut size={18} />
@@ -148,9 +152,9 @@ function CeoHeader() {
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger
             aria-label="Open CEO menu"
-            className="lg:hidden inline-flex items-center justify-center size-10 rounded-xl glass-2 ring-1 ring-border text-foreground hover:bg-accent/60 transition-all"
+            className="lg:hidden inline-flex items-center justify-center size-10 rounded-xl glass-2 ring-1 ring-border text-foreground hover:bg-accent/60 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            <Icons.Menu size={18} />
+            <Icons.Menu size={18} aria-hidden="true" />
           </SheetTrigger>
           <SheetContent
             side="left"
@@ -178,7 +182,8 @@ function CeoHeader() {
         <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
         <button
           onClick={() => navigate("ceo-dashboard")}
-          className="text-sm font-semibold text-foreground hover:text-electric transition-colors truncate"
+          aria-label={`Navigate to ${currentLabel}`}
+          className="text-sm font-semibold text-foreground hover:text-electric transition-colors truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
         >
           {currentLabel}
         </button>
@@ -188,10 +193,10 @@ function CeoHeader() {
         <button
           onClick={() => navigate("ceo-notifications")}
           aria-label="Notifications"
-          className="relative size-10 inline-flex items-center justify-center rounded-xl glass-2 ring-1 ring-border text-foreground hover:glass-3 transition-all"
+          className="relative size-10 inline-flex items-center justify-center rounded-xl glass-2 ring-1 ring-border text-foreground hover:glass-3 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          <Icons.Bell size={18} />
-          <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-rose-brand text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-background">
+          <Icons.Bell size={18} aria-hidden="true" />
+          <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-rose-brand text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-background" aria-label="0 unread notifications">
             0
           </span>
         </button>
@@ -199,12 +204,12 @@ function CeoHeader() {
         <button
           onClick={() => navigate("ceo-settings")}
           aria-label="CEO profile"
-          className="inline-flex items-center gap-2 h-10 pl-1.5 pr-2 rounded-xl glass-2 ring-1 ring-border hover:glass-3 transition-all"
+          className="inline-flex items-center gap-2 h-10 pl-1.5 pr-2 rounded-xl glass-2 ring-1 ring-border hover:glass-3 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          <span className="size-7 rounded-full bg-[linear-gradient(135deg,var(--navy),var(--electric))] flex items-center justify-center text-white text-xs font-bold">
+          <span className="size-7 rounded-full bg-[linear-gradient(135deg,var(--navy),var(--electric))] flex items-center justify-center text-white text-xs font-bold" aria-hidden="true">
             CEO
           </span>
-          <Icons.ChevronDown size={14} className="text-muted-foreground hidden sm:block" />
+          <Icons.ChevronDown size={14} className="text-muted-foreground hidden sm:block" aria-hidden="true" />
         </button>
       </div>
     </motion.header>

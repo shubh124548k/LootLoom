@@ -35,13 +35,11 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         try {
           if (!credentials?.email) {
-            console.log("[auth] No email provided");
             return null;
           }
 
           const name = credentials.name || "LootLoom User";
           const email = credentials.email.toLowerCase().trim();
-          console.log("[auth] Authorizing:", email);
 
           // Find or create the user
           let dbUser = await db.user.findUnique({
@@ -50,7 +48,6 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (!dbUser) {
-            console.log("[auth] Creating new user:", email);
             // Create new user with a demo googleId
             dbUser = await db.user.create({
               data: {
@@ -77,7 +74,6 @@ export const authOptions: NextAuthOptions = {
             await db.auditLog.create({
               data: { actorId: dbUser.id, action: "USER_REGISTERED" },
             });
-            console.log("[auth] User created:", dbUser.id);
           }
 
           // Update last login
@@ -90,15 +86,13 @@ export const authOptions: NextAuthOptions = {
             data: { actorId: dbUser.id, action: "USER_LOGIN" },
           });
 
-          console.log("[auth] Login successful:", dbUser.id);
           return {
             id: dbUser.id,
             name: dbUser.name,
             email: dbUser.email,
             image: dbUser.avatar,
           };
-        } catch (error) {
-          console.error("[auth] Authorize error:", error);
+        } catch {
           return null;
         }
       },

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { cardReveal } from "@/lib/animations";
+import { useId, useCallback } from "react";
 
 export interface AdminColumn<T> {
   /** Stable key on the row object (or accessor function). */
@@ -67,12 +68,25 @@ export function DataTable<T>({
   compact = false,
 }: DataTableProps<T>) {
   const cellPad = compact ? "py-2.5 px-3" : "py-3.5 px-4";
+  const tableLabel = useId();
+
+  const handleRowKeyDown = useCallback(
+    (e: React.KeyboardEvent, row: T) => {
+      if (!onRowClick) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onRowClick(row);
+      }
+    },
+    [onRowClick]
+  );
 
   return (
     <GlassCard level={1} className={cn("overflow-hidden", className)}>
       {/* Desktop / tablet table */}
       <div className="hidden md:block">
-        <Table>
+        <Table aria-labelledby={tableLabel}>
+          <caption id={tableLabel} className="sr-only">Data table</caption>
           <TableHeader>
             <TableRow className="border-border/60 hover:bg-transparent">
               {columns.map((col) => (
@@ -113,9 +127,13 @@ export function DataTable<T>({
                   initial="hidden"
                   animate="visible"
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  onKeyDown={onRowClick ? (e) => handleRowKeyDown(e, row) : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  role={onRowClick ? "button" : undefined}
+                  aria-label={onRowClick ? `Open row ${rowId(row)}` : undefined}
                   className={cn(
                     "border-b border-border/40 transition-colors group",
-                    onRowClick && "cursor-pointer hover:bg-accent/40",
+                    onRowClick && "cursor-pointer hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                     "last:border-0"
                   )}
                 >
@@ -161,9 +179,13 @@ export function DataTable<T>({
                 initial="hidden"
                 animate="visible"
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onKeyDown={onRowClick ? (e) => handleRowKeyDown(e, row) : undefined}
+                tabIndex={onRowClick ? 0 : undefined}
+                role={onRowClick ? "button" : undefined}
+                aria-label={onRowClick ? `Open row ${rowId(row)}` : undefined}
                 className={cn(
                   "p-4 space-y-2.5",
-                  onRowClick && "cursor-pointer active:bg-accent/40"
+                  onRowClick && "cursor-pointer active:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 )}
               >
                 <div className="flex items-start justify-between gap-3">

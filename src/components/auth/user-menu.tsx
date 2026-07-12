@@ -39,7 +39,7 @@ function UserAvatar({
     return (
       <img
         src={avatar}
-        alt={name}
+        alt={`${name}'s avatar`}
         className={cn(dim, "rounded-full object-cover ring-1 ring-border")}
       />
     );
@@ -77,7 +77,8 @@ export function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="User menu"
-        className="inline-flex items-center gap-2 h-10 pl-1.5 pr-2 rounded-xl glass-2 ring-1 ring-border hover:glass-3 transition-all focus:outline-none focus:ring-2 focus:ring-electric/40"
+        aria-haspopup="menu"
+        className="inline-flex items-center gap-2 h-10 pl-1.5 pr-2 rounded-xl glass-2 ring-1 ring-border hover:glass-3 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electric/40"
       >
         <UserAvatar name={displayName} avatar={user.avatar} size="sm" />
         <span className="hidden sm:inline text-sm font-semibold text-foreground max-w-[120px] truncate">

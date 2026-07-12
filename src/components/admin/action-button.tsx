@@ -54,14 +54,15 @@ export function ActionButton({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={label}
+        aria-haspopup="menu"
         className={cn(
           "inline-flex items-center justify-center size-8 rounded-lg glass-2 ring-1 ring-border",
           "text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-all",
-          "focus:outline-none focus:ring-2 focus:ring-electric/40",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electric/40",
           className
         )}
       >
-        <MoreHorizontal size={16} />
+        <MoreHorizontal size={16} aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align={align}
