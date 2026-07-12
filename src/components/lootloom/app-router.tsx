@@ -25,11 +25,8 @@ const LegalView = lazy(() => import("@/features/legal/legal-view").then((m) => (
 const CeoAuthView = lazy(() => import("@/features/ceo/ceo-auth-view").then((m) => ({ default: m.CeoAuthView })));
 const CeoDashboardView = lazy(() => import("@/features/ceo/ceo-dashboard-view").then((m) => ({ default: m.CeoDashboardView })));
 const CeoUsersView = lazy(() => import("@/features/ceo/ceo-users-view").then((m) => ({ default: m.CeoUsersView })));
-const CeoWalletView = lazy(() => import("@/features/ceo/ceo-wallet-view").then((m) => ({ default: m.CeoWalletView })));
 const CeoRedeemView = lazy(() => import("@/features/ceo/ceo-redeem-view").then((m) => ({ default: m.CeoRedeemView })));
 const CeoSupportView = lazy(() => import("@/features/ceo/ceo-support-view").then((m) => ({ default: m.CeoSupportView })));
-const CeoCommunicationView = lazy(() => import("@/features/ceo/ceo-communication-view").then((m) => ({ default: m.CeoCommunicationView })));
-const CeoSecurityView = lazy(() => import("@/features/ceo/ceo-security-view").then((m) => ({ default: m.CeoSecurityView })));
 
 const AUTH_SET = new Set(AUTH_VIEWS);
 const SYSTEM_SET = new Set(SYSTEM_VIEWS);
@@ -82,16 +79,10 @@ export function AppRouter() {
       return isCeoAuthenticated ? <ViewSuspense><CeoDashboardView /></ViewSuspense> : <RestrictedAccess />;
     if (current === "ceo-users")
       return isCeoAuthenticated ? <ViewSuspense><CeoUsersView /></ViewSuspense> : <RestrictedAccess />;
-    if (current === "ceo-wallet")
-      return isCeoAuthenticated ? <ViewSuspense><CeoWalletView /></ViewSuspense> : <RestrictedAccess />;
     if (current === "ceo-redeem")
       return isCeoAuthenticated ? <ViewSuspense><CeoRedeemView /></ViewSuspense> : <RestrictedAccess />;
     if (current === "ceo-support")
       return isCeoAuthenticated ? <ViewSuspense><CeoSupportView /></ViewSuspense> : <RestrictedAccess />;
-    if (current === "ceo-communication")
-      return isCeoAuthenticated ? <ViewSuspense><CeoCommunicationView /></ViewSuspense> : <RestrictedAccess />;
-    if (current === "ceo-security")
-      return isCeoAuthenticated ? <ViewSuspense><CeoSecurityView /></ViewSuspense> : <RestrictedAccess />;
 
     // App views
     switch (current) {
@@ -101,10 +92,8 @@ export function AppRouter() {
         return <ViewSuspense><WalletView /></ViewSuspense>;
       case "earn":
         return <ViewSuspense><EarnView /></ViewSuspense>;
-      case "rewards":
       case "redeem":
         return <ViewSuspense><RewardsView /></ViewSuspense>;
-      case "transactions":
       case "history":
         return <ViewSuspense><TransactionsView /></ViewSuspense>;
       case "notifications":
@@ -113,7 +102,6 @@ export function AppRouter() {
         return <ViewSuspense><ProfileView /></ViewSuspense>;
       case "leaderboard":
         return <ViewSuspense><GamificationView /></ViewSuspense>;
-      // referral + achievements removed per production requirements
       case "support":
         return <ViewSuspense><SupportView /></ViewSuspense>;
       case "ceo-restricted":
@@ -124,7 +112,7 @@ export function AppRouter() {
   }, [current, isAuthView, isSystemView, isLegalView, isCeoView, isPublicView, isCeoAuthenticated]);
 
   // CEO authenticated views use CeoLayout (only when CEO role is set)
-  const CEO_APP_VIEWS = ["ceo-dashboard", "ceo-users", "ceo-wallet", "ceo-redeem", "ceo-support", "ceo-communication", "ceo-security"];
+  const CEO_APP_VIEWS = ["ceo-dashboard", "ceo-users", "ceo-redeem", "ceo-support"];
   if (isCeoAuthenticated && CEO_APP_VIEWS.includes(current)) {
     return (
       <div className="relative min-h-screen">
@@ -141,7 +129,7 @@ export function AppRouter() {
   }
 
   // Public, auth, system, legal, ceo-login, ceo-restricted, non-CEO ceo views: full-screen (no shell)
-  const CEO_GUARDED = ["ceo-dashboard", "ceo-users", "ceo-wallet", "ceo-redeem", "ceo-support", "ceo-communication", "ceo-security"];
+  const CEO_GUARDED = ["ceo-dashboard", "ceo-users", "ceo-redeem", "ceo-support"];
   if (isPublicView || isAuthView || isSystemView || isLegalView || current === "ceo-login" || current === "ceo-restricted" || CEO_GUARDED.includes(current)) {
     return (
       <div className="relative min-h-screen">

@@ -17,13 +17,10 @@ interface CeoNavItem {
 }
 
 const CEO_NAV: CeoNavItem[] = [
-  { id: "ceo-dashboard", label: "Mission Control", icon: "LayoutDashboard" },
-  { id: "ceo-users", label: "User Management", icon: "Users" },
-  { id: "ceo-wallet", label: "Wallet Management", icon: "Wallet" },
-  { id: "ceo-redeem", label: "Redeem Approval", icon: "ShoppingBag" },
-  { id: "ceo-support", label: "Support Center", icon: "LifeBuoy" },
-  { id: "ceo-communication", label: "Communication", icon: "Megaphone" },
-  { id: "ceo-security", label: "Security Ops", icon: "ShieldCheck" },
+  { id: "ceo-dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+  { id: "ceo-redeem", label: "Redeem Requests", icon: "ShoppingBag" },
+  { id: "ceo-users", label: "Users", icon: "Users" },
+  { id: "ceo-support", label: "Support", icon: "LifeBuoy" },
 ];
 
 function CeoNav() {
