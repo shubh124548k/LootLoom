@@ -27,20 +27,32 @@ export function useRealtimeSync() {
   useEffect(() => {
     if (!session?.user) return;
 
-    // Connect via gateway with XTransformPort
-    const socket = io("/?XTransformPort=3003", {
-      transports: ["websocket", "polling"],
-      reconnection: true,
-      reconnectionDelay: 1000,
-    });
-    socketRef.current = socket;
+    let socket: Socket | null = null;
+    try {
+      // Connect via gateway with XTransformPort
+      socket = io("/?XTransformPort=3003", {
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 5,
+        timeout: 10000,
+      });
+      socketRef.current = socket;
+    } catch {
+      // Socket.IO init failure — non-critical, realtime is best-effort
+      return;
+    }
 
     socket.on("connect", () => {
       const userId = (session.user as { id?: string }).id;
       if (userId) {
-        socket.emit("auth", { userId });
+        socket?.emit("auth", { userId });
       }
     });
+
+    // Suppress connection errors (non-critical — realtime is best-effort)
+    socket.on("connect_error", () => {});
+    socket.on("disconnect", () => {});
 
     // Wallet balance updated
     socket.on("wallet.updated", (payload: { coinBalance: number; totalEarned?: number; totalSpent?: number }) => {
@@ -80,7 +92,11 @@ export function useRealtimeSync() {
     });
 
     return () => {
-      socket.disconnect();
+      try {
+        socket?.disconnect();
+      } catch {
+        // ignore
+      }
       socketRef.current = null;
     };
   }, [session, setWallet, setNotifications, setActivities]);

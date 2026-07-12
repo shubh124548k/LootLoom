@@ -11,6 +11,7 @@ export { WidgetCard } from "./widget-card";
 export { PageContainer, PageHeader, SectionHeader, Grid } from "./page-container";
 export { PageLoader, GlassLoader, SkeletonCard, SkeletonRow, DashboardSkeleton, EmptyState, ErrorState } from "./states";
 export { RestrictedAccess } from "./restricted-access";
+export { GlobalErrorHandler } from "./global-error-handler";
 export { Sidebar } from "./sidebar";
 export { Header } from "./header";
 export { AppShell } from "./app-shell";
