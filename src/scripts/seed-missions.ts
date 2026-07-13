@@ -29,7 +29,7 @@ async function main() {
   const configs = [
     { key: "AD_REWARD_AMOUNT", value: "1", label: "Coins per rewarded ad", type: "NUMBER" },
     { key: "DAILY_AD_LIMIT", value: "150", label: "Max ads per day", type: "NUMBER" },
-    { key: "DAILY_COIN_LIMIT", value: "500", label: "Max coins earnable per day", type: "NUMBER" },
+    { key: "DAILY_COIN_LIMIT", value: "150", label: "Max coins earnable per day", type: "NUMBER" },
     { key: "DAILY_MISSION_LIMIT", value: "10", label: "Max missions completable per day", type: "NUMBER" },
     { key: "DAILY_LOGIN_REWARD", value: "10", label: "Coins for daily login", type: "NUMBER" },
     { key: "MISSION_AD_WATCH_REWARD", value: "50", label: "Coins for completing ad watch mission", type: "NUMBER" },
