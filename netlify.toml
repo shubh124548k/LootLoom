@@ -3,4 +3,3 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  NEXTAUTH_URL = "https://lootloom.netlify.app"
