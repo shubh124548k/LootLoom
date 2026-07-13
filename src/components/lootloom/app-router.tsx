@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
+import { useSession } from "next-auth/react";
 import { useNavigationStore, useAuthStore } from "@/stores";
 import { BackgroundEngine, AppShell, pageTransition, RestrictedAccess, CeoLayout } from "@/components/lootloom";
 import { LEGAL_VIEWS, CEO_VIEWS, SYSTEM_VIEWS, AUTH_VIEWS } from "@/config/navigation";
@@ -136,9 +137,11 @@ const CEO_APP_VIEWS: ViewId[] = [
 ];
 
 export function AppRouter() {
+  const { status: sessionStatus } = useSession();
   const current = useNavigationStore((state) => state.current);
   const role = useAuthStore((state) => state.role);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const sessionLoading = sessionStatus === "loading";
 
   useEffect(() => {
     const unsub = useNavigationStore.subscribe((state, prev) => {
@@ -176,6 +179,7 @@ export function AppRouter() {
   }, [role]);
 
   useEffect(() => {
+    if (sessionLoading) return;
     if (AUTH_SET.has(current) && isAuthenticated) {
       useNavigationStore.getState().navigate("earn");
     }
@@ -185,7 +189,7 @@ export function AppRouter() {
     if (current === "ceo-login" && isAuthenticated && role === "ceo") {
       useNavigationStore.getState().navigate("ceo-dashboard");
     }
-  }, [current, isAuthenticated, role]);
+  }, [current, isAuthenticated, role, sessionLoading]);
 
   useEffect(() => {
     if (CEO_SET.has(current) && current !== "ceo-login" && !(role === "ceo" && isAuthenticated)) {
