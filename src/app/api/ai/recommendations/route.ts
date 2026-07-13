@@ -19,8 +19,9 @@ export async function GET() {
   const userId = session.user.id;
   const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
 
-  const [dailyLimit, wallet, todayAds, totalAds, pendingRedeems, recentRedeems, activeCampaigns, allRewards] = await Promise.all([
+  const [dailyLimit, rewardPerAd, wallet, todayAds, totalAds, pendingRedeems, recentRedeems, activeCampaigns, allRewards] = await Promise.all([
     getEarnConfigValue("DAILY_AD_LIMIT"),
+    getEarnConfigValue("AD_REWARD_AMOUNT"),
     db.wallet.findUnique({ where: { userId } }),
     db.adEvent.count({ where: { userId, status: "VERIFIED", createdAt: { gte: todayStart } } }),
     db.adEvent.count({ where: { userId, status: "VERIFIED" } }),
@@ -39,7 +40,7 @@ export async function GET() {
     recommendations.push({
       type: "EARN_AD",
       title: `${remainingAds} rewarded ads available`,
-      description: `Watch ${remainingAds} more ad${remainingAds > 1 ? "s" : ""} to earn ${remainingAds * 25} coins today.`,
+      description: `Watch ${remainingAds} more ad${remainingAds > 1 ? "s" : ""} to earn ${remainingAds * rewardPerAd} coins today.`,
       action: "earn",
       priority: 100,
     });
