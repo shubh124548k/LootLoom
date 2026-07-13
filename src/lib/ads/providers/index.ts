@@ -9,6 +9,7 @@ import { RichAdsProvider } from "./richads";
 import { MediaNetProvider } from "./medianet";
 import { AdRevenueProvider } from "./adrevenue";
 import { EvadavProvider } from "./evadav";
+import { AdsterraProvider } from "./adsterra";
 import { registerProvider } from "../provider";
 
 export function registerAllProviders(): void {
@@ -23,4 +24,5 @@ export function registerAllProviders(): void {
   registerProvider(new MediaNetProvider());
   registerProvider(new AdRevenueProvider());
   registerProvider(new EvadavProvider());
+  registerProvider(new AdsterraProvider());
 }

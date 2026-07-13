@@ -16,6 +16,7 @@ const PROVIDERS = [
   { key: "medianet", name: "Media.net", priority: 9, rewardAmount: 1, dailyLimit: 60, timeoutMs: 8000 },
   { key: "adrevenue", name: "AdRevenue", priority: 10, rewardAmount: 1, dailyLimit: 50, timeoutMs: 8000 },
   { key: "evadav", name: "Evadav", priority: 11, rewardAmount: 1, dailyLimit: 50, timeoutMs: 8000 },
+  { key: "adsterra", name: "Adsterra", priority: 12, rewardAmount: 1, dailyLimit: 150, timeoutMs: 8000 },
 ];
 
 async function main() {
