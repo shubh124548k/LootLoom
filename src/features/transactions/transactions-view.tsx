@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Clock,
@@ -24,9 +24,11 @@ import {
   EmptyState,
   SkeletonRow,
 } from "@/components/lootloom";
-import { useNavigationStore } from "@/stores";
+import { useNavigationStore, useWalletStore } from "@/stores";
 import { cardReveal, staggerContainer } from "@/lib/animations";
 import { cn } from "@/lib/utils";
+import { COINS_PER_INR } from "@/lib/coin-config";
+import type { TransactionItem } from "@/types";
 
 /* ============================================================
    Types
@@ -226,13 +228,29 @@ function HistoryItemCard({ item, index }: { item: HistoryItem; index: number }) 
 }
 
 /* ============================================================
-   History list (with loading / empty / list states)
+   History list — real wallet data
    ============================================================ */
 
 function HistoryList() {
   const navigate = useNavigationStore((s) => s.navigate);
-  // Loading placeholder — will be controlled by API fetch in future integration.
-  const [loading] = useState(false);
+  const transactions = useWalletStore((s) => s.transactions);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000);
+    fetch("/api/transactions?pageSize=50", { signal: ctrl.signal })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success) {
+          const { setTransactions } = useWalletStore.getState();
+          setTransactions(json.data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { clearTimeout(timer); setLoading(false); });
+    return () => { clearTimeout(timer); ctrl.abort(); };
+  }, []);
 
   if (loading) {
     return (
@@ -242,7 +260,7 @@ function HistoryList() {
     );
   }
 
-  if (HISTORY_ITEMS.length === 0) {
+  if (!transactions || transactions.length === 0) {
     return (
       <GlassCard level={2} sheen className="py-10">
         <EmptyState
@@ -271,9 +289,18 @@ function HistoryList() {
       animate="visible"
       className="space-y-3 max-h-[80vh] overflow-y-auto lootloom-scroll pr-1"
     >
-      {HISTORY_ITEMS.map((item, i) => (
-        <HistoryItemCard key={item.id} item={item} index={i} />
-      ))}
+      {transactions.map((tx, i) => {
+        const historyItem: HistoryItem = {
+          id: tx.id,
+          type: tx.type.toLowerCase().includes("redeem") ? "redeem" : "credit",
+          amountInr: Math.floor(Math.abs(tx.amount) / COINS_PER_INR),
+          coins: Math.abs(tx.amount),
+          status: tx.status === "completed" ? "Completed" : tx.status === "pending" ? "Pending" : "Completed",
+          date: tx.date,
+          description: tx.description || "",
+        };
+        return <HistoryItemCard key={tx.id} item={historyItem} index={i} />;
+      })}
     </motion.div>
   );
 }
@@ -286,10 +313,20 @@ export function TransactionsView() {
   const navigate = useNavigationStore((s) => s.navigate);
   const [refreshing, setRefreshing] = useState(false);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    // Placeholder delay — real refresh will trigger an API fetch (GET /api/transactions)
-    setTimeout(() => setRefreshing(false), 1200);
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 10000);
+      const resp = await fetch("/api/transactions?pageSize=50", { signal: ctrl.signal });
+      clearTimeout(timer);
+      const json = await resp.json();
+      if (json.success) {
+        const { setTransactions } = useWalletStore.getState();
+        setTransactions(json.data);
+      }
+    } catch { /* ignore */ }
+    setRefreshing(false);
   };
 
   return (

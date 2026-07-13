@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 
 const DEFAULTS = {
-  AD_REWARD_AMOUNT: "25",
+  AD_REWARD_AMOUNT: "1",
   DAILY_AD_LIMIT: "150",
   DAILY_COIN_LIMIT: "500",
   DAILY_MISSION_LIMIT: "10",

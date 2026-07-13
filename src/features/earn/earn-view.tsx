@@ -214,6 +214,11 @@ export function EarnView() {
   const [loginLoading, setLoginLoading] = useState(false);
   const fetchIdRef = useRef(0);
 
+  const parseJson = useCallback(async (result: PromiseSettledResult<Response>) => {
+    if (result.status !== "fulfilled" || !result.value.ok) return null;
+    try { return await result.value.json(); } catch { return null; }
+  }, []);
+
   const fetchAll = useCallback(async () => {
     const id = ++fetchIdRef.current;
     const fetchWithTimeout = (url: string, ms: number) => {
@@ -232,35 +237,34 @@ export function EarnView() {
 
       if (id !== fetchIdRef.current) return;
 
-      if (adResult.status === "fulfilled" && adResult.value.ok) {
-        adResult.value.json().then((json) => { if (json?.success) setAdStatus(json.data); }).catch(() => {});
-      }
-      if (missionResult.status === "fulfilled" && missionResult.value.ok) {
-        missionResult.value.json().then((json) => { if (json?.success) setMissions(json.data); }).catch(() => {});
-      }
-      if (loginResult.status === "fulfilled" && loginResult.value.ok) {
-        loginResult.value.json().then((json) => { if (json?.success) setDailyLogin(json.data); }).catch(() => {});
-      }
-      if (walletResult.status === "fulfilled" && walletResult.value.ok) {
-        walletResult.value.json().then((json) => {
-          if (json?.success && json.data) {
-            setWallet({
-              availableCoins: json.data.coinBalance ?? 0,
-              lifetimeEarned: json.data.totalEarned ?? 0,
-              lifetimeRedeemed: json.data.totalSpent ?? 0,
-              todayEarnings: json.data.todayEarnings ?? 0,
-              weeklyEarnings: json.data.weeklyEarnings ?? 0,
-              monthlyEarnings: json.data.monthlyEarnings ?? 0,
-            });
-            if (json.data.weeklyChart) setWeeklyChart(json.data.weeklyChart);
-          }
-        }).catch(() => {});
+      const [adJson, missionJson, loginJson, walletJson] = await Promise.all([
+        parseJson(adResult),
+        parseJson(missionResult),
+        parseJson(loginResult),
+        parseJson(walletResult),
+      ]);
+
+      if (id !== fetchIdRef.current) return;
+
+      if (adJson?.success) setAdStatus(adJson.data);
+      if (missionJson?.success) setMissions(missionJson.data);
+      if (loginJson?.success) setDailyLogin(loginJson.data);
+      if (walletJson?.success && walletJson.data) {
+        setWallet({
+          availableCoins: walletJson.data.coinBalance ?? 0,
+          lifetimeEarned: walletJson.data.totalEarned ?? 0,
+          lifetimeRedeemed: walletJson.data.totalSpent ?? 0,
+          todayEarnings: walletJson.data.todayEarnings ?? 0,
+          weeklyEarnings: walletJson.data.weeklyEarnings ?? 0,
+          monthlyEarnings: walletJson.data.monthlyEarnings ?? 0,
+        });
+        if (walletJson.data.weeklyChart) setWeeklyChart(walletJson.data.weeklyChart);
       }
       if (id === fetchIdRef.current) setLoading(false);
     } catch {
       if (id === fetchIdRef.current) { setError("Failed to load earn data"); setLoading(false); }
     }
-  }, [setWallet]);
+  }, [setWallet, parseJson]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 

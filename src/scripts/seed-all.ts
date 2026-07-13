@@ -29,7 +29,7 @@ async function main() {
   // 2. Earning config
   console.log("\n--- Earning Config ---");
   const configs = [
-    { key: "AD_REWARD_AMOUNT", value: "25", label: "Coins per rewarded ad", type: "NUMBER" },
+    { key: "AD_REWARD_AMOUNT", value: "1", label: "Coins per rewarded ad", type: "NUMBER" },
     { key: "DAILY_AD_LIMIT", value: "150", label: "Max ads per day", type: "NUMBER" },
     { key: "DAILY_COIN_LIMIT", value: "500", label: "Max coins earnable per day", type: "NUMBER" },
     { key: "DAILY_MISSION_LIMIT", value: "10", label: "Max missions completable per day", type: "NUMBER" },

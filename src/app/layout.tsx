@@ -39,11 +39,19 @@ export const metadata: Metadata = {
     icon: "/logo.svg",
     apple: "/logo.svg",
   },
+  robots: { index: true, follow: true },
+  metadataBase: new URL("https://lootloom.netlify.app"),
   openGraph: {
     title: "LootLoom — Premium Reward Platform",
     description: "Earn coins, manage your wallet, redeem rewards.",
     siteName: "LootLoom",
     type: "website",
+    locale: "en_IN",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "LootLoom — Premium Reward Platform",
+    description: "Earn coins, manage your wallet, redeem rewards.",
   },
 };
 
