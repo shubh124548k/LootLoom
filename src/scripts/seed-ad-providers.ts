@@ -5,7 +5,7 @@
 import { db } from "@/lib/db";
 
 const PROVIDERS = [
-  { key: "monetag", name: "Monetag", priority: 1, rewardAmount: 1, dailyLimit: 150, timeoutMs: 8000, zoneId: "11277987", publisherId: "3nbf4.com" },
+  { key: "monetag", name: "Monetag", priority: 1, rewardAmount: 1, dailyLimit: 150, timeoutMs: 8000, zoneId: "259304", publisherId: "quge5.com" },
   { key: "a-ads", name: "A-Ads", priority: 2, rewardAmount: 1, dailyLimit: 150, timeoutMs: 8000 },
   { key: "yllix", name: "ylliX", priority: 3, rewardAmount: 1, dailyLimit: 150, timeoutMs: 8000 },
   { key: "popads", name: "PopAds", priority: 4, rewardAmount: 1, dailyLimit: 80, timeoutMs: 8000 },

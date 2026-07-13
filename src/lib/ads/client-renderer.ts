@@ -17,6 +17,71 @@ async function loadScriptOnce(src: string, id?: string): Promise<void> {
   });
 }
 
+function waitForDomElements(selector: string, timeoutMs: number): Promise<boolean> {
+  if (document.querySelector(selector)) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const observer = new MutationObserver(() => {
+      if (document.querySelector(selector)) {
+        observer.disconnect();
+        resolve(true);
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    setTimeout(() => { observer.disconnect(); resolve(false); }, timeoutMs);
+  });
+}
+
+function trackVisibility(adContainer: Element | null, minVisibleMs: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (!adContainer) { resolve(false); return; }
+    let visibleStart = 0;
+    let totalVisible = 0;
+    const io = new IntersectionObserver((entries) => {
+      const now = Date.now();
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          if (visibleStart === 0) visibleStart = now;
+          totalVisible += now - visibleStart;
+          visibleStart = now;
+        } else {
+          if (visibleStart > 0) totalVisible += now - visibleStart;
+          visibleStart = 0;
+        }
+        if (totalVisible >= minVisibleMs) {
+          io.disconnect();
+          resolve(true);
+        }
+      }
+    }, { threshold: 0.5 });
+    io.observe(adContainer);
+    setTimeout(() => { io.disconnect(); resolve(totalVisible >= minVisibleMs); }, minVisibleMs + 5000);
+  });
+}
+
+function waitForUserAttention(): Promise<boolean> {
+  if (document.visibilityState === "visible" && document.hasFocus()) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && document.hasFocus()) {
+        document.removeEventListener("visibilitychange", onVisible);
+        window.removeEventListener("focus", onVisible);
+        resolve(true);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    setTimeout(() => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      resolve(document.visibilityState === "visible");
+    }, 10000);
+  });
+}
+
+function countNewElements(before: number): number {
+  return document.querySelectorAll("*").length - before;
+}
+
 interface Renderer {
   key: string;
   render(): Promise<{ success: boolean; error?: string }>;
@@ -47,6 +112,7 @@ registerRenderer("adsterra", (_sessionId: string) => {
     key: "adsterra",
     async render() {
       console.log("[AD] Adsterra: loading script");
+      const domBefore = document.querySelectorAll("*").length;
       try {
         await loadScriptOnce(
           "https://pl30349373.effectivecpmnetwork.com/2e/88/bc/2e88bc28cdbfdafc4b85833ebade6a5c.js",
@@ -56,9 +122,29 @@ registerRenderer("adsterra", (_sessionId: string) => {
         console.log("[AD] Adsterra: script load failed", err);
         return { success: false, error: "SCRIPT_LOAD_FAILED" };
       }
-      console.log("[AD] Adsterra: script loaded, waiting 15s");
-      await new Promise((r) => setTimeout(r, 15000));
-      console.log("[AD] Adsterra: completed");
+      console.log("[AD] Adsterra: script loaded, checking for DOM injection");
+      const hasNewElements = countNewElements(domBefore) > 2;
+      if (!hasNewElements) {
+        console.log("[AD] Adsterra: no new DOM elements detected — ad may not have rendered");
+      }
+      const barSelector = "iframe, [id*='adsterra'], [class*='adsterra'], [id*='social-bar'], [class*='social-bar'], [class*='floating'], [style*='fixed']";
+      const containerFound = await waitForDomElements(barSelector, 8000);
+      if (!containerFound) {
+        console.log("[AD] Adsterra: ad container not found in DOM");
+        return { success: false, error: "AD_CONTAINER_NOT_FOUND" };
+      }
+      const adEl = document.querySelector(barSelector);
+      console.log("[AD] Adsterra: ad container found, tracking visibility");
+      const attention = await waitForUserAttention();
+      if (!attention) {
+        console.log("[AD] Adsterra: user was not actively viewing the page");
+      }
+      const visible = adEl ? await trackVisibility(adEl, 10000) : false;
+      if (!visible) {
+        console.log("[AD] Adsterra: ad was not visible for minimum duration");
+        return { success: false, error: "AD_NOT_VISIBLE" };
+      }
+      console.log("[AD] Adsterra: ad visible for 10s, completing");
       return { success: true };
     },
     cleanup() {
@@ -73,70 +159,87 @@ registerRenderer("adsterra", (_sessionId: string) => {
   };
 });
 
-// ── Monetag: popup with SDK ──
+// ── Monetag: official tag script (in-page) ──
 registerRenderer("monetag", (_sessionId: string) => {
-  let popup: Window | null = null;
   let cleanupCalled = false;
+  const scriptId = "ad-monetag-tag";
   return {
     key: "monetag",
     async render() {
-      console.log("[AD] Monetag: opening popup");
-      popup = window.open("", "_blank", "width=500,height=400,left=200,top=150");
-      if (!popup || popup.closed) {
-        console.log("[AD] Monetag: popup blocked");
-        return { success: false, error: "POPUP_BLOCKED" };
+      console.log("[AD] Monetag: loading official tag script");
+      if (document.getElementById(scriptId)) {
+        document.getElementById(scriptId)?.remove();
       }
-      try {
-        popup.document.write(`<!DOCTYPE html><html><head><title>Monetag Ad</title><style>body{margin:0;font-family:sans-serif;background:#fff}</style></head><body><div id="ad-container" style="width:100%;height:100vh"></div></body></html>`);
-        popup.document.close();
-      } catch {
-        popup.close();
-        console.log("[AD] Monetag: popup access denied");
-        return { success: false, error: "POPUP_ACCESS_DENIED" };
-      }
+      const domBefore = document.querySelectorAll("*").length;
+      const removeScript = () => {
+        if (cleanupCalled) return;
+        cleanupCalled = true;
+        const el = document.getElementById(scriptId);
+        if (el) el.remove();
+      };
 
-      // Wait for SDK to load and render content
-      console.log("[AD] Monetag: loading SDK script");
-      const sdkScript = popup.document.createElement("script");
-      sdkScript.src = "https://3nbf4.com/act/files/tag.min.js?zoneId=11277987";
-      popup.document.body.appendChild(sdkScript);
+      return new Promise((resolve) => {
+        const script = document.createElement("script");
+        script.src = "https://quge5.com/88/tag.min.js";
+        script.setAttribute("data-zone", "259304");
+        script.async = true;
+        script.id = scriptId;
+        script.setAttribute("data-cfasync", "false");
 
-      // Wait up to 8s for the SDK to render something in the popup
-      const sdkLoaded = await new Promise<boolean>((resolve) => {
-        const check = () => {
-          try {
-            if (!popup || popup.closed) { resolve(false); return; }
-            const bodyHTML = popup.document.body.innerHTML;
-            if (bodyHTML.length > 40 && !bodyHTML.includes("ad-container")) {
-              resolve(true);
-              return;
-            }
-          } catch { resolve(false); return; }
-          setTimeout(check, 500);
+        const timeout = setTimeout(() => {
+          console.log("[AD] Monetag: script load timeout");
+          removeScript();
+          resolve({ success: false, error: "SCRIPT_TIMEOUT" });
+        }, 15000);
+
+        script.onload = async () => {
+          console.log("[AD] Monetag: script loaded, checking for DOM injection");
+          clearTimeout(timeout);
+          const hasNewElements = countNewElements(domBefore) > 2;
+          if (!hasNewElements) {
+            console.log("[AD] Monetag: no new DOM elements detected — ad may not have rendered");
+          }
+          const monetagSelector = "iframe, [id*='monetag'], [class*='monetag'], [id*='ad'], [class*='ad'], [id*='pop'], [class*='pop'], [style*='position'], [style*='fixed'], [style*='z-index']";
+          const containerFound = await waitForDomElements(monetagSelector, 8000);
+          if (!containerFound) {
+            console.log("[AD] Monetag: ad container not found in DOM");
+            removeScript();
+            resolve({ success: false, error: "AD_CONTAINER_NOT_FOUND" });
+            return;
+          }
+          const adEl = document.querySelector(monetagSelector);
+          console.log("[AD] Monetag: ad container found, tracking visibility");
+          const attention = await waitForUserAttention();
+          if (!attention) {
+            console.log("[AD] Monetag: user was not actively viewing the page");
+          }
+          const visible = adEl ? await trackVisibility(adEl, 10000) : false;
+          if (!visible) {
+            console.log("[AD] Monetag: ad was not visible for minimum duration");
+            removeScript();
+            resolve({ success: false, error: "AD_NOT_VISIBLE" });
+            return;
+          }
+          console.log("[AD] Monetag: ad visible for 10s, completing");
+          removeScript();
+          resolve({ success: true });
         };
-        setTimeout(() => resolve(false), 8000);
-        check();
-      });
 
-      if (!sdkLoaded) {
-        console.log("[AD] Monetag: SDK did not render ad");
-        try { if (popup && !popup.closed) popup.close(); } catch { /* ignore */ }
-        return { success: false, error: "AD_NOT_RENDERED" };
-      }
+        script.onerror = () => {
+          console.log("[AD] Monetag: script load failed");
+          clearTimeout(timeout);
+          removeScript();
+          resolve({ success: false, error: "SCRIPT_LOAD_FAILED" });
+        };
 
-      console.log("[AD] Monetag: ad rendered, waiting for popup close");
-      await new Promise<void>((resolve) => {
-        const timer = setInterval(() => {
-          if (popup?.closed) { clearInterval(timer); resolve(); }
-        }, 500);
+        document.body.appendChild(script);
       });
-      console.log("[AD] Monetag: completed");
-      return { success: true };
     },
     cleanup() {
       if (cleanupCalled) return;
       cleanupCalled = true;
-      try { if (popup && !popup.closed) popup.close(); } catch { /* ignore */ }
+      const el = document.getElementById(scriptId);
+      if (el) el.remove();
       console.log("[AD] Monetag: cleaned up");
     },
   };
