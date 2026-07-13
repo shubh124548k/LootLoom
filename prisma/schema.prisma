@@ -68,8 +68,6 @@ model UserProfile {
   timezone  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([userId])
 }
 
 // ============================================================
@@ -83,7 +81,6 @@ model ReferralCode {
   code      String   @unique
   createdAt DateTime @default(now())
 
-  @@index([code])
 }
 
 model Referral {
@@ -96,7 +93,6 @@ model Referral {
   createdAt   DateTime @default(now())
 
   @@index([referrerId])
-  @@index([refereeId])
 }
 
 // ============================================================
@@ -117,6 +113,8 @@ model Mission {
 
   userMissions UserMission[]
   missionLogs  MissionLog[]
+
+  @@index([status])
 }
 
 model UserMission {
@@ -124,7 +122,7 @@ model UserMission {
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   missionId  String
-  mission    Mission  @relation(fields: [missionId], references: [id])
+  mission    Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
   progress   Int      @default(0)
   completed  Boolean  @default(false)
   claimedAt  DateTime?
@@ -140,7 +138,7 @@ model MissionLog {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   missionId String
-  mission   Mission  @relation(fields: [missionId], references: [id])
+  mission   Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
   reward    Int      @default(0)
   createdAt DateTime @default(now())
 
@@ -166,7 +164,6 @@ model Wallet {
   transactions    Transaction[]
   redeemRequests  RedeemRequest[]
 
-  @@index([userId])
 }
 
 // ============================================================
@@ -178,7 +175,7 @@ model Transaction {
   userId         String
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   walletId       String
-  wallet         Wallet   @relation(fields: [walletId], references: [id])
+  wallet         Wallet   @relation(fields: [walletId], references: [id], onDelete: Restrict)
   type           String   // AD_REWARD | MISSION_REWARD | REFERRAL_BONUS | REDEEM | ADMIN_ADJUSTMENT | REFUND
   amount         Int      // positive = credit, negative = debit
   balanceBefore  Int
@@ -283,9 +280,9 @@ model RedeemRequest {
   userId         String
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   rewardId       String
-  reward         Reward   @relation(fields: [rewardId], references: [id])
+  reward         Reward   @relation(fields: [rewardId], references: [id], onDelete: Restrict)
   walletId       String
-  wallet         Wallet   @relation(fields: [walletId], references: [id])
+  wallet         Wallet   @relation(fields: [walletId], references: [id], onDelete: Restrict)
   coinsUsed      Int
   paymentMethod  String?
   paymentDetails String?
@@ -362,13 +359,15 @@ model SupportTicket {
   @@index([userId])
   @@index([status])
   @@index([status, createdAt])
+  @@index([category])
 }
 
 model SupportMessage {
   id        String   @id @default(cuid())
   ticketId  String
   ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  senderId  String
+  senderId  String?
+  sender    User?    @relation(fields: [senderId], references: [id], onDelete: SetNull)
   message   String
   createdAt DateTime @default(now())
 
@@ -384,7 +383,7 @@ model SupportMessage {
 model AuditLog {
   id        String   @id @default(cuid())
   actorId   String
-  actor     User     @relation("AuditActor", fields: [actorId], references: [id])
+  actor     User     @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict)
   action    String   // USER_REGISTERED | USER_LOGIN | WALLET_CREDIT | WALLET_DEBIT | REDEEM_REQUESTED | REDEEM_APPROVED | REDEEM_REJECTED | REDEEM_REFUNDED | etc.
   targetId  String?
   metadata  String?

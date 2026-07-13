@@ -136,9 +136,9 @@ const CEO_APP_VIEWS: ViewId[] = [
 ];
 
 export function AppRouter() {
-  const current = useNavigationStore((s) => s.current);
-  const role = useAuthStore((s) => s.role);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const current = useNavigationStore((state) => state.current);
+  const role = useAuthStore((state) => state.role);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   useEffect(() => {
     const unsub = useNavigationStore.subscribe((state, prev) => {
@@ -163,12 +163,15 @@ export function AppRouter() {
   useEffect(() => {
     if (role === "ceo") {
       fetch("/api/auth/session").then(res => res.json()).then(session => {
-        const userRole = (session?.user as any)?.role;
-        if (userRole !== "CEO" && userRole !== "ADMIN") {
+        const userRole = ((session?.user as any)?.role || "").toLowerCase();
+        if (userRole !== "ceo" && userRole !== "admin") {
           useAuthStore.setState({ isAuthenticated: false, role: "user", status: "unauthenticated" });
           useNavigationStore.getState().navigate("ceo-login");
         }
-      }).catch(() => {});
+      }).catch(() => {
+        useAuthStore.setState({ isAuthenticated: false, role: "user", status: "unauthenticated" });
+        useNavigationStore.getState().navigate("ceo-login");
+      });
     }
   }, [role]);
 
@@ -176,13 +179,19 @@ export function AppRouter() {
     if (AUTH_SET.has(current) && isAuthenticated) {
       useNavigationStore.getState().navigate("earn");
     }
-  }, [current, isAuthenticated]);
+    if (current === "home" && isAuthenticated) {
+      useNavigationStore.getState().navigate("earn");
+    }
+    if (current === "ceo-login" && isAuthenticated && role === "ceo") {
+      useNavigationStore.getState().navigate("ceo-dashboard");
+    }
+  }, [current, isAuthenticated, role]);
 
   useEffect(() => {
-    if (CEO_SET.has(current) && current !== "ceo-login" && role !== "ceo") {
+    if (CEO_SET.has(current) && current !== "ceo-login" && !(role === "ceo" && isAuthenticated)) {
       useNavigationStore.getState().navigate("ceo-login");
     }
-  }, [current, role]);
+  }, [current, role, isAuthenticated]);
 
   useEffect(() => {
     const preload = (p: () => Promise<unknown>) => { p(); };

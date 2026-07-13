@@ -32,7 +32,7 @@ export class GenericAdProvider implements IAdProvider {
       return { providerKey: this.key as AdProviderKey, status: "failed", errorCode: "PROVIDER_UNAVAILABLE", durationMs: Date.now() - start };
     }
     if (this.config && this.config.timeoutMs > 0) {
-      await new Promise((r) => setTimeout(r, Math.min(50, this.config.timeoutMs)));
+      await new Promise((r) => setTimeout(r, Math.min(50, this.config!.timeoutMs)));
     }
     return { providerKey: this.key as AdProviderKey, status: "success", durationMs: Date.now() - start };
   }
@@ -46,6 +46,10 @@ export class GenericAdProvider implements IAdProvider {
     if (!this.ready) return "uninitialized";
     if (!this.config?.enabled) return "disabled";
     return this.config.status;
+  }
+
+  getHealth(): { status: string; lastError: string | null; lastTestAt: number | null; lastTestSuccess: boolean | null } {
+    return { status: this.getStatus(), lastError: null, lastTestAt: null, lastTestSuccess: null };
   }
 }
 

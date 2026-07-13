@@ -192,7 +192,7 @@ export async function PATCH(req: NextRequest) {
       action === "CANCEL" ? "CANCELLED" :
       action === "REFUND" ? "REFUNDED" :
       action === "COMPLETE" ? "COMPLETED" :
-      redeemRequest.status;
+      redeemRequest.status as RedeemStatus;
 
     const shouldRefund = REFUND_ACTIONS.has(action);
     const now = new Date();

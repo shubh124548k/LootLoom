@@ -66,7 +66,7 @@ export async function handleApiError(error: unknown): Promise<NextResponse> {
   return NextResponse.json(body, { status: 500 });
 }
 
-async function getPrismaErrorClass(): Promise<new (...args: never[]) => object | null> {
+async function getPrismaErrorClass(): Promise<(new (...args: never[]) => object) | null> {
   try {
     const { Prisma } = await import("@prisma/client");
     return Prisma.PrismaClientKnownRequestError;

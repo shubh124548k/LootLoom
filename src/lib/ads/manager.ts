@@ -77,7 +77,7 @@ export async function watchAd(userId: string, adType = "REWARDED_VIDEO"): Promis
     return p;
   });
 
-  const result = await waterfall.execute(providers, userId, adType, configs);
+  const result = await waterfall.execute(providers, userId, adType);
 
   if (result.success && result.sessionId) {
     const verification = await verificationService.verify(result.sessionId, userId);

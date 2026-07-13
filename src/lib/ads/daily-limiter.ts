@@ -16,7 +16,7 @@ export interface DailyAdStatus {
   totalAdEarnings: number;
 }
 
-export async function getMidnightUTC(): Date {
+export function getMidnightUTC(): Date {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
 }

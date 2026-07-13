@@ -26,7 +26,7 @@ const REDEEM_CODE_REWARDS = TIERS.map((value) => ({
   status: "ACTIVE" as const,
 }));
 
-async function seedRewards(rewards: Array<typeof UPI_REWARDS[number]>, label: string) {
+async function seedRewards(rewards: Array<{ name: string; description: string; coinCost: number; category: string; stock: number; status: string }>, label: string) {
   console.log(`Seeding ${label}...`);
   for (const reward of rewards) {
     const existing = await db.reward.findFirst({ where: { name: reward.name } });

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
-type Tone = "default" | "success" | "danger" | "warning";
+type Tone = "default" | "success" | "danger" | "warning" | "info";
 
 interface ConfirmModalProps {
   open: boolean;
@@ -39,6 +39,8 @@ const toneBtn: Record<Tone, string> = {
   danger: "bg-destructive text-white hover:bg-destructive/90",
   warning:
     "bg-[linear-gradient(120deg,var(--gold),oklch(0.75_0.18_60))] text-foreground hover:opacity-90",
+  info:
+    "bg-[linear-gradient(120deg,var(--cyan-brand),oklch(0.72_0.15_200))] text-white hover:opacity-90",
 };
 
 export function ConfirmModal({

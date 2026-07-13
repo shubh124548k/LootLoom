@@ -20,7 +20,7 @@ interface GlassCardProps extends HTMLMotionProps<"div"> {
   hover?: boolean;
   sheen?: boolean;
   reflect?: boolean;
-  glow?: "none" | "electric" | "cyan" | "purple";
+  glow?: "none" | "electric" | "cyan" | "purple" | "rose" | "navy" | "emerald" | "gold";
 }
 
 /**

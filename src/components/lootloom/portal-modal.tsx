@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 
 interface PortalModalProps {
   open: boolean;
@@ -16,13 +16,13 @@ const backdropVariants = {
   exit: { opacity: 0, transition: { duration: 0.15 } },
 };
 
-const cardVariants = {
+const cardVariants: Variants = {
   initial: { opacity: 0, scale: 0.93, y: 16 },
   animate: {
     opacity: 1,
     scale: 1,
     y: 0,
-    transition: { type: "spring", stiffness: 280, damping: 24 },
+    transition: { type: "spring" as const, stiffness: 280, damping: 24 },
   },
   exit: {
     opacity: 0,

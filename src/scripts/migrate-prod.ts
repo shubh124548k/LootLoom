@@ -42,7 +42,7 @@ async function main() {
       console.log(`  ✓ ${configKey} already = 150 (correct)`);
     }
   } else {
-    await db.platformConfig.create({ key: configKey, value: "150", label: "Max ads per day", type: "NUMBER" });
+    await db.platformConfig.create({ data: { key: configKey, value: "150", label: "Max ads per day", type: "NUMBER" } });
     console.log(`  ✓ Created ${configKey} = 150`);
   }
 

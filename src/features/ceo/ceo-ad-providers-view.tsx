@@ -564,12 +564,13 @@ export function CeoAdProvidersView() {
   async function handleTest(provider: AdProviderData) {
     setTestingId(provider.id);
     try {
-      const hasCredentials = provider.hasCredentials || changes.publisherId || changes.apiKey || changes.zoneId;
+      const editorChanges = changesMap[provider.id] || {};
+      const hasCredentials = provider.hasCredentials || editorChanges.publisherId || editorChanges.apiKey || editorChanges.zoneId;
       if (!hasCredentials) {
         toast({
           title: "Provider not configured",
           description: "Add Publisher ID, Zone ID, or API Key first.",
-          variant: "warning",
+          variant: "default",
         });
         return;
       }

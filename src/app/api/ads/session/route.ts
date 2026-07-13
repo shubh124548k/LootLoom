@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   const adEvent = await db.adEvent.create({
     data: {
       userId,
-      network: "waterfall",
+      providerKey: "waterfall",
       adType,
       rewardAmount,
       status: "STARTED",

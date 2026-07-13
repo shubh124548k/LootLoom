@@ -35,9 +35,10 @@ export async function GET(req: NextRequest) {
     ];
   }
   if (dateFrom || dateTo) {
-    where.createdAt = {};
-    if (dateFrom) where.createdAt.gte = new Date(dateFrom);
-    if (dateTo) where.createdAt.lte = new Date(dateTo);
+    const createdAt: Record<string, Date> = {};
+    if (dateFrom) createdAt.gte = new Date(dateFrom);
+    if (dateTo) createdAt.lte = new Date(dateTo);
+    where.createdAt = createdAt;
   }
 
   const [transactions, total] = await Promise.all([

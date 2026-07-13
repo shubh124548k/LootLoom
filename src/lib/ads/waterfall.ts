@@ -32,7 +32,7 @@ export class WaterfallStrategy implements IWaterfallStrategy {
         continue;
       }
 
-      const providerReward = configMap.get(provider.key)?.rewardAmount ?? 25;
+      const providerReward = configMap.get(provider.key as AdProviderKey)?.rewardAmount ?? 25;
 
       const adEvent = await db.adEvent.create({
         data: {

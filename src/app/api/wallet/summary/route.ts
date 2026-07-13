@@ -9,7 +9,8 @@ import { db } from "@/lib/db";
  * monthlyEarnings, pendingCoins (from pending redeems), chart data.
  */
 export async function GET() {
-  const session = await getServerSession(authOptions);
+  try {
+    const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ success: false, message: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
   }
@@ -107,4 +108,8 @@ export async function GET() {
       monthlyChart,
     },
   });
+  } catch (error) {
+    console.error("Wallet summary error:", error);
+    return NextResponse.json({ success: false, message: "Internal server error", code: "SERVER_ERROR" }, { status: 500 });
+  }
 }

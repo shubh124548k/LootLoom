@@ -21,7 +21,6 @@ function checkRateLimit(key: string): boolean {
 }
 
 export const authOptions: NextAuthOptions = {
-  trustHost: true,
   debug: process.env.NODE_ENV === "development",
   providers: [
     ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
@@ -145,7 +144,7 @@ export const authOptions: NextAuthOptions = {
       }
 
       if (token.passwordChangedAt && token.iat) {
-        if (token.iat * 1000 < token.passwordChangedAt) {
+        if ((token.iat as number) * 1000 < (token.passwordChangedAt as number)) {
           return {};
         }
       }

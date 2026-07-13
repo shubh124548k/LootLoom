@@ -205,52 +205,60 @@ export function EarnView() {
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [adStatus, setAdStatus] = useState<AdStatus | null>(null);
   const [missions, setMissions] = useState<MissionProgress[]>([]);
   const [dailyLogin, setDailyLogin] = useState<DailyLoginStatus | null>(null);
   const [weeklyChart, setWeeklyChart] = useState<ChartData[]>([]);
   const [watchLoading, setWatchLoading] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
+  const fetchIdRef = useRef(0);
 
   const fetchAll = useCallback(async () => {
+    const id = ++fetchIdRef.current;
+    const fetchWithTimeout = (url: string, ms: number) => {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), ms);
+      return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
+    };
     try {
-      const [adResp, missionResp, loginResp, walletResp] = await Promise.all([
-        fetch("/api/ads/status"),
-        fetch("/api/missions"),
-        fetch("/api/daily-login"),
-        fetch("/api/wallet/summary"),
+      setError(null);
+      const [adResult, missionResult, loginResult, walletResult] = await Promise.allSettled([
+        fetchWithTimeout("/api/ads/status", 15000),
+        fetchWithTimeout("/api/missions", 15000),
+        fetchWithTimeout("/api/daily-login", 15000),
+        fetchWithTimeout("/api/wallet/summary", 15000),
       ]);
 
-      if (adResp.ok) {
-        const json = await adResp.json();
-        if (json.success) setAdStatus(json.data);
+      if (id !== fetchIdRef.current) return;
+
+      if (adResult.status === "fulfilled" && adResult.value.ok) {
+        adResult.value.json().then((json) => { if (json?.success) setAdStatus(json.data); }).catch(() => {});
       }
-      if (missionResp.ok) {
-        const json = await missionResp.json();
-        if (json.success) setMissions(json.data);
+      if (missionResult.status === "fulfilled" && missionResult.value.ok) {
+        missionResult.value.json().then((json) => { if (json?.success) setMissions(json.data); }).catch(() => {});
       }
-      if (loginResp.ok) {
-        const json = await loginResp.json();
-        if (json.success) setDailyLogin(json.data);
+      if (loginResult.status === "fulfilled" && loginResult.value.ok) {
+        loginResult.value.json().then((json) => { if (json?.success) setDailyLogin(json.data); }).catch(() => {});
       }
-      if (walletResp.ok) {
-        const json = await walletResp.json();
-        if (json.success && json.data) {
-          setWallet({
-            availableCoins: json.data.coinBalance,
-            lifetimeEarned: json.data.totalEarned,
-            lifetimeRedeemed: json.data.totalSpent,
-            todayEarnings: json.data.todayEarnings,
-            weeklyEarnings: json.data.weeklyEarnings,
-            monthlyEarnings: json.data.monthlyEarnings,
-          });
-          if (json.data.weeklyChart) setWeeklyChart(json.data.weeklyChart);
-        }
+      if (walletResult.status === "fulfilled" && walletResult.value.ok) {
+        walletResult.value.json().then((json) => {
+          if (json?.success && json.data) {
+            setWallet({
+              availableCoins: json.data.coinBalance ?? 0,
+              lifetimeEarned: json.data.totalEarned ?? 0,
+              lifetimeRedeemed: json.data.totalSpent ?? 0,
+              todayEarnings: json.data.todayEarnings ?? 0,
+              weeklyEarnings: json.data.weeklyEarnings ?? 0,
+              monthlyEarnings: json.data.monthlyEarnings ?? 0,
+            });
+            if (json.data.weeklyChart) setWeeklyChart(json.data.weeklyChart);
+          }
+        }).catch(() => {});
       }
+      if (id === fetchIdRef.current) setLoading(false);
     } catch {
-      // silent
-    } finally {
-      setLoading(false);
+      if (id === fetchIdRef.current) { setError("Failed to load earn data"); setLoading(false); }
     }
   }, [setWallet]);
 
@@ -273,7 +281,7 @@ export function EarnView() {
           title: "Ad unavailable",
           description: json.message || json.data?.code === "DAILY_LIMIT_REACHED"
             ? "Daily limit reached. Come back tomorrow!" : "No ads available right now",
-          variant: "warning",
+          variant: "default",
         });
         if (json.data?.code === "DAILY_LIMIT_REACHED") fetchAll();
       }
@@ -293,7 +301,7 @@ export function EarnView() {
         toast({ title: "Daily Login Reward!", description: `+${json.data?.amount || json.data?.newBalance || 0} coins claimed`, variant: "default" });
         fetchAll();
       } else {
-        toast({ title: json.message || "Already claimed", variant: "warning" });
+        toast({ title: json.message || "Already claimed", variant: "default" });
       }
     } catch {
       toast({ title: "Network error", variant: "destructive" });
@@ -321,7 +329,9 @@ export function EarnView() {
         }
       />
 
-      {loading ? (
+      {error ? (
+        <ErrorState icon="AlertCircle" title="Failed to load" description={error} />
+      ) : loading ? (
         <div className="space-y-6">
           <SkeletonRow count={3} />
           <SkeletonRow count={2} />
@@ -361,7 +371,7 @@ export function EarnView() {
                       leftIcon={adStatus?.limitReached ? <Lock size={18} /> : <PlayCircle size={18} />}
                       onClick={handleWatchAd}
                       loading={watchLoading}
-                      disabled={adStatus?.limitReached}
+                      disabled={watchLoading || !!adStatus?.limitReached}
                     >
                       {adStatus?.limitReached ? "Daily Limit Reached" : "Watch Ad Now"}
                     </LootButton>

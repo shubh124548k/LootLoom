@@ -266,27 +266,41 @@ interface NotificationState {
   markAllRead: () => void;
   markRead: (id: string) => void;
   setItems: (items: NotificationItem[]) => void;
+  setUnreadCount: (count: number) => void;
   resetNotifications: () => void;
 }
 
 export const useNotificationStore = create<NotificationState>((set) => ({
   items: [],
   unreadCount: 0,
-  markAllRead: () =>
-    set((s) => ({
-      items: s.items.map((n) => ({ ...n, read: true })),
+  markAllRead: () => {
+    set((state) => ({
+      items: state.items.map((n) => ({ ...n, read: true })),
       unreadCount: 0,
-    })),
-  markRead: (id) =>
-    set((s) => {
-      const items = s.items.map((n) => (n.id === id ? { ...n, read: true } : n));
+    }));
+    fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ all: true }),
+    }).catch(() => {});
+  },
+  markRead: (id) => {
+    set((state) => {
+      const items = state.items.map((n) => (n.id === id ? { ...n, read: true } : n));
       return { items, unreadCount: items.filter((n) => !n.read).length };
-    }),
+    });
+    fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notificationId: id }),
+    }).catch(() => {});
+  },
   setItems: (items) =>
-    set((s) => {
-      if (s.items.length === items.length && s.items.every((n, i) => n.id === items[i].id)) return s;
+    set((state) => {
+      if (state.items.length === items.length && state.items.every((n, i) => n.id === items[i].id)) return state;
       return { items, unreadCount: items.filter((n) => !n.read).length };
     }),
+  setUnreadCount: (count) => set({ unreadCount: count }),
   resetNotifications: () => set({ items: [], unreadCount: 0 }),
 }));
 

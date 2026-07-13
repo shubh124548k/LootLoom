@@ -4,12 +4,13 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ success: false, message: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
-  }
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, message: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
+    }
 
-  const userId = session.user.id;
+    const userId = session.user.id;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -91,4 +92,8 @@ export async function GET() {
       chart: chartData,
     },
   });
+  } catch (error) {
+    console.error("Dashboard error:", error);
+    return NextResponse.json({ success: false, message: "Internal server error", code: "SERVER_ERROR" }, { status: 500 });
+  }
 }

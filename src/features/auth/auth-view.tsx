@@ -389,18 +389,10 @@ function LoginScreen() {
     setGoogleLoading(true);
     setServerError(null);
     try {
-      const result = await signIn("google", {
-        redirect: false,
-      });
-      if (result?.ok) {
-        setAuthenticated(true);
-        navigate("earn");
-      } else {
-        setServerError("Google sign-in failed. Please try again.");
-        setGoogleLoading(false);
-      }
+      await signIn("google", { callbackUrl: window.location.origin + "/" });
     } catch {
       setServerError("Google sign-in failed. Please try again.");
+    } finally {
       setGoogleLoading(false);
     }
   };

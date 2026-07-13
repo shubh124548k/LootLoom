@@ -10,6 +10,7 @@ export interface IAdProvider {
   showRewarded(userId: string, sessionId: string): Promise<WaterfallAttempt>;
   destroy(): void;
   getStatus(): string;
+  getHealth(): { status: string; lastError: string | null; lastTestAt: number | null; lastTestSuccess: boolean | null };
 }
 
 export interface IWaterfallStrategy {

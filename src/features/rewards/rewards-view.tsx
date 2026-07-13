@@ -262,17 +262,23 @@ export function RewardsView() {
   const [codeOpen, setCodeOpen] = useState(false);
 
   useEffect(() => {
-    fetch("/api/rewards")
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.success) {
-          setRewards(json.data);
-        } else {
-          setError("Failed to load rewards");
-        }
+    const ctrl = new AbortController();
+    const timeoutId = setTimeout(() => ctrl.abort(), 15000);
+    fetch("/api/rewards", { signal: ctrl.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error("Server error: " + r.status);
+        return r.json();
       })
-      .catch(() => setError("Network error"))
-      .finally(() => setLoading(false));
+      .then((json) => {
+        if (json.success) setRewards(json.data);
+        else setError("Failed to load rewards");
+      })
+      .catch((err) => {
+        if ((err as Error)?.name === "AbortError") return;
+        setError("Network error");
+      })
+      .finally(() => { clearTimeout(timeoutId); setLoading(false); });
+    return () => { clearTimeout(timeoutId); ctrl.abort(); };
   }, []);
 
   const upiRewards = rewards.filter((r) => r.category === "UPI");
