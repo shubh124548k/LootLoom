@@ -62,10 +62,11 @@ export async function POST(req: Request) {
   const { loadProviderConfigs } = await import("@/lib/ads/config");
   const { OFFICIAL_PROVIDER_KEYS } = await import("@/lib/ads/client-renderer");
   const allProviders = await loadProviderConfigs();
-  const activeProvider = allProviders.find(
-    (p) => p.enabled && p.status === "ACTIVE" && OFFICIAL_PROVIDER_KEYS.includes(p.key as any)
-  );
-  const providerKey = activeProvider?.key || "adsterra";
+  const activeProviderKeys = allProviders
+    .filter((p) => p.enabled && p.status === "ACTIVE" && OFFICIAL_PROVIDER_KEYS.includes(p.key as any))
+    .sort((a, b) => a.priority - b.priority)
+    .map((p) => p.key);
+  const providerKey = activeProviderKeys[0] || "adsterra";
 
   const adEvent = await db.adEvent.create({
     data: {
@@ -83,6 +84,7 @@ export async function POST(req: Request) {
       sessionId: adEvent.id,
       rewardAmount,
       providerKey,
+      providerKeys: activeProviderKeys.length > 0 ? activeProviderKeys : [providerKey],
       adType,
       watchedToday: todayAdCount,
       limit: dailyAdLimit,

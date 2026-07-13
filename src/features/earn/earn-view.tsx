@@ -289,22 +289,35 @@ export function EarnView() {
       }
 
       const { sessionId } = sessionJson.data;
-      const providerKey = sessionJson.data.providerKey || "adsterra";
+      const providerKeys: string[] = sessionJson.data.providerKeys || ["adsterra"];
 
       const { getRenderer } = await import("@/lib/ads/client-renderer");
-      const renderer = getRenderer(providerKey, sessionId);
-      if (!renderer) {
-        toast({ title: "Ad error", description: "No renderer available", variant: "destructive" });
-        return;
+      let lastError = "";
+      let adShown = false;
+
+      for (const key of providerKeys) {
+        console.log(`[AD] Trying provider: ${key}`);
+        const renderer = getRenderer(key, sessionId);
+        if (!renderer) {
+          console.log(`[AD] ${key}: no renderer registered, skip`);
+          continue;
+        }
+        currentRenderer = renderer;
+        const result = await renderer.render();
+        renderer.cleanup();
+        currentRenderer = null;
+
+        if (result.success) {
+          console.log(`[AD] ${key}: SUCCESS`);
+          adShown = true;
+          break;
+        }
+        console.log(`[AD] ${key}: FAILED — ${result.error || "unknown"}`);
+        lastError = result.error || "FAILED";
       }
-      currentRenderer = renderer;
 
-      const result = await renderer.render();
-      renderer.cleanup();
-      currentRenderer = null;
-
-      if (!result.success) {
-        toast({ title: "Ad failed", description: result.error || "Could not show ad", variant: "destructive" });
+      if (!adShown) {
+        toast({ title: "No ads available", description: lastError || "All providers failed", variant: "destructive" });
         return;
       }
 
