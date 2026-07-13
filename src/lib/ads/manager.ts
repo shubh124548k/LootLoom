@@ -50,6 +50,7 @@ export async function watchAd(userId: string, adType = "REWARDED_VIDEO"): Promis
   if (todayAdCount >= dailyAdLimit) {
     return {
       status: "error",
+      code: "DAILY_LIMIT_REACHED",
       rewardAmount: 0,
       attempts: [],
     };
@@ -62,6 +63,7 @@ export async function watchAd(userId: string, adType = "REWARDED_VIDEO"): Promis
   if (earnedToday + baseReward > dailyCoinLimit) {
     return {
       status: "error",
+      code: "DAILY_COIN_LIMIT_REACHED",
       rewardAmount: 0,
       attempts: [],
     };
@@ -76,6 +78,15 @@ export async function watchAd(userId: string, adType = "REWARDED_VIDEO"): Promis
     }
     return p;
   });
+
+  if (providers.length === 0) {
+    return {
+      status: "error",
+      code: "NO_PROVIDERS",
+      rewardAmount: 0,
+      attempts: [],
+    };
+  }
 
   const result = await waterfall.execute(providers, userId, adType);
 
@@ -110,6 +121,7 @@ export async function watchAd(userId: string, adType = "REWARDED_VIDEO"): Promis
 
   return {
     status: "error",
+    code: "NO_PROVIDERS",
     rewardAmount: 0,
     attempts: result.attempts,
   };

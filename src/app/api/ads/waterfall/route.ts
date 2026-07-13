@@ -56,18 +56,27 @@ export async function POST(req: NextRequest) {
         success: false,
         message: "No ad available. Try again later.",
         code: "ALL_PROVIDERS_FAILED",
-        data: { attempts: result.attempts },
+        data: { attempts: result.attempts.length },
       }, { status: 503 });
+    }
+
+    if (result.status === "error" && result.code === "DAILY_LIMIT_REACHED") {
+      return NextResponse.json({
+        success: false,
+        message: "Daily limit reached. Come back tomorrow!",
+        code: "DAILY_LIMIT_REACHED",
+      }, { status: 429 });
     }
 
     return NextResponse.json({
       success: false,
       message: "Unable to show ad at this time.",
       code: "WATERFALL_ERROR",
+      data: { attempts: result.attempts.length },
     }, { status: 503 });
   } catch (error) {
-    console.error("[WATERFALL]", error);
-    return NextResponse.json({ success: false, message: "Ad service unavailable" }, { status: 500 });
+    console.error("[WATERFALL]", error instanceof Error ? error.stack || error.message : error);
+    return NextResponse.json({ success: false, message: "Ad service error", code: "WATERFALL_CRASH", error: error instanceof Error ? error.message : "UNKNOWN" }, { status: 500 });
   } finally {
     if (lockAcquired && sessionUserId) adQueueLocks.delete(sessionUserId);
   }
@@ -109,7 +118,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("[WATERFALL STATS]", error);
-    return NextResponse.json({ success: false, message: "Failed to load ad stats" }, { status: 500 });
+    console.error("[WATERFALL STATS]", error instanceof Error ? error.stack || error.message : error);
+    return NextResponse.json({ success: false, message: "Failed to load ad stats", code: "STATS_ERROR", error: error instanceof Error ? error.message : "UNKNOWN" }, { status: 500 });
   }
 }

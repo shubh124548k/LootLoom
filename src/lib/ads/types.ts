@@ -9,7 +9,8 @@ export type AdProviderKey =
   | "richads"
   | "medianet"
   | "adrevenue"
-  | "evadav";
+  | "evadav"
+  | "adsterra";
 
 export type AdProviderStatus = "ACTIVE" | "DISABLED" | "ERROR";
 
@@ -45,6 +46,7 @@ export interface WaterfallAttempt {
 
 export interface WaterfallResult {
   status: WaterfallResultStatus;
+  code?: string;
   sessionId?: string;
   rewardAmount: number;
   attempts: WaterfallAttempt[];
