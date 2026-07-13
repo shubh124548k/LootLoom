@@ -18,18 +18,37 @@ let cachedConfig: Record<string, string> | null = null;
 let configCacheTime = 0;
 const CACHE_TTL = 60_000;
 
-export async function getEarnConfig(): Promise<Record<string, string>> {
-  if (cachedConfig && Date.now() - configCacheTime < CACHE_TTL) {
-    return cachedConfig;
-  }
+async function syncDbWithDefaults(): Promise<void> {
   const keys = Object.keys(DEFAULTS);
-  const rows = await db.platformConfig.findMany({
-    where: { key: { in: keys } },
-  });
+  const rows = await db.platformConfig.findMany({ where: { key: { in: keys } } });
+  const dbMap = new Map(rows.map((r) => [r.key, r.value]));
+  for (const key of keys) {
+    const defaultValue = DEFAULTS[key as EarnConfigKey];
+    const dbValue = dbMap.get(key);
+    if (dbValue === undefined) {
+      await db.platformConfig.create({ data: { key, value: defaultValue, label: key, type: "STRING" } }).catch(() => {});
+    } else if (dbValue !== defaultValue) {
+      await db.platformConfig.update({ where: { key }, data: { value: defaultValue } }).catch(() => {});
+    }
+  }
+}
+
+async function loadFromDb(): Promise<Record<string, string>> {
+  const keys = Object.keys(DEFAULTS);
+  const rows = await db.platformConfig.findMany({ where: { key: { in: keys } } });
   const config: Record<string, string> = { ...DEFAULTS };
   for (const row of rows) {
     config[row.key] = row.value;
   }
+  return config;
+}
+
+export async function getEarnConfig(): Promise<Record<string, string>> {
+  if (cachedConfig && Date.now() - configCacheTime < CACHE_TTL) {
+    return cachedConfig;
+  }
+  await syncDbWithDefaults();
+  const config = await loadFromDb();
   cachedConfig = config;
   configCacheTime = Date.now();
   return config;

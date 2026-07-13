@@ -5,13 +5,34 @@ let cachedProviders: AdProviderConfig[] | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 30_000;
 
+const DEFAULT_PROVIDERS = [
+  { key: "monetag", name: "Monetag", priority: 1, rewardAmount: 1, dailyLimit: 150, timeoutMs: 8000, zoneId: "11277987", publisherId: "3nbf4.com" },
+  { key: "a-ads", name: "A-Ads", priority: 2, rewardAmount: 1, dailyLimit: 150, timeoutMs: 8000 },
+  { key: "yllix", name: "ylliX", priority: 3, rewardAmount: 1, dailyLimit: 150, timeoutMs: 8000 },
+  { key: "popads", name: "PopAds", priority: 4, rewardAmount: 1, dailyLimit: 80, timeoutMs: 8000 },
+  { key: "hilltopads", name: "HilltopAds", priority: 5, rewardAmount: 1, dailyLimit: 80, timeoutMs: 8000 },
+  { key: "clickadu", name: "Clickadu", priority: 6, rewardAmount: 1, dailyLimit: 80, timeoutMs: 8000 },
+  { key: "juicyads", name: "JuicyAds", priority: 7, rewardAmount: 1, dailyLimit: 60, timeoutMs: 8000 },
+  { key: "richads", name: "RichAds", priority: 8, rewardAmount: 1, dailyLimit: 60, timeoutMs: 8000 },
+  { key: "medianet", name: "Media.net", priority: 9, rewardAmount: 1, dailyLimit: 60, timeoutMs: 8000 },
+  { key: "adrevenue", name: "AdRevenue", priority: 10, rewardAmount: 1, dailyLimit: 50, timeoutMs: 8000 },
+  { key: "evadav", name: "Evadav", priority: 11, rewardAmount: 1, dailyLimit: 50, timeoutMs: 8000 },
+  { key: "adsterra", name: "Adsterra", priority: 12, rewardAmount: 1, dailyLimit: 150, timeoutMs: 8000 },
+];
+
 export async function loadProviderConfigs(): Promise<AdProviderConfig[]> {
   if (cachedProviders && Date.now() - cacheTime < CACHE_TTL) {
     return cachedProviders;
   }
-  const rows = await db.adProvider.findMany({
+  let rows = await db.adProvider.findMany({
     orderBy: { priority: "asc" },
   });
+  if (rows.length === 0) {
+    for (const p of DEFAULT_PROVIDERS) {
+      await db.adProvider.create({ data: { ...p, status: "ACTIVE", enabled: true, publisherId: p.publisherId || "", zoneId: p.zoneId || "", apiKey: "" } }).catch(() => {});
+    }
+    rows = await db.adProvider.findMany({ orderBy: { priority: "asc" } });
+  }
   cachedProviders = rows.map((r) => ({
     key: r.key as AdProviderKey,
     name: r.name,
