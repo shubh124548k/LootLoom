@@ -44,8 +44,8 @@ model User {
   redeemRequests  RedeemRequest[]
   notifications   Notification[]
   supportTickets  SupportTicket[]
-  supportMessages SupportMessage[]
-  auditLogs       AuditLog[]       @relation("AuditActor")
+  supportMessages SupportMessage[]  @relation("SupportMessageSender")
+  auditLogs       AuditLog[]        @relation("AuditActor")
   feedback        UserFeedback[]   @relation("UserFeedback")
   referralCode    ReferralCode?
   referralsGiven  Referral[]       @relation("Referrer")
@@ -368,7 +368,7 @@ model SupportMessage {
   ticketId  String
   ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   senderId  String?
-  sender    User?    @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  sender    User?    @relation("SupportMessageSender", fields: [senderId], references: [id], onDelete: SetNull)
   message   String
   createdAt DateTime @default(now())
 
