@@ -93,13 +93,14 @@ export async function GET() {
     const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
     const { getEarnConfig } = await import("@/lib/earn/config");
     const config = await getEarnConfig();
+    const { loadProviderConfigs } = await import("@/lib/ads/config");
 
     const [todayCount, todayEarned, totalEarned, totalWatched, activeProviders] = await Promise.all([
       db.adEvent.count({ where: { userId, createdAt: { gte: todayStart }, status: "VERIFIED" } }),
       db.adEvent.aggregate({ where: { userId, createdAt: { gte: todayStart }, status: "VERIFIED" }, _sum: { rewardAmount: true } }),
       db.adEvent.aggregate({ where: { userId, status: "VERIFIED" }, _sum: { rewardAmount: true } }),
       db.adEvent.count({ where: { userId, status: "VERIFIED" } }),
-      db.adProvider.findMany({ where: { enabled: true, status: "ACTIVE" }, orderBy: { priority: "asc" }, select: { key: true, name: true } }),
+      loadProviderConfigs().then((configs) => configs.filter((p) => p.enabled && p.status === "ACTIVE").map((p) => ({ key: p.key, name: p.name }))),
     ]);
 
     return NextResponse.json({

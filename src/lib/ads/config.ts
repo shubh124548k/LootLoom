@@ -27,10 +27,13 @@ export async function loadProviderConfigs(): Promise<AdProviderConfig[]> {
   let rows = await db.adProvider.findMany({
     orderBy: { priority: "asc" },
   });
-  if (rows.length === 0) {
-    for (const p of DEFAULT_PROVIDERS) {
+  const existingKeys = new Set(rows.map((r) => r.key));
+  for (const p of DEFAULT_PROVIDERS) {
+    if (!existingKeys.has(p.key)) {
       await db.adProvider.create({ data: { ...p, status: "ACTIVE", enabled: true, publisherId: p.publisherId || "", zoneId: p.zoneId || "", apiKey: "" } }).catch(() => {});
     }
+  }
+  if (rows.length !== DEFAULT_PROVIDERS.length) {
     rows = await db.adProvider.findMany({ orderBy: { priority: "asc" } });
   }
   cachedProviders = rows.map((r) => ({
