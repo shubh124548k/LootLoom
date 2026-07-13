@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Wallet, Banknote, Hash, X } from "lucide-react";
 import {
   PageContainer,
@@ -11,10 +10,10 @@ import {
   GlassLoader,
   EmptyState,
   ErrorState,
+  PortalModal,
 } from "@/components/lootloom";
 import { useWalletStore } from "@/stores";
 import { useToast } from "@/hooks/use-toast";
-import { cardReveal, staggerContainer, modalPop, overlayFade } from "@/lib/animations";
 import { COINS_PER_INR } from "@/lib/coin-config";
 
 interface RewardItem {
@@ -69,87 +68,67 @@ function UpiPopup({ reward, open, onClose }: {
   };
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          variants={overlayFade}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          onClick={onClose}
-          className="fixed inset-0 z-[70] bg-foreground/30 backdrop-blur-md flex items-center justify-center px-4"
-        >
-          <motion.div
-            variants={modalPop}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-[420px]"
-          >
-            <GlassCard level={3} sheen reflect className="overflow-hidden shadow-[var(--shadow-xl)]">
-              <div className="p-5 sm:p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-foreground">UPI Withdrawal</h2>
-                  <button onClick={onClose} aria-label="Close" className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent transition-colors shrink-0">
-                    <X size={18} />
-                  </button>
-                </div>
+    <PortalModal open={open} onClose={onClose}>
+      <GlassCard level={3} sheen reflect className="overflow-hidden shadow-[var(--shadow-xl)]">
+        <div className="p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-foreground">UPI Withdrawal</h2>
+            <button onClick={onClose} aria-label="Close" className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent transition-colors shrink-0">
+              <X size={18} />
+            </button>
+          </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl glass-1 p-3 text-center">
-                    <p className="text-xs text-muted-foreground mb-0.5">Amount</p>
-                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{reward.name}</p>
-                  </div>
-                  <div className="rounded-xl glass-1 p-3 text-center">
-                    <p className="text-xs text-muted-foreground mb-0.5">Coins Required</p>
-                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{reward.coinCost.toLocaleString("en-IN")}</p>
-                  </div>
-                </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl glass-1 p-3 text-center">
+              <p className="text-xs text-muted-foreground mb-0.5">Amount</p>
+              <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{reward.name}</p>
+            </div>
+            <div className="rounded-xl glass-1 p-3 text-center">
+              <p className="text-xs text-muted-foreground mb-0.5">Coins Required</p>
+              <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{reward.coinCost.toLocaleString("en-IN")}</p>
+            </div>
+          </div>
 
-                <div className="rounded-xl glass-1 p-3 flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Current Balance</span>
-                  <span className={`text-sm font-bold tabular-nums ${availableCoins >= reward.coinCost ? "text-emerald-brand" : "text-rose-brand"}`}>
-                    {availableCoins.toLocaleString("en-IN")} coins
-                  </span>
-                </div>
+          <div className="rounded-xl glass-1 p-3 flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Current Balance</span>
+            <span className={`text-sm font-bold tabular-nums ${availableCoins >= reward.coinCost ? "text-emerald-brand" : "text-rose-brand"}`}>
+              {availableCoins.toLocaleString("en-IN")} coins
+            </span>
+          </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">UPI ID</label>
-                  <input
-                    type="text"
-                    value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
-                    placeholder="example@upi"
-                    className="w-full h-10 rounded-xl border border-border bg-background/50 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-electric transition-shadow"
-                  />
-                </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">UPI ID</label>
+            <input
+              type="text"
+              value={upiId}
+              onChange={(e) => setUpiId(e.target.value)}
+              placeholder="example@upi"
+              className="w-full h-10 rounded-xl border border-border bg-background/50 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-electric transition-shadow"
+            />
+          </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Note <span className="text-muted-foreground font-normal">(optional)</span></label>
-                  <textarea
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="Add a note for the CEO..."
-                    rows={2}
-                    className="w-full rounded-xl border border-border bg-background/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-electric transition-shadow resize-none"
-                  />
-                </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Note <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add a note for the CEO..."
+              rows={2}
+              className="w-full rounded-xl border border-border bg-background/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-electric transition-shadow resize-none"
+            />
+          </div>
 
-                <div className="flex gap-2 pt-2">
-                  <LootButton variant="ghost" size="md" fullWidth onClick={onClose} leftIcon={<X size={15} />}>
-                    Cancel
-                  </LootButton>
-                  <LootButton variant="electric" size="md" fullWidth loading={saving} onClick={handleSubmit} disabled={!upiId.trim()}>
-                    {saving ? "Submitting..." : "Confirm"}
-                  </LootButton>
-                </div>
-              </div>
-            </GlassCard>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          <div className="flex gap-2 pt-2">
+            <LootButton variant="ghost" size="md" fullWidth onClick={onClose} leftIcon={<X size={15} />}>
+              Cancel
+            </LootButton>
+            <LootButton variant="electric" size="md" fullWidth loading={saving} onClick={handleSubmit} disabled={!upiId.trim()}>
+              {saving ? "Submitting..." : "Confirm"}
+            </LootButton>
+          </div>
+        </div>
+      </GlassCard>
+    </PortalModal>
   );
 }
 
@@ -175,10 +154,7 @@ function RedeemCodePopup({ reward, open, onClose }: {
         body: JSON.stringify({
           rewardId: reward.id,
           paymentMethod: "REDEEM_CODE",
-          paymentDetails: JSON.stringify({
-            gameName: gameName.trim(),
-            gameUid: gameUid.trim(),
-          }),
+          paymentDetails: JSON.stringify({ gameName: gameName.trim(), gameUid: gameUid.trim() }),
           userNote: notes.trim() || undefined,
         }),
       });
@@ -200,98 +176,78 @@ function RedeemCodePopup({ reward, open, onClose }: {
   };
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          variants={overlayFade}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          onClick={onClose}
-          className="fixed inset-0 z-[70] bg-foreground/30 backdrop-blur-md flex items-center justify-center px-4"
-        >
-          <motion.div
-            variants={modalPop}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-[420px]"
-          >
-            <GlassCard level={3} sheen reflect className="overflow-hidden shadow-[var(--shadow-xl)]">
-              <div className="p-5 sm:p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-foreground">Redeem Code</h2>
-                  <button onClick={onClose} aria-label="Close" className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent transition-colors shrink-0">
-                    <X size={18} />
-                  </button>
-                </div>
+    <PortalModal open={open} onClose={onClose}>
+      <GlassCard level={3} sheen reflect className="overflow-hidden shadow-[var(--shadow-xl)]">
+        <div className="p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-foreground">Redeem Code</h2>
+            <button onClick={onClose} aria-label="Close" className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent transition-colors shrink-0">
+              <X size={18} />
+            </button>
+          </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl glass-1 p-3 text-center">
-                    <p className="text-xs text-muted-foreground mb-0.5">Amount</p>
-                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{reward.name}</p>
-                  </div>
-                  <div className="rounded-xl glass-1 p-3 text-center">
-                    <p className="text-xs text-muted-foreground mb-0.5">Coins Required</p>
-                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{reward.coinCost.toLocaleString("en-IN")}</p>
-                  </div>
-                </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl glass-1 p-3 text-center">
+              <p className="text-xs text-muted-foreground mb-0.5">Amount</p>
+              <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{reward.name}</p>
+            </div>
+            <div className="rounded-xl glass-1 p-3 text-center">
+              <p className="text-xs text-muted-foreground mb-0.5">Coins Required</p>
+              <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{reward.coinCost.toLocaleString("en-IN")}</p>
+            </div>
+          </div>
 
-                <div className="rounded-xl glass-1 p-3 flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Current Balance</span>
-                  <span className={`text-sm font-bold tabular-nums ${availableCoins >= reward.coinCost ? "text-emerald-brand" : "text-rose-brand"}`}>
-                    {availableCoins.toLocaleString("en-IN")} coins
-                  </span>
-                </div>
+          <div className="rounded-xl glass-1 p-3 flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Current Balance</span>
+            <span className={`text-sm font-bold tabular-nums ${availableCoins >= reward.coinCost ? "text-emerald-brand" : "text-rose-brand"}`}>
+              {availableCoins.toLocaleString("en-IN")} coins
+            </span>
+          </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Game Name</label>
-                  <input
-                    type="text"
-                    value={gameName}
-                    onChange={(e) => setGameName(e.target.value)}
-                    placeholder="Enter game name"
-                    className="w-full h-10 rounded-xl border border-border bg-background/50 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-electric transition-shadow"
-                  />
-                </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Game Name</label>
+            <input
+              type="text"
+              value={gameName}
+              onChange={(e) => setGameName(e.target.value)}
+              placeholder="Enter game name"
+              className="w-full h-10 rounded-xl border border-border bg-background/50 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-electric transition-shadow"
+            />
+          </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Game UID</label>
-                  <input
-                    type="text"
-                    value={gameUid}
-                    onChange={(e) => setGameUid(e.target.value)}
-                    placeholder="Enter your in-game UID"
-                    className="w-full h-10 rounded-xl border border-border bg-background/50 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-electric transition-shadow"
-                  />
-                </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Game UID</label>
+            <input
+              type="text"
+              value={gameUid}
+              onChange={(e) => setGameUid(e.target.value)}
+              placeholder="Enter your in-game UID"
+              className="w-full h-10 rounded-xl border border-border bg-background/50 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-electric transition-shadow"
+            />
+          </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Additional Notes <span className="text-muted-foreground font-normal">(optional)</span></label>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Any additional details..."
-                    rows={2}
-                    className="w-full rounded-xl border border-border bg-background/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-electric transition-shadow resize-none"
-                  />
-                </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Additional Notes <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any additional details..."
+              rows={2}
+              className="w-full rounded-xl border border-border bg-background/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-electric transition-shadow resize-none"
+            />
+          </div>
 
-                <div className="flex gap-2 pt-2">
-                  <LootButton variant="ghost" size="md" fullWidth onClick={onClose} leftIcon={<X size={15} />}>
-                    Cancel
-                  </LootButton>
-                  <LootButton variant="electric" size="md" fullWidth loading={saving} onClick={handleSubmit} disabled={!gameName.trim() || !gameUid.trim()}>
-                    {saving ? "Submitting..." : "Submit"}
-                  </LootButton>
-                </div>
-              </div>
-            </GlassCard>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          <div className="flex gap-2 pt-2">
+            <LootButton variant="ghost" size="md" fullWidth onClick={onClose} leftIcon={<X size={15} />}>
+              Cancel
+            </LootButton>
+            <LootButton variant="electric" size="md" fullWidth loading={saving} onClick={handleSubmit} disabled={!gameName.trim() || !gameUid.trim()}>
+              {saving ? "Submitting..." : "Submit"}
+            </LootButton>
+          </div>
+        </div>
+      </GlassCard>
+    </PortalModal>
   );
 }
 
@@ -381,7 +337,7 @@ export function RewardsView() {
         </div>
       </div>
 
-      {/* Tab Content — same layout for both tabs */}
+      {/* Tab Content */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <GlassLoader label="Loading rewards..." />
@@ -439,15 +395,13 @@ export function RewardsView() {
         </div>
       )}
 
-      {/* Popups */}
-      <AnimatePresence>
-        {selectedReward && selectedReward.category === "UPI" && (
-          <UpiPopup key="upi-popup" reward={selectedReward} open={upiOpen} onClose={() => { setUpiOpen(false); setSelectedReward(null); }} />
-        )}
-        {selectedReward && selectedReward.category === "REDEEM_CODE" && (
-          <RedeemCodePopup key="code-popup" reward={selectedReward} open={codeOpen} onClose={() => { setCodeOpen(false); setSelectedReward(null); }} />
-        )}
-      </AnimatePresence>
+      {/* Portal modals — rendered outside component tree via createPortal */}
+      {selectedReward && selectedReward.category === "UPI" && (
+        <UpiPopup key="upi-popup" reward={selectedReward} open={upiOpen} onClose={() => { setUpiOpen(false); setSelectedReward(null); }} />
+      )}
+      {selectedReward && selectedReward.category === "REDEEM_CODE" && (
+        <RedeemCodePopup key="code-popup" reward={selectedReward} open={codeOpen} onClose={() => { setCodeOpen(false); setSelectedReward(null); }} />
+      )}
     </PageContainer>
   );
 }

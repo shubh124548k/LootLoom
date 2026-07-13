@@ -15,7 +15,8 @@
     "seed": "npx tsx src/scripts/seed-rewards.ts",
     "seed:all": "npx tsx src/scripts/seed-all.ts",
     "seed:missions": "npx tsx src/scripts/seed-missions.ts",
-    "create:ceo": "npx tsx src/scripts/create-ceo.ts"
+    "create:ceo": "npx tsx src/scripts/create-ceo.ts",
+    "migrate": "npx tsx src/scripts/migrate-prod.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
