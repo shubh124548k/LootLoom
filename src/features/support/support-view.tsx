@@ -44,10 +44,10 @@ export function SupportView() {
                   Email
                 </p>
                 <a
-                  href="mailto:lootloomofficial@gmail.com"
+                  href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL}`}
                   className="text-sm font-semibold text-foreground hover:text-electric transition-colors"
                 >
-                  lootloomofficial@gmail.com
+                  {process.env.NEXT_PUBLIC_SUPPORT_EMAIL}
                 </a>
               </div>
             </div>

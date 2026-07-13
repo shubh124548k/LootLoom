@@ -23,9 +23,7 @@ function checkRateLimit(key: string): boolean {
 export const authOptions: NextAuthOptions = {
   debug: process.env.NODE_ENV === "development",
   providers: [
-    ...(process.env.GOOGLE_CLIENT_ID &&
-    process.env.GOOGLE_CLIENT_SECRET &&
-    process.env.GOOGLE_CLIENT_ID !== "your-google-client-id.apps.googleusercontent.com"
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
       ? [
           GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID,
