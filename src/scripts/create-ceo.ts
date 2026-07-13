@@ -8,7 +8,11 @@ async function main() {
     return;
   }
 
-  const email = process.env.CEO_EMAIL || "ceo@lootloom.app";
+  const email = process.env.CEO_EMAIL;
+  if (!email) {
+    console.error("CEO_EMAIL environment variable is required");
+    process.exit(1);
+  }
   const existingEmail = await db.user.findUnique({ where: { email } });
   if (existingEmail) {
     console.log(`A user with email "${email}" already exists. Use a different CEO_EMAIL.`);
@@ -18,7 +22,11 @@ async function main() {
   const firstName = process.env.CEO_FIRST_NAME || "System";
   const lastName = process.env.CEO_LAST_NAME || "Administrator";
   const username = process.env.CEO_USERNAME || "ceo";
-  const password = process.env.CEO_PASSWORD || "Ceo@123456";
+  const password = process.env.CEO_PASSWORD;
+  if (!password) {
+    console.error("CEO_PASSWORD environment variable is required");
+    process.exit(1);
+  }
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
