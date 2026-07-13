@@ -4,6 +4,8 @@
  */
 import { db } from "@/lib/db";
 
+const ACTIVE_CATEGORIES = ["UPI", "REDEEM_CODE"];
+
 const UPI_REWARDS = [
   { name: "₹10 UPI", description: "Redeem ₹10 directly to your UPI account", coinCost: 300, category: "UPI", stock: -1, status: "ACTIVE" },
   { name: "₹20 UPI", description: "Redeem ₹20 directly to your UPI account", coinCost: 600, category: "UPI", stock: -1, status: "ACTIVE" },
@@ -17,16 +19,22 @@ const UPI_REWARDS = [
   { name: "₹100 UPI", description: "Redeem ₹100 directly to your UPI account", coinCost: 3000, category: "UPI", stock: -1, status: "ACTIVE" },
 ];
 
-async function main() {
-  console.log("Seeding UPI rewards...");
+const REDEEM_CODE_REWARDS = [
+  { name: "₹10 Redeem Code", description: "Get a ₹10 redeem code for your game", coinCost: 300, category: "REDEEM_CODE", stock: -1, status: "ACTIVE" },
+  { name: "₹20 Redeem Code", description: "Get a ₹20 redeem code for your game", coinCost: 600, category: "REDEEM_CODE", stock: -1, status: "ACTIVE" },
+  { name: "₹30 Redeem Code", description: "Get a ₹30 redeem code for your game", coinCost: 900, category: "REDEEM_CODE", stock: -1, status: "ACTIVE" },
+  { name: "₹50 Redeem Code", description: "Get a ₹50 redeem code for your game", coinCost: 1500, category: "REDEEM_CODE", stock: -1, status: "ACTIVE" },
+  { name: "₹100 Redeem Code", description: "Get a ₹100 redeem code for your game", coinCost: 3000, category: "REDEEM_CODE", stock: -1, status: "ACTIVE" },
+];
 
-  for (const reward of UPI_REWARDS) {
+async function seedRewards(rewards: Array<typeof UPI_REWARDS[number]>, label: string) {
+  console.log(`Seeding ${label}...`);
+  for (const reward of rewards) {
     const existing = await db.reward.findFirst({ where: { name: reward.name } });
     if (!existing) {
       await db.reward.create({ data: reward });
       console.log(`  + Created: ${reward.name} (${reward.coinCost} coins)`);
     } else {
-      // Update existing reward if coin cost changed
       if (existing.coinCost !== reward.coinCost || existing.category !== reward.category) {
         await db.reward.update({
           where: { id: existing.id },
@@ -38,12 +46,24 @@ async function main() {
       }
     }
   }
+}
 
-  // Disable all non-UPI rewards (remove game/gift card options)
-  const nonUpi = await db.reward.findMany({ where: { category: { not: "UPI" } } });
-  for (const r of nonUpi) {
+async function main() {
+  await seedRewards(UPI_REWARDS, "UPI rewards");
+  await seedRewards(REDEEM_CODE_REWARDS, "Redeem Code rewards");
+
+  // Disable rewards outside active categories (remove game/gift card options)
+  const toDisable = await db.reward.findMany({ where: { category: { notIn: ACTIVE_CATEGORIES } } });
+  for (const r of toDisable) {
     await db.reward.update({ where: { id: r.id }, data: { status: "DISABLED" } });
-    console.log(`  x Disabled: ${r.name}`);
+    console.log(`  x Disabled: ${r.name} (${r.category})`);
+  }
+
+  // Ensure all active-category rewards are enabled
+  const toEnable = await db.reward.findMany({ where: { category: { in: ACTIVE_CATEGORIES }, status: "DISABLED" } });
+  for (const r of toEnable) {
+    await db.reward.update({ where: { id: r.id }, data: { status: "ACTIVE" } });
+    console.log(`  ✓ Enabled: ${r.name}`);
   }
 
   console.log("Seed complete!");
