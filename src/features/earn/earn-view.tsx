@@ -270,28 +270,60 @@ export function EarnView() {
 
   const handleWatchAd = async () => {
     setWatchLoading(true);
+    let currentRenderer: { cleanup: () => void } | null = null;
     try {
-      const resp = await fetch("/api/ads/waterfall", {
+      const sessionResp = await fetch("/api/ads/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ adType: "REWARDED_VIDEO" }),
       });
-      const json = await resp.json();
-      if (resp.ok && json.success) {
-        toast({ title: "Ad Reward!", description: `+${json.data.rewardAmount} coins earned`, variant: "default" });
-        fetchAll();
-      } else {
+      const sessionJson = await sessionResp.json();
+      if (!sessionResp.ok || !sessionJson.success) {
         toast({
           title: "Ad unavailable",
-          description: json.message || json.data?.code === "DAILY_LIMIT_REACHED"
-            ? "Daily limit reached. Come back tomorrow!" : "No ads available right now",
+          description: sessionJson.message || "Daily limit reached. Come back tomorrow!",
           variant: "default",
         });
-        if (json.data?.code === "DAILY_LIMIT_REACHED") fetchAll();
+        if (sessionJson.code === "DAILY_LIMIT_REACHED") fetchAll();
+        return;
       }
+
+      const { sessionId } = sessionJson.data;
+      const providerKey = sessionJson.data.providerKey || "adsterra";
+
+      const { getRenderer } = await import("@/lib/ads/client-renderer");
+      const renderer = getRenderer(providerKey, sessionId);
+      if (!renderer) {
+        toast({ title: "Ad error", description: "No renderer available", variant: "destructive" });
+        return;
+      }
+      currentRenderer = renderer;
+
+      const result = await renderer.render();
+      renderer.cleanup();
+      currentRenderer = null;
+
+      if (!result.success) {
+        toast({ title: "Ad failed", description: result.error || "Could not show ad", variant: "destructive" });
+        return;
+      }
+
+      const creditResp = await fetch("/api/ads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      });
+      const creditJson = await creditResp.json();
+      if (creditResp.ok && creditJson.success) {
+        toast({ title: "Ad Reward!", description: `+${creditJson.data.rewardAmount} coins earned`, variant: "default" });
+      } else {
+        toast({ title: "Ad completed", description: creditJson.message || "Reward could not be credited", variant: "default" });
+      }
+      fetchAll();
     } catch {
       toast({ title: "Network error", description: "Could not load ad", variant: "destructive" });
     } finally {
+      if (currentRenderer) currentRenderer.cleanup();
       setWatchLoading(false);
     }
   };

@@ -59,10 +59,18 @@ export async function POST(req: Request) {
     }, { status: 429 });
   }
 
+  const { loadProviderConfigs } = await import("@/lib/ads/config");
+  const { OFFICIAL_PROVIDER_KEYS } = await import("@/lib/ads/client-renderer");
+  const allProviders = await loadProviderConfigs();
+  const activeProvider = allProviders.find(
+    (p) => p.enabled && p.status === "ACTIVE" && OFFICIAL_PROVIDER_KEYS.includes(p.key as any)
+  );
+  const providerKey = activeProvider?.key || "adsterra";
+
   const adEvent = await db.adEvent.create({
     data: {
       userId,
-      providerKey: "waterfall",
+      providerKey,
       adType,
       rewardAmount,
       status: "STARTED",
@@ -74,6 +82,7 @@ export async function POST(req: Request) {
     data: {
       sessionId: adEvent.id,
       rewardAmount,
+      providerKey,
       adType,
       watchedToday: todayAdCount,
       limit: dailyAdLimit,
