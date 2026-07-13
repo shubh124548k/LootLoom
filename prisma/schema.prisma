@@ -44,6 +44,7 @@ model User {
   redeemRequests  RedeemRequest[]
   notifications   Notification[]
   supportTickets  SupportTicket[]
+  supportMessages SupportMessage[]
   auditLogs       AuditLog[]       @relation("AuditActor")
   feedback        UserFeedback[]   @relation("UserFeedback")
   referralCode    ReferralCode?
