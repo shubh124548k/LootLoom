@@ -40,7 +40,6 @@ export const metadata: Metadata = {
     apple: "/logo.svg",
   },
   robots: { index: true, follow: true },
-  metadataBase: new URL("https://lootloom.netlify.app"),
   openGraph: {
     title: "LootLoom — Premium Reward Platform",
     description: "Earn coins, manage your wallet, redeem rewards.",
