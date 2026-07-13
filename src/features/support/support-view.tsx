@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { LifeBuoy, Mail } from "lucide-react";
 import {
@@ -11,6 +12,19 @@ import {
 import { cardReveal } from "@/lib/animations";
 
 export function SupportView() {
+  const [supportEmail, setSupportEmail] = useState("");
+
+  useEffect(() => {
+    fetch("/api/settings/public")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data?.supportEmail) {
+          setSupportEmail(data.data.supportEmail);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <PageContainer>
       <PageHeader
@@ -37,20 +51,22 @@ export function SupportView() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3 rounded-xl glass-2 ring-1 ring-border px-5 py-3.5">
-              <Mail size={18} className="text-electric shrink-0" />
-              <div className="text-left">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Email
-                </p>
-                <a
-                  href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL}`}
-                  className="text-sm font-semibold text-foreground hover:text-electric transition-colors"
-                >
-                  {process.env.NEXT_PUBLIC_SUPPORT_EMAIL}
-                </a>
+            {supportEmail && (
+              <div className="flex items-center gap-3 rounded-xl glass-2 ring-1 ring-border px-5 py-3.5">
+                <Mail size={18} className="text-electric shrink-0" />
+                <div className="text-left">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Email
+                  </p>
+                  <a
+                    href={`mailto:${supportEmail}`}
+                    className="text-sm font-semibold text-foreground hover:text-electric transition-colors"
+                  >
+                    {supportEmail}
+                  </a>
+                </div>
               </div>
-            </div>
+            )}
 
             <p className="text-xs text-muted-foreground">
               We typically respond within 24 hours.
