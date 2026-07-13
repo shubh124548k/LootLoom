@@ -164,14 +164,20 @@ function MiniStatBox({ icon, accent, label, value, sub }: { icon: string; accent
   );
 }
 
-function CountdownTimer({ targetIso }: { targetIso: string }) {
+function CountdownTimer({ targetIso, onExpire }: { targetIso: string; onExpire?: () => void }) {
   const [display, setDisplay] = useState("00:00:00");
+  const expiredRef = useRef(false);
 
   useEffect(() => {
+    expiredRef.current = false;
     function tick() {
       const diff = new Date(targetIso).getTime() - Date.now();
       if (diff <= 0) {
         setDisplay("00:00:00");
+        if (!expiredRef.current) {
+          expiredRef.current = true;
+          onExpire?.();
+        }
         return;
       }
       const h = Math.floor(diff / 3600000);
@@ -184,7 +190,7 @@ function CountdownTimer({ targetIso }: { targetIso: string }) {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [targetIso]);
+  }, [targetIso, onExpire]);
 
   return (
     <span className="font-bold text-xl tabular-nums tracking-wider text-foreground">
@@ -364,12 +370,16 @@ export function EarnView() {
                     </p>
                   </div>
 
-                  {/* Countdown when limit reached */}
-                  {adStatus?.limitReached && (
-                    <div className="rounded-xl glass-2 ring-1 ring-rose/25 px-5 py-4 self-start">
-                      <p className="text-sm font-semibold text-rose-400 mb-1">Daily limit reached</p>
-                      <p className="text-xs text-muted-foreground mb-2">Next reset in</p>
-                      <CountdownTimer targetIso={adStatus.nextReset} />
+                  {/* Live countdown — always visible */}
+                  {adStatus && (
+                    <div className="rounded-xl glass-2 ring-1 ring-electric/20 px-4 py-3 self-start flex items-center gap-3">
+                      <Clock size={16} className={adStatus.limitReached ? "text-rose-400" : "text-electric"} />
+                      <div>
+                        <p className={`text-xs font-semibold ${adStatus.limitReached ? "text-rose-400" : "text-muted-foreground"}`}>
+                          {adStatus.limitReached ? "Daily limit reached — resets in" : "Next reset in"}
+                        </p>
+                        <CountdownTimer targetIso={adStatus.nextReset} onExpire={fetchAll} />
+                      </div>
                     </div>
                   )}
                 </div>

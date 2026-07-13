@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getEarnConfigValue } from "@/lib/earn/config";
 
 /**
  * POST /api/ai/assistant — LootLoom AI Assistant (rule-based, no fake AI).
@@ -27,7 +28,8 @@ export async function POST(req: NextRequest) {
   const lowerMsg = message.toLowerCase();
 
   // Fetch real user context
-  const [user, wallet, pendingRedeems, todayAds, activeCampaigns] = await Promise.all([
+  const [dailyLimit, user, wallet, pendingRedeems, todayAds, activeCampaigns] = await Promise.all([
+    getEarnConfigValue("DAILY_AD_LIMIT"),
     db.user.findUnique({ where: { id: userId }, select: { name: true, createdAt: true } }),
     db.wallet.findUnique({ where: { userId }, select: { coinBalance: true, totalEarned: true, totalSpent: true } }),
     db.redeemRequest.count({ where: { userId, status: "PENDING" } }),
@@ -44,7 +46,7 @@ export async function POST(req: NextRequest) {
   let suggestions: string[] = [];
 
   if (lowerMsg.includes("earn") || lowerMsg.includes("coin") || lowerMsg.includes("make")) {
-    const remaining = 100 - todayAds;
+    const remaining = Math.max(0, dailyLimit - todayAds);
     response = `You can earn coins by:\n\n1. **Watch Rewarded Ads** — ${remaining} ads available today (25 coins each)\n2. **Daily Bonus** — claim your daily login bonus\n3. **Missions** — complete daily missions for bonus coins\n4. **Active Campaigns** — ${activeCampaigns.length} special campaign(s) running now${activeCampaigns.length > 0 ? ` (${activeCampaigns.map(c => c.name).join(", ")})` : ""}\n\nYour earnings so far: ${totalEarned.toLocaleString()} coins.`;
     suggestions = ["Watch an ad now", "Check daily bonus", "View active campaigns"];
   } else if (lowerMsg.includes("wallet") || lowerMsg.includes("balance")) {

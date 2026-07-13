@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getEarnConfigValue } from "@/lib/earn/config";
 
 /**
  * GET /api/ai/recommendations — personalized earning + reward recommendations.
@@ -18,7 +19,8 @@ export async function GET() {
   const userId = session.user.id;
   const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
 
-  const [wallet, todayAds, totalAds, pendingRedeems, recentRedeems, activeCampaigns, allRewards] = await Promise.all([
+  const [dailyLimit, wallet, todayAds, totalAds, pendingRedeems, recentRedeems, activeCampaigns, allRewards] = await Promise.all([
+    getEarnConfigValue("DAILY_AD_LIMIT"),
     db.wallet.findUnique({ where: { userId } }),
     db.adEvent.count({ where: { userId, status: "VERIFIED", createdAt: { gte: todayStart } } }),
     db.adEvent.count({ where: { userId, status: "VERIFIED" } }),
@@ -29,7 +31,7 @@ export async function GET() {
   ]);
 
   const balance = wallet?.coinBalance || 0;
-  const remainingAds = Math.max(0, 100 - todayAds);
+  const remainingAds = Math.max(0, dailyLimit - todayAds);
   const recommendations: Array<{ type: string; title: string; description: string; action?: string; priority: number }> = [];
 
   // Earning recommendations
