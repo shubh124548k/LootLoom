@@ -289,7 +289,7 @@ export function EarnView() {
       }
 
       const { sessionId } = sessionJson.data;
-      const providerKeys: string[] = sessionJson.data.providerKeys || ["adsterra"];
+      const providerKeys: string[] = sessionJson.data.providerKeys || ["monetag", "adsterra"];
 
       const { getRenderer } = await import("@/lib/ads/client-renderer");
       let lastError = "";
@@ -299,7 +299,7 @@ export function EarnView() {
         console.log(`[AD] Trying provider: ${key}`);
         const renderer = getRenderer(key, sessionId);
         if (!renderer) {
-          console.log(`[AD] ${key}: no renderer registered, skip`);
+          console.log(`[AD] ${key}: skip — no renderer`);
           continue;
         }
         currentRenderer = renderer;
@@ -320,6 +320,9 @@ export function EarnView() {
         toast({ title: "No ads available", description: lastError || "All providers failed", variant: "destructive" });
         return;
       }
+
+      // Wait minimum ad duration (server verifies actual elapsed time)
+      await new Promise((r) => setTimeout(r, 30000));
 
       const creditResp = await fetch("/api/ads", {
         method: "POST",
