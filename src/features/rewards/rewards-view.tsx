@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Wallet, Banknote, Hash, X,
-} from "lucide-react";
+import { Wallet, Banknote, Hash, X } from "lucide-react";
 import {
   PageContainer,
   PageHeader,
@@ -39,7 +37,6 @@ function UpiPopup({ reward, open, onClose }: {
   const [upiId, setUpiId] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const sufficient = availableCoins >= reward.coinCost;
 
   const handleSubmit = async () => {
     if (!upiId.trim() || saving) return;
@@ -91,10 +88,10 @@ function UpiPopup({ reward, open, onClose }: {
             className="w-full max-w-[420px]"
           >
             <GlassCard level={3} sheen reflect className="overflow-hidden shadow-[var(--shadow-xl)]">
-              <div className="p-6 space-y-4">
+              <div className="p-5 sm:p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold text-foreground">UPI Withdrawal</h2>
-                  <button onClick={onClose} aria-label="Close" className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent transition-colors">
+                  <button onClick={onClose} aria-label="Close" className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent transition-colors shrink-0">
                     <X size={18} />
                   </button>
                 </div>
@@ -102,17 +99,17 @@ function UpiPopup({ reward, open, onClose }: {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl glass-1 p-3 text-center">
                     <p className="text-xs text-muted-foreground mb-0.5">Amount</p>
-                    <p className="text-xl font-bold text-foreground">{reward.name}</p>
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{reward.name}</p>
                   </div>
                   <div className="rounded-xl glass-1 p-3 text-center">
                     <p className="text-xs text-muted-foreground mb-0.5">Coins Required</p>
-                    <p className="text-xl font-bold text-foreground">{reward.coinCost.toLocaleString("en-IN")}</p>
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{reward.coinCost.toLocaleString("en-IN")}</p>
                   </div>
                 </div>
 
                 <div className="rounded-xl glass-1 p-3 flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Current Balance</span>
-                  <span className={`text-sm font-bold ${sufficient ? "text-emerald-brand" : "text-rose-brand"}`}>
+                  <span className={`text-sm font-bold tabular-nums ${availableCoins >= reward.coinCost ? "text-emerald-brand" : "text-rose-brand"}`}>
                     {availableCoins.toLocaleString("en-IN")} coins
                   </span>
                 </div>
@@ -165,15 +162,11 @@ function RedeemCodePopup({ reward, open, onClose }: {
   const { availableCoins } = useWalletStore();
   const [gameName, setGameName] = useState("");
   const [gameUid, setGameUid] = useState("");
-  const [platform, setPlatform] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-  const sufficient = availableCoins >= reward.coinCost;
-
-  const PLATFORMS = ["BGMI", "PUBG", "Free Fire", "Steam", "Google Play", "Other"];
 
   const handleSubmit = async () => {
-    if (!gameName.trim() || !gameUid.trim() || !platform.trim() || saving) return;
+    if (!gameName.trim() || !gameUid.trim() || saving) return;
     setSaving(true);
     try {
       const res = await fetch("/api/redeem", {
@@ -185,7 +178,6 @@ function RedeemCodePopup({ reward, open, onClose }: {
           paymentDetails: JSON.stringify({
             gameName: gameName.trim(),
             gameUid: gameUid.trim(),
-            platform: platform.trim(),
           }),
           userNote: notes.trim() || undefined,
         }),
@@ -195,7 +187,6 @@ function RedeemCodePopup({ reward, open, onClose }: {
         toast({ title: "Request Submitted", description: "CEO will provide the redeem code", variant: "default" });
         setGameName("");
         setGameUid("");
-        setPlatform("");
         setNotes("");
         onClose();
       } else {
@@ -228,10 +219,10 @@ function RedeemCodePopup({ reward, open, onClose }: {
             className="w-full max-w-[420px]"
           >
             <GlassCard level={3} sheen reflect className="overflow-hidden shadow-[var(--shadow-xl)]">
-              <div className="p-6 space-y-4">
+              <div className="p-5 sm:p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold text-foreground">Redeem Code</h2>
-                  <button onClick={onClose} aria-label="Close" className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent transition-colors">
+                  <button onClick={onClose} aria-label="Close" className="size-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent transition-colors shrink-0">
                     <X size={18} />
                   </button>
                 </div>
@@ -239,17 +230,17 @@ function RedeemCodePopup({ reward, open, onClose }: {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl glass-1 p-3 text-center">
                     <p className="text-xs text-muted-foreground mb-0.5">Amount</p>
-                    <p className="text-xl font-bold text-foreground">{reward.name}</p>
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{reward.name}</p>
                   </div>
                   <div className="rounded-xl glass-1 p-3 text-center">
                     <p className="text-xs text-muted-foreground mb-0.5">Coins Required</p>
-                    <p className="text-xl font-bold text-foreground">{reward.coinCost.toLocaleString("en-IN")}</p>
+                    <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{reward.coinCost.toLocaleString("en-IN")}</p>
                   </div>
                 </div>
 
                 <div className="rounded-xl glass-1 p-3 flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Current Balance</span>
-                  <span className={`text-sm font-bold ${sufficient ? "text-emerald-brand" : "text-rose-brand"}`}>
+                  <span className={`text-sm font-bold tabular-nums ${availableCoins >= reward.coinCost ? "text-emerald-brand" : "text-rose-brand"}`}>
                     {availableCoins.toLocaleString("en-IN")} coins
                   </span>
                 </div>
@@ -277,20 +268,6 @@ function RedeemCodePopup({ reward, open, onClose }: {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Platform</label>
-                  <select
-                    value={platform}
-                    onChange={(e) => setPlatform(e.target.value)}
-                    className="w-full h-10 rounded-xl border border-border bg-background/50 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-electric transition-shadow"
-                  >
-                    <option value="">Select platform...</option>
-                    {PLATFORMS.map((p) => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Additional Notes <span className="text-muted-foreground font-normal">(optional)</span></label>
                   <textarea
                     value={notes}
@@ -305,7 +282,7 @@ function RedeemCodePopup({ reward, open, onClose }: {
                   <LootButton variant="ghost" size="md" fullWidth onClick={onClose} leftIcon={<X size={15} />}>
                     Cancel
                   </LootButton>
-                  <LootButton variant="electric" size="md" fullWidth loading={saving} onClick={handleSubmit} disabled={!gameName.trim() || !gameUid.trim() || !platform.trim()}>
+                  <LootButton variant="electric" size="md" fullWidth loading={saving} onClick={handleSubmit} disabled={!gameName.trim() || !gameUid.trim()}>
                     {saving ? "Submitting..." : "Submit"}
                   </LootButton>
                 </div>
@@ -353,20 +330,15 @@ export function RewardsView() {
         description="Redeem your coins for cash or game codes"
       />
 
-      {/* Balance */}
-      <motion.div
-        variants={cardReveal}
-        initial="hidden"
-        animate="visible"
-        className="mb-6"
-      >
+      {/* Balance Card */}
+      <div className="mb-6">
         <GlassCard level={3} sheen className="p-5 sm:p-6 shadow-[var(--shadow-lg)]">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="size-14 rounded-2xl bg-[linear-gradient(135deg,var(--electric),var(--cyan-brand)_60%,var(--purple-brand))] flex items-center justify-center shadow-[var(--shadow-glow)]">
+              <div className="size-14 rounded-2xl bg-[linear-gradient(135deg,var(--electric),var(--cyan-brand)_60%,var(--purple-brand))] flex items-center justify-center shadow-[var(--shadow-glow)] shrink-0">
                 <Wallet size={24} className="text-white" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground font-medium">Current Balance</p>
                 <p className="text-3xl font-bold text-foreground tabular-nums">
                   {availableCoins.toLocaleString("en-IN")} <span className="text-base text-muted-foreground font-normal">coins</span>
@@ -379,7 +351,7 @@ export function RewardsView() {
             </div>
           </div>
         </GlassCard>
-      </motion.div>
+      </div>
 
       {/* Tabs */}
       <div className="mb-6">
@@ -409,114 +381,62 @@ export function RewardsView() {
         </div>
       </div>
 
-      {/* UPI Tab */}
-      {tab === "upi" && (
-        loading ? (
-          <div className="flex items-center justify-center py-16">
-            <GlassLoader label="Loading rewards..." />
-          </div>
-        ) : error ? (
-          <ErrorState icon="AlertCircle" title="Failed to load" description={error} />
-        ) : upiRewards.length === 0 ? (
-          <EmptyState icon="Banknote" title="No rewards available" description="UPI withdrawal options will appear here once available." />
-        ) : (
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
-          >
-            {upiRewards.map((reward, i) => (
-              <motion.div
-                key={reward.id}
-                variants={cardReveal}
-                custom={i}
-                className="group"
-              >
-                <GlassCard
-                  level={2}
-                  hover
-                  className="p-4 cursor-pointer"
-                  onClick={() => { setSelectedReward(reward); setUpiOpen(true); }}
-                >
-                  <div className="flex flex-col items-center text-center gap-3">
-                    <div className="size-10 rounded-xl bg-emerald-brand/10 ring-1 ring-emerald-brand/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Banknote size={18} className="text-emerald-brand" />
-                    </div>
-                    <div>
-                      <p className="text-xl font-bold text-foreground tabular-nums">{reward.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{reward.coinCost.toLocaleString("en-IN")} coins</p>
-                    </div>
-                    {availableCoins >= reward.coinCost ? (
-                      <span className="text-xs font-semibold text-emerald-brand bg-emerald-brand/10 px-3 py-1 rounded-full">
-                        Redeem Now
-                      </span>
-                    ) : (
-                      <span className="text-xs font-semibold text-rose-brand bg-rose-brand/10 px-3 py-1 rounded-full">
-                        Insufficient Coins
-                      </span>
-                    )}
-                  </div>
-                </GlassCard>
-              </motion.div>
-            ))}
-          </motion.div>
-        )
-      )}
-
-      {/* Redeem Code Tab */}
-      {tab === "redeem-code" && (
-        loading ? (
-          <div className="flex items-center justify-center py-16">
-            <GlassLoader label="Loading rewards..." />
-          </div>
-        ) : error ? (
-          <ErrorState icon="AlertCircle" title="Failed to load" description={error} />
-        ) : codeRewards.length === 0 ? (
-          <EmptyState icon="Hash" title="No options available" description="Redeem code options will appear here once available." />
-        ) : (
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
-          >
-            {codeRewards.map((reward, i) => (
-              <motion.div
-                key={reward.id}
-                variants={cardReveal}
-                custom={i}
-                className="group"
-              >
-                <GlassCard
-                  level={2}
-                  hover
-                  className="p-4 cursor-pointer"
-                  onClick={() => { setSelectedReward(reward); setCodeOpen(true); }}
-                >
-                  <div className="flex flex-col items-center text-center gap-3">
-                    <div className="size-10 rounded-xl bg-purple-brand/10 ring-1 ring-purple-brand/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Hash size={18} className="text-purple-brand" />
-                    </div>
-                    <div>
-                      <p className="text-xl font-bold text-foreground tabular-nums">{reward.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{reward.coinCost.toLocaleString("en-IN")} coins</p>
-                    </div>
-                    {availableCoins >= reward.coinCost ? (
-                      <span className="text-xs font-semibold text-emerald-brand bg-emerald-brand/10 px-3 py-1 rounded-full">
-                        Redeem Now
-                      </span>
-                    ) : (
-                      <span className="text-xs font-semibold text-rose-brand bg-rose-brand/10 px-3 py-1 rounded-full">
-                        Insufficient Coins
-                      </span>
-                    )}
-                  </div>
-                </GlassCard>
-              </motion.div>
-            ))}
-          </motion.div>
-        )
+      {/* Tab Content — same layout for both tabs */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <GlassLoader label="Loading rewards..." />
+        </div>
+      ) : error ? (
+        <ErrorState icon="AlertCircle" title="Failed to load" description={error} />
+      ) : (tab === "upi" ? upiRewards : codeRewards).length === 0 ? (
+        <EmptyState
+          icon={tab === "upi" ? "Banknote" : "Hash"}
+          title="No rewards available"
+          description={tab === "upi" ? "UPI withdrawal options will appear here once available." : "Redeem code options will appear here once available."}
+        />
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          {(tab === "upi" ? upiRewards : codeRewards).map((reward) => (
+            <GlassCard
+              key={reward.id}
+              level={2}
+              hover
+              className="p-4 cursor-pointer group"
+              onClick={() => {
+                setSelectedReward(reward);
+                if (tab === "upi") setUpiOpen(true);
+                else setCodeOpen(true);
+              }}
+            >
+              <div className="flex flex-col items-center text-center gap-3">
+                <div className={`size-10 rounded-xl ring-1 flex items-center justify-center group-hover:scale-110 transition-transform ${
+                  tab === "upi"
+                    ? "bg-emerald-brand/10 ring-emerald-brand/20"
+                    : "bg-purple-brand/10 ring-purple-brand/20"
+                }`}>
+                  {tab === "upi" ? (
+                    <Banknote size={18} className="text-emerald-brand" />
+                  ) : (
+                    <Hash size={18} className="text-purple-brand" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{reward.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{reward.coinCost.toLocaleString("en-IN")} coins</p>
+                </div>
+                {availableCoins >= reward.coinCost ? (
+                  <span className="text-xs font-semibold text-emerald-brand bg-emerald-brand/10 px-3 py-1 rounded-full">
+                    Redeem Now
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold text-rose-brand bg-rose-brand/10 px-3 py-1 rounded-full">
+                    Insufficient Coins
+                  </span>
+                )}
+              </div>
+            </GlassCard>
+          ))}
+        </div>
       )}
 
       {/* Popups */}

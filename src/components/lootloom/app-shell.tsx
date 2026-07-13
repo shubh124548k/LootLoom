@@ -11,7 +11,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="relative min-h-screen"
+      className="relative min-h-screen overflow-x-hidden"
       style={
         { "--sidebar-w": sidebarWidth } as React.CSSProperties
       }

@@ -265,7 +265,7 @@ export function AppRouter() {
 
   if ((isCeoAuthenticated || current === "ceo-login") && CEO_APP_VIEWS.includes(current)) {
     return (
-      <div className="relative min-h-screen">
+      <div className="relative min-h-screen overflow-x-hidden">
         <BackgroundEngine />
         <CeoLayout>{animateContent}</CeoLayout>
       </div>
@@ -275,7 +275,7 @@ export function AppRouter() {
   const CEO_GUARDED: ViewId[] = CEO_APP_VIEWS;
   if (isPublicView || isAuthView || isSystemView || isLegalView || current === "ceo-login" || current === "ceo-restricted" || CEO_GUARDED.includes(current)) {
     return (
-      <div className="relative min-h-screen">
+      <div className="relative min-h-screen overflow-x-hidden">
         <BackgroundEngine />
         {animateContent}
       </div>
@@ -283,7 +283,7 @@ export function AppRouter() {
   }
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-screen overflow-x-hidden">
       <BackgroundEngine />
       <AppShell>{animateContent}</AppShell>
     </div>

@@ -1,31 +1,30 @@
 /**
- * LootLoom — Seed UPI-only rewards into the database.
+ * LootLoom — Seed rewards into the database.
  * Run: bun run src/scripts/seed-rewards.ts
  */
 import { db } from "@/lib/db";
+import { inrToCoins } from "@/lib/coin-config";
 
 const ACTIVE_CATEGORIES = ["UPI", "REDEEM_CODE"];
+const TIERS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 300, 400, 500, 600, 700, 800, 900, 1000];
 
-const UPI_REWARDS = [
-  { name: "₹10 UPI", description: "Redeem ₹10 directly to your UPI account", coinCost: 300, category: "UPI", stock: -1, status: "ACTIVE" },
-  { name: "₹20 UPI", description: "Redeem ₹20 directly to your UPI account", coinCost: 600, category: "UPI", stock: -1, status: "ACTIVE" },
-  { name: "₹30 UPI", description: "Redeem ₹30 directly to your UPI account", coinCost: 900, category: "UPI", stock: -1, status: "ACTIVE" },
-  { name: "₹40 UPI", description: "Redeem ₹40 directly to your UPI account", coinCost: 1200, category: "UPI", stock: -1, status: "ACTIVE" },
-  { name: "₹50 UPI", description: "Redeem ₹50 directly to your UPI account", coinCost: 1500, category: "UPI", stock: -1, status: "ACTIVE" },
-  { name: "₹60 UPI", description: "Redeem ₹60 directly to your UPI account", coinCost: 1800, category: "UPI", stock: -1, status: "ACTIVE" },
-  { name: "₹70 UPI", description: "Redeem ₹70 directly to your UPI account", coinCost: 2100, category: "UPI", stock: -1, status: "ACTIVE" },
-  { name: "₹80 UPI", description: "Redeem ₹80 directly to your UPI account", coinCost: 2400, category: "UPI", stock: -1, status: "ACTIVE" },
-  { name: "₹90 UPI", description: "Redeem ₹90 directly to your UPI account", coinCost: 2700, category: "UPI", stock: -1, status: "ACTIVE" },
-  { name: "₹100 UPI", description: "Redeem ₹100 directly to your UPI account", coinCost: 3000, category: "UPI", stock: -1, status: "ACTIVE" },
-];
+const UPI_REWARDS = TIERS.map((value) => ({
+  name: `₹${value} UPI`,
+  description: `Redeem ₹${value} directly to your UPI account`,
+  coinCost: inrToCoins(value),
+  category: "UPI" as const,
+  stock: -1,
+  status: "ACTIVE" as const,
+}));
 
-const REDEEM_CODE_REWARDS = [
-  { name: "₹10 Redeem Code", description: "Get a ₹10 redeem code for your game", coinCost: 300, category: "REDEEM_CODE", stock: -1, status: "ACTIVE" },
-  { name: "₹20 Redeem Code", description: "Get a ₹20 redeem code for your game", coinCost: 600, category: "REDEEM_CODE", stock: -1, status: "ACTIVE" },
-  { name: "₹30 Redeem Code", description: "Get a ₹30 redeem code for your game", coinCost: 900, category: "REDEEM_CODE", stock: -1, status: "ACTIVE" },
-  { name: "₹50 Redeem Code", description: "Get a ₹50 redeem code for your game", coinCost: 1500, category: "REDEEM_CODE", stock: -1, status: "ACTIVE" },
-  { name: "₹100 Redeem Code", description: "Get a ₹100 redeem code for your game", coinCost: 3000, category: "REDEEM_CODE", stock: -1, status: "ACTIVE" },
-];
+const REDEEM_CODE_REWARDS = TIERS.map((value) => ({
+  name: `₹${value} Redeem Code`,
+  description: `Get a ₹${value} redeem code for your game`,
+  coinCost: inrToCoins(value),
+  category: "REDEEM_CODE" as const,
+  stock: -1,
+  status: "ACTIVE" as const,
+}));
 
 async function seedRewards(rewards: Array<typeof UPI_REWARDS[number]>, label: string) {
   console.log(`Seeding ${label}...`);
