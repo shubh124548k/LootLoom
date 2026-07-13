@@ -1,55 +1,54 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigationStore, useAuthStore } from "@/stores";
 import { BackgroundEngine, AppShell, pageTransition, RestrictedAccess, CeoLayout } from "@/components/lootloom";
 import { LEGAL_VIEWS, CEO_VIEWS, SYSTEM_VIEWS, AUTH_VIEWS } from "@/config/navigation";
 import { RouteGuard } from "@/components/auth";
-import { Suspense, useMemo, useEffect, Component, type ReactNode } from "react";
+import { useEffect, Component, type ReactNode } from "react";
 import { GlassLoader } from "@/components/lootloom/states";
 import { RefreshCw, AlertTriangle } from "lucide-react";
 import type { ViewId } from "@/types";
 
-// CRITICAL: All views are imported DIRECTLY (not lazy) because lazy loading
-// causes separate chunk compilation/loading which fails in memory-constrained
-// environments (4GB sandbox). Direct imports bundle everything into one chunk
-// that loads reliably.
-import { HomeView } from "@/features/home/home-view";
-import { AuthView } from "@/features/auth/auth-view";
-import { DashboardView } from "@/features/dashboard/dashboard-view";
-import { WalletView } from "@/features/wallet/wallet-view";
-import { EarnView } from "@/features/earn/earn-view";
-import { RewardsView } from "@/features/rewards/rewards-view";
-import { PagesView } from "@/features/pages/pages-view";
-import { SystemView } from "@/features/system/system-view";
-import { TransactionsView } from "@/features/transactions/transactions-view";
-import { NotificationsView } from "@/features/notifications/notifications-view";
-import { ProfileView } from "@/features/profile/profile-view";
-import { GamificationView } from "@/features/gamification/gamification-view";
-import { SupportView } from "@/features/support/support-view";
-import { LegalView } from "@/features/legal/legal-view";
+const LazyHomeView = dynamic(() => import("@/features/home/home-view").then((m) => ({ default: m.HomeView })), { loading: () => <PageFallback /> });
+const LazyAuthView = dynamic(() => import("@/features/auth/auth-view").then((m) => ({ default: m.AuthView })), { loading: () => <PageFallback /> });
+const LazyDashboardView = dynamic(() => import("@/features/dashboard/dashboard-view").then((m) => ({ default: m.DashboardView })), { loading: () => <PageFallback /> });
+const LazyWalletView = dynamic(() => import("@/features/wallet/wallet-view").then((m) => ({ default: m.WalletView })), { loading: () => <PageFallback /> });
+const LazyEarnView = dynamic(() => import("@/features/earn/earn-view").then((m) => ({ default: m.EarnView })), { loading: () => <PageFallback /> });
+const LazyRewardsView = dynamic(() => import("@/features/rewards/rewards-view").then((m) => ({ default: m.RewardsView })), { loading: () => <PageFallback /> });
+const LazyPagesView = dynamic(() => import("@/features/pages/pages-view").then((m) => ({ default: m.PagesView })), { loading: () => <PageFallback /> });
+const LazySystemView = dynamic(() => import("@/features/system/system-view").then((m) => ({ default: m.SystemView })), { loading: () => <PageFallback /> });
+const LazyTransactionsView = dynamic(() => import("@/features/transactions/transactions-view").then((m) => ({ default: m.TransactionsView })), { loading: () => <PageFallback /> });
+const LazyNotificationsView = dynamic(() => import("@/features/notifications/notifications-view").then((m) => ({ default: m.NotificationsView })), { loading: () => <PageFallback /> });
+const LazyProfileView = dynamic(() => import("@/features/profile/profile-view").then((m) => ({ default: m.ProfileView })), { loading: () => <PageFallback /> });
+const LazyGamificationView = dynamic(() => import("@/features/gamification/gamification-view").then((m) => ({ default: m.GamificationView })), { loading: () => <PageFallback /> });
+const LazySupportView = dynamic(() => import("@/features/support/support-view").then((m) => ({ default: m.SupportView })), { loading: () => <PageFallback /> });
+const LazyLegalView = dynamic(() => import("@/features/legal/legal-view").then((m) => ({ default: m.LegalView })), { loading: () => <PageFallback /> });
 
-// CEO views
-import { CeoAuthView } from "@/features/ceo/ceo-auth-view";
-import { CeoDashboardView } from "@/features/ceo/ceo-dashboard-view";
-import { CeoUsersView } from "@/features/ceo/ceo-users-view";
-import { CeoRedeemView } from "@/features/ceo/ceo-redeem-view";
-import { CeoSupportView } from "@/features/ceo/ceo-support-view";
-import { CeoNotificationsView } from "@/features/ceo/ceo-notifications-view";
-import { CeoHistoryView } from "@/features/ceo/ceo-history-view";
-import { CeoSettingsView } from "@/features/ceo/ceo-settings-view";
-import { CeoAdProvidersView } from "@/features/ceo/ceo-ad-providers-view";
+const LazyCeoAuthView = dynamic(() => import("@/features/ceo/ceo-auth-view").then((m) => ({ default: m.CeoAuthView })), { loading: () => <PageFallback /> });
+const LazyCeoDashboardView = dynamic(() => import("@/features/ceo/ceo-dashboard-view").then((m) => ({ default: m.CeoDashboardView })), { loading: () => <PageFallback /> });
+const LazyCeoUsersView = dynamic(() => import("@/features/ceo/ceo-users-view").then((m) => ({ default: m.CeoUsersView })), { loading: () => <PageFallback /> });
+const LazyCeoRedeemView = dynamic(() => import("@/features/ceo/ceo-redeem-view").then((m) => ({ default: m.CeoRedeemView })), { loading: () => <PageFallback /> });
+const LazyCeoSupportView = dynamic(() => import("@/features/ceo/ceo-support-view").then((m) => ({ default: m.CeoSupportView })), { loading: () => <PageFallback /> });
+const LazyCeoNotificationsView = dynamic(() => import("@/features/ceo/ceo-notifications-view").then((m) => ({ default: m.CeoNotificationsView })), { loading: () => <PageFallback /> });
+const LazyCeoHistoryView = dynamic(() => import("@/features/ceo/ceo-history-view").then((m) => ({ default: m.CeoHistoryView })), { loading: () => <PageFallback /> });
+const LazyCeoSettingsView = dynamic(() => import("@/features/ceo/ceo-settings-view").then((m) => ({ default: m.CeoSettingsView })), { loading: () => <PageFallback /> });
+const LazyCeoAdProvidersView = dynamic(() => import("@/features/ceo/ceo-ad-providers-view").then((m) => ({ default: m.CeoAdProvidersView })), { loading: () => <PageFallback /> });
+
+function PageFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <GlassLoader label="Loading" />
+    </div>
+  );
+}
 
 const AUTH_SET = new Set(AUTH_VIEWS);
 const SYSTEM_SET = new Set(SYSTEM_VIEWS);
 const LEGAL_SET = new Set(LEGAL_VIEWS);
 const CEO_SET = new Set(CEO_VIEWS);
 
-/**
- * ViewErrorBoundary — catches errors thrown by lazy-loaded views
- * (especially ChunkLoadError when the dev server recompiles).
- * Prevents a single failed chunk from crashing the entire app.
- */
 interface ViewErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
@@ -69,7 +68,6 @@ class ViewErrorBoundary extends Component<
   }
 
   handleRetry = () => {
-    // For chunk load errors, reload the page to get fresh chunks
     const isChunkError =
       this.state.error?.message?.toLowerCase().includes("chunkloaderror") ||
       this.state.error?.message?.toLowerCase().includes("failed to fetch dynamically imported module") ||
@@ -85,7 +83,6 @@ class ViewErrorBoundary extends Component<
       sessionStorage.removeItem("lootloom-view-reload");
     }
 
-    // Otherwise just reset the boundary and try again
     this.setState({ hasError: false, error: null });
   };
 
@@ -119,23 +116,14 @@ class ViewErrorBoundary extends Component<
   }
 }
 
-function ViewSuspense({ children }: { children: React.ReactNode }) {
+function ViewFallback() {
   return (
-    <ViewErrorBoundary>
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <GlassLoader label="Loading" />
-          </div>
-        }
-      >
-        {children}
-      </Suspense>
-    </ViewErrorBoundary>
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <GlassLoader label="Loading" />
+    </div>
   );
 }
 
-/** All CEO authenticated workspace views (rendered inside CeoLayout). */
 const CEO_APP_VIEWS: ViewId[] = [
   "ceo-dashboard",
   "ceo-redeem",
@@ -147,149 +135,157 @@ const CEO_APP_VIEWS: ViewId[] = [
   "ceo-ad-providers",
 ];
 
-/**
- * AppRouter — maps current ViewId to the appropriate feature view.
- * Layouts: public/auth/system/legal = full-screen; app = AppShell; ceo = CeoLayout.
- */
 export function AppRouter() {
   const current = useNavigationStore((s) => s.current);
   const role = useAuthStore((s) => s.role);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const navigate = useNavigationStore((s) => s.navigate);
-  const isCeoAuthenticated = role === "ceo";
 
-  // All navigation side-effects in useEffect — NEVER during render
+  useEffect(() => {
+    const unsub = useNavigationStore.subscribe((state, prev) => {
+      if (state.current !== prev.current) {
+        window.location.hash = state.current;
+      }
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      const hash = window.location.hash.replace("#", "") as ViewId;
+      if (hash && hash !== useNavigationStore.getState().current) {
+        useNavigationStore.getState().navigate(hash);
+      }
+    };
+    window.addEventListener("hashchange", handler);
+    return () => window.removeEventListener("hashchange", handler);
+  }, []);
+
   useEffect(() => {
     if (role === "ceo") {
       fetch("/api/auth/session").then(res => res.json()).then(session => {
         const userRole = (session?.user as any)?.role;
         if (userRole !== "CEO" && userRole !== "ADMIN") {
           useAuthStore.setState({ isAuthenticated: false, role: "user", status: "unauthenticated" });
-          navigate("ceo-login");
+          useNavigationStore.getState().navigate("ceo-login");
         }
       }).catch(() => {});
     }
-  }, [role, navigate]);
+  }, [role]);
 
-  // Navigate authenticated users away from login pages
   useEffect(() => {
     if (AUTH_SET.has(current) && isAuthenticated) {
-      navigate("earn");
+      useNavigationStore.getState().navigate("earn");
     }
-  }, [current, isAuthenticated, navigate]);
+  }, [current, isAuthenticated]);
 
-  // Navigate non-CEO users away from CEO pages
   useEffect(() => {
-    if (CEO_SET.has(current) && current !== "ceo-login" && !isCeoAuthenticated) {
-      navigate("ceo-login");
+    if (CEO_SET.has(current) && current !== "ceo-login" && role !== "ceo") {
+      useNavigationStore.getState().navigate("ceo-login");
     }
-  }, [current, isCeoAuthenticated, navigate]);
+  }, [current, role]);
+
+  useEffect(() => {
+    const preload = (p: () => Promise<unknown>) => { p(); };
+    preload(() => import("@/features/dashboard/dashboard-view"));
+    preload(() => import("@/features/earn/earn-view"));
+    preload(() => import("@/features/wallet/wallet-view"));
+    preload(() => import("@/features/rewards/rewards-view"));
+    preload(() => import("@/features/transactions/transactions-view"));
+    preload(() => import("@/features/notifications/notifications-view"));
+    preload(() => import("@/features/profile/profile-view"));
+    preload(() => import("@/features/support/support-view"));
+    preload(() => import("@/features/pages/pages-view"));
+    preload(() => import("@/features/gamification/gamification-view"));
+  }, []);
 
   const isAuthView = AUTH_SET.has(current);
   const isSystemView = SYSTEM_SET.has(current);
   const isLegalView = LEGAL_SET.has(current);
   const isCeoView = CEO_SET.has(current);
   const isPublicView = current === "home";
+  const isCeoAuthenticated = role === "ceo";
 
-  const view = useMemo(() => {
-    if (isPublicView)
-      return <HomeView />;
-    if (isAuthView)
-      return <AuthView />;
-    if (isSystemView)
-      return <SystemView />;
-    if (isLegalView)
-      return <LegalView />;
-    if (current === "ceo-login")
-      return <CeoAuthView />;
-
-    // CEO authenticated views — guarded by role check (redirect at top handles denial)
-    if (current === "ceo-dashboard")
-      return isCeoAuthenticated ? <CeoDashboardView /> : null;
-    if (current === "ceo-redeem")
-      return isCeoAuthenticated ? <CeoRedeemView /> : null;
-    if (current === "ceo-users")
-      return isCeoAuthenticated ? <CeoUsersView /> : null;
-    if (current === "ceo-notifications")
-      return isCeoAuthenticated ? <CeoNotificationsView /> : null;
-    if (current === "ceo-support")
-      return isCeoAuthenticated ? <CeoSupportView /> : null;
-    if (current === "ceo-history")
-      return isCeoAuthenticated ? <CeoHistoryView /> : null;
-    if (current === "ceo-settings")
-      return isCeoAuthenticated ? <CeoSettingsView /> : null;
-    if (current === "ceo-ad-providers")
-      return isCeoAuthenticated ? <CeoAdProvidersView /> : null;
-
-    // App views — protected by RouteGuard (redirects to login when unauthenticated)
+  let view: ReactNode;
+  if (isPublicView)
+    view = <LazyHomeView />;
+  else if (isAuthView)
+    view = <LazyAuthView />;
+  else if (isSystemView)
+    view = <LazySystemView />;
+  else if (isLegalView)
+    view = <LazyLegalView />;
+  else if (current === "ceo-login")
+    view = <LazyCeoAuthView />;
+  else if (current === "ceo-dashboard")
+    view = isCeoAuthenticated ? <LazyCeoDashboardView /> : null;
+  else if (current === "ceo-redeem")
+    view = isCeoAuthenticated ? <LazyCeoRedeemView /> : null;
+  else if (current === "ceo-users")
+    view = isCeoAuthenticated ? <LazyCeoUsersView /> : null;
+  else if (current === "ceo-notifications")
+    view = isCeoAuthenticated ? <LazyCeoNotificationsView /> : null;
+  else if (current === "ceo-support")
+    view = isCeoAuthenticated ? <LazyCeoSupportView /> : null;
+  else if (current === "ceo-history")
+    view = isCeoAuthenticated ? <LazyCeoHistoryView /> : null;
+  else if (current === "ceo-settings")
+    view = isCeoAuthenticated ? <LazyCeoSettingsView /> : null;
+  else if (current === "ceo-ad-providers")
+    view = isCeoAuthenticated ? <LazyCeoAdProvidersView /> : null;
+  else {
     switch (current) {
-      case "dashboard":
-        return <RouteGuard><DashboardView /></RouteGuard>;
-      case "wallet":
-        return <RouteGuard><WalletView /></RouteGuard>;
-      case "earn":
-        return <RouteGuard><EarnView /></RouteGuard>;
-      case "redeem":
-        return <RouteGuard><RewardsView /></RouteGuard>;
-      case "history":
-        return <RouteGuard><TransactionsView /></RouteGuard>;
-      case "notifications":
-        return <RouteGuard><NotificationsView /></RouteGuard>;
-      case "profile":
-        return <RouteGuard><ProfileView /></RouteGuard>;
-      case "leaderboard":
-        return <RouteGuard><GamificationView /></RouteGuard>;
-      case "support":
-        return <RouteGuard><SupportView /></RouteGuard>;
-      case "ceo-restricted":
-        return <RestrictedAccess />;
-      default:
-        return <RouteGuard><PagesView /></RouteGuard>;
+      case "dashboard": view = <RouteGuard><LazyDashboardView /></RouteGuard>; break;
+      case "wallet": view = <RouteGuard><LazyWalletView /></RouteGuard>; break;
+      case "earn": view = <RouteGuard><LazyEarnView /></RouteGuard>; break;
+      case "redeem": view = <RouteGuard><LazyRewardsView /></RouteGuard>; break;
+      case "history": view = <RouteGuard><LazyTransactionsView /></RouteGuard>; break;
+      case "notifications": view = <RouteGuard><LazyNotificationsView /></RouteGuard>; break;
+      case "profile": view = <RouteGuard><LazyProfileView /></RouteGuard>; break;
+      case "leaderboard": view = <RouteGuard><LazyGamificationView /></RouteGuard>; break;
+      case "support": view = <RouteGuard><LazySupportView /></RouteGuard>; break;
+      case "settings": view = <RouteGuard><LazyPagesView /></RouteGuard>; break;
+      case "ceo-restricted": view = <RestrictedAccess />; break;
+      default: view = <RouteGuard><LazyPagesView /></RouteGuard>;
     }
-  }, [current, isAuthView, isSystemView, isLegalView, isCeoView, isPublicView, isCeoAuthenticated]);
+  }
 
-  // CEO authenticated views use CeoLayout (only when CEO role is set)
-  if (isCeoAuthenticated && CEO_APP_VIEWS.includes(current)) {
+  const wrappedView = (
+    <ViewErrorBoundary key={current}>
+      {view || <ViewFallback />}
+    </ViewErrorBoundary>
+  );
+
+  const animateContent = (
+    <AnimatePresence mode="popLayout">
+      <motion.div key={current} variants={pageTransition} initial="initial" animate="animate" exit="exit" className="relative z-10">
+        {wrappedView}
+      </motion.div>
+    </AnimatePresence>
+  );
+
+  if ((isCeoAuthenticated || current === "ceo-login") && CEO_APP_VIEWS.includes(current)) {
     return (
       <div className="relative min-h-screen">
         <BackgroundEngine />
-        <CeoLayout>
-          <AnimatePresence mode="wait">
-            <motion.div key={current} variants={pageTransition} initial="initial" animate="animate" exit="exit" className="relative z-10">
-              {view}
-            </motion.div>
-          </AnimatePresence>
-        </CeoLayout>
+        <CeoLayout>{animateContent}</CeoLayout>
       </div>
     );
   }
 
-  // Public, auth, system, legal, ceo-login, ceo-restricted, non-CEO ceo views: full-screen (no shell)
-  const CEO_GUARDED: ViewId[] = ["ceo-dashboard", "ceo-redeem", "ceo-users", "ceo-notifications", "ceo-support", "ceo-history", "ceo-settings", "ceo-ad-providers"];
+  const CEO_GUARDED: ViewId[] = CEO_APP_VIEWS;
   if (isPublicView || isAuthView || isSystemView || isLegalView || current === "ceo-login" || current === "ceo-restricted" || CEO_GUARDED.includes(current)) {
     return (
       <div className="relative min-h-screen">
         <BackgroundEngine />
-        <AnimatePresence mode="wait">
-          <motion.div key={current} variants={pageTransition} initial="initial" animate="animate" exit="exit" className="relative z-10">
-            {view}
-          </motion.div>
-        </AnimatePresence>
+        {animateContent}
       </div>
     );
   }
 
-  // Authenticated app views: inside AppShell
   return (
     <div className="relative min-h-screen">
       <BackgroundEngine />
-      <AppShell>
-        <AnimatePresence mode="wait">
-          <motion.div key={current} variants={pageTransition} initial="initial" animate="animate" exit="exit" className="relative z-10">
-            {view}
-          </motion.div>
-        </AnimatePresence>
-      </AppShell>
+      <AppShell>{animateContent}</AppShell>
     </div>
   );
 }

@@ -72,7 +72,8 @@ export type ViewId =
   | "ceo-support"
   | "ceo-notifications"
   | "ceo-history"
-  | "ceo-settings";
+  | "ceo-settings"
+  | "ceo-ad-providers";
 
 export type RouteGroup =
   | "public"

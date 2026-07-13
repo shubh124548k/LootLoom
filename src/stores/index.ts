@@ -129,7 +129,11 @@ export const useUserStore = create<RealUserState>()(
       xpToNext: 1000,
       rank: 0,
       dailyStreak: 0,
-      setUser: (data) => set((state) => ({ ...state, ...data })),
+      setUser: (data) => set((state) => {
+        const changed = Object.keys(data).some(k => (state as any)[k] !== (data as any)[k]);
+        if (!changed) return state;
+        return { ...state, ...data };
+      }),
       resetUser: () =>
         set({
           id: null,
@@ -232,7 +236,11 @@ export const useWalletStore = create<WalletState>((set) => ({
   monthlyEarnings: 0,
   transactions: [],
   walletId: null,
-  setWallet: (data) => set((s) => ({ ...s, ...data })),
+  setWallet: (data) => set((s) => {
+    const changed = Object.keys(data).some(k => (s as any)[k] !== (data as any)[k]);
+    if (!changed) return s;
+    return { ...s, ...data };
+  }),
   setTransactions: (t) => set({ transactions: t }),
   resetWallet: () =>
     set({
@@ -275,7 +283,10 @@ export const useNotificationStore = create<NotificationState>((set) => ({
       return { items, unreadCount: items.filter((n) => !n.read).length };
     }),
   setItems: (items) =>
-    set({ items, unreadCount: items.filter((n) => !n.read).length }),
+    set((s) => {
+      if (s.items.length === items.length && s.items.every((n, i) => n.id === items[i].id)) return s;
+      return { items, unreadCount: items.filter((n) => !n.read).length };
+    }),
   resetNotifications: () => set({ items: [], unreadCount: 0 }),
 }));
 
@@ -290,6 +301,9 @@ interface ActivityState {
 
 export const useActivityStore = create<ActivityState>((set) => ({
   items: [],
-  setItems: (items) => set({ items }),
+  setItems: (items) => set((s) => {
+    if (s.items.length === items.length && s.items.every((a, i) => a.id === items[i].id)) return s;
+    return { items };
+  }),
 }));
 

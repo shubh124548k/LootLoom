@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getEarnConfigValue } from "@/lib/earn/config";
+import { getEarnConfigValue, getEarnConfig } from "@/lib/earn/config";
+import { resetDailyCountsIfNeeded, isNewDay } from "@/lib/ads/daily-limiter";
 
 const ipWatchMap = new Map<string, { count: number; resetAt: number }>();
+const rewardQueueLocks = new Map<string, number>();
 
 function checkIpRateLimit(ip: string): boolean {
   const now = Date.now();
@@ -18,6 +20,20 @@ function checkIpRateLimit(ip: string): boolean {
   return true;
 }
 
+function acquireRewardLock(userId: string): boolean {
+  if (rewardQueueLocks.has(userId)) {
+    const elapsed = Date.now() - rewardQueueLocks.get(userId)!;
+    if (elapsed < 10000) return false;
+    rewardQueueLocks.delete(userId);
+  }
+  rewardQueueLocks.set(userId, Date.now());
+  return true;
+}
+
+function releaseRewardLock(userId: string): void {
+  rewardQueueLocks.delete(userId);
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -25,8 +41,14 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = session.user.id;
-  const body = await req.json();
-  const { sessionId } = body;
+
+  if (!acquireRewardLock(userId)) {
+    return NextResponse.json({ success: false, message: "Reward request already in progress", code: "QUEUE_LOCKED" }, { status: 429 });
+  }
+
+  try {
+    const body = await req.json();
+    const { sessionId } = body;
 
   if (!sessionId) {
     return NextResponse.json({ success: false, message: "Session ID required", code: "VALIDATION_ERROR" }, { status: 400 });
@@ -67,14 +89,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "IP rate limit exceeded", code: "FRAUD_IP" }, { status: 429 });
   }
 
-  const wallet = await db.wallet.findUnique({ where: { userId } });
-  if (!wallet) {
-    return NextResponse.json({ success: false, message: "Wallet not found", code: "WALLET_NOT_FOUND" }, { status: 404 });
+  // Reset daily counts if new day
+  await resetDailyCountsIfNeeded(userId);
+
+  // Check daily limit
+  const config = await getEarnConfig();
+  const dailyLimit = parseInt(config.DAILY_AD_LIMIT, 10);
+  const dailyCoinLimit = parseInt(config.DAILY_COIN_LIMIT, 10);
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { adsWatchedToday: true, dailyCoinsEarned: true },
+  });
+
+  if (!user) {
+    return NextResponse.json({ success: false, message: "User not found", code: "USER_NOT_FOUND" }, { status: 404 });
+  }
+
+  if (user.adsWatchedToday >= dailyLimit) {
+    return NextResponse.json({ success: false, message: "Daily ad limit reached", code: "DAILY_LIMIT_REACHED" }, { status: 429 });
   }
 
   const rewardAmount = adEvent.rewardAmount;
   if (rewardAmount <= 0) {
     return NextResponse.json({ success: false, message: "Invalid reward amount", code: "INVALID_REWARD" }, { status: 400 });
+  }
+
+  if (user.dailyCoinsEarned + rewardAmount > dailyCoinLimit) {
+    return NextResponse.json({ success: false, message: "Daily coin limit reached", code: "DAILY_COIN_LIMIT_REACHED" }, { status: 429 });
+  }
+
+  const wallet = await db.wallet.findUnique({ where: { userId } });
+  if (!wallet) {
+    return NextResponse.json({ success: false, message: "Wallet not found", code: "WALLET_NOT_FOUND" }, { status: 404 });
   }
 
   const result = await db.$transaction(async (tx) => {
@@ -123,6 +170,16 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Update daily tracking on User
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        adsWatchedToday: { increment: 1 },
+        dailyCoinsEarned: { increment: rewardAmount },
+        lastRewardTime: new Date(),
+      },
+    });
+
     // Update mission progress for WATCH_ADS mission
     const watchAdMission = await tx.mission.findUnique({ where: { key: "WATCH_ADS" } });
     if (watchAdMission) {
@@ -165,4 +222,7 @@ export async function POST(req: NextRequest) {
     },
     message: `${rewardAmount} coins credited to your wallet`,
   });
+  } finally {
+    releaseRewardLock(userId);
+  }
 }

@@ -4,7 +4,11 @@ import { authOptions } from "@/lib/auth";
 import { watchAd } from "@/lib/ads/manager";
 import { db } from "@/lib/db";
 
+const adQueueLocks = new Map<string, number>();
+
 export async function POST(req: NextRequest) {
+  let lockAcquired = false;
+  let sessionUserId = "";
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -12,6 +16,18 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = session.user.id;
+    sessionUserId = userId;
+
+    if (adQueueLocks.has(userId)) {
+      const elapsed = Date.now() - adQueueLocks.get(userId)!;
+      if (elapsed < 15000) {
+        return NextResponse.json({ success: false, message: "Ad request already in progress", code: "QUEUE_LOCKED" }, { status: 429 });
+      }
+      adQueueLocks.delete(userId);
+    }
+    adQueueLocks.set(userId, Date.now());
+    lockAcquired = true;
+
     const body = await req.json().catch(() => ({}));
     const adType = body.adType || "REWARDED_VIDEO";
 
@@ -52,6 +68,8 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("[WATERFALL]", error);
     return NextResponse.json({ success: false, message: "Ad service unavailable" }, { status: 500 });
+  } finally {
+    if (lockAcquired && sessionUserId) adQueueLocks.delete(sessionUserId);
   }
 }
 

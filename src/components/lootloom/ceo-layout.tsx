@@ -148,16 +148,6 @@ function CeoHeader() {
       className="sticky top-3 z-40 mx-3 lg:ml-[calc(280px+1.5rem)] lg:mr-3 transition-[margin] duration-[400ms] ease-out"
     >
       <div className="flex items-center gap-3 h-16 px-4 rounded-2xl glass-nav shadow-[var(--shadow-md)] ring-1 ring-border/50">
-        <motion.button
-          onClick={() => navigate("home")}
-          initial={{ opacity: 0, x: -8 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-          className="size-9 rounded-xl glass-2 ring-1 ring-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-all shrink-0"
-          aria-label="Back to home"
-        >
-          <Icons.ArrowLeft size={16} />
-        </motion.button>
         {/* Mobile menu trigger */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger

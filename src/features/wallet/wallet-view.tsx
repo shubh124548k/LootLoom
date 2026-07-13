@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { memo } from "react";
 import {
   Wallet,
   Coins,
@@ -45,7 +46,7 @@ import { cn } from "@/lib/utils";
 type Accent = "electric" | "cyan" | "purple" | "gold" | "emerald" | "rose" | "navy";
 
 /** A small glass tile used inside the overview hero. */
-function MiniStatTile({
+const MiniStatTile = memo(function MiniStatTile({
   label,
   value,
   prefix,
@@ -79,7 +80,7 @@ function MiniStatTile({
       </div>
     </GlassCard>
   );
-}
+});
 
 /* ============================================================
    1. Wallet Overview Hero
@@ -340,7 +341,7 @@ const TX_STATUS_VARIANT: Record<
   processing: "info",
 };
 
-function TransactionRow({ tx }: { tx: TransactionItem }) {
+const TransactionRow = memo(function TransactionRow({ tx }: { tx: TransactionItem }) {
   const isOutgoing = tx.type === "debit" || tx.type === "redeem";
   const typeColor = TX_TYPE_COLOR[tx.type];
   const statusVariant = TX_STATUS_VARIANT[tx.status];
@@ -380,7 +381,7 @@ function TransactionRow({ tx }: { tx: TransactionItem }) {
       </div>
     </div>
   );
-}
+});
 
 /* ============================================================
    3. Recent Transactions (loading / empty / content states)

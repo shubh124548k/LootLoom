@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Bar,
@@ -60,15 +60,19 @@ interface TipDef {
   accent: Accent;
 }
 
-interface AdStats {
-  rewardPerAd: number;
-  dailyLimit: number;
+interface AdStatus {
   adsWatchedToday: number;
+  dailyLimit: number;
   adsRemainingToday: number;
+  rewardPerAd: number;
   earningsToday: number;
+  dailyCoinLimit: number;
+  remainingCoins: number;
+  progressPercent: number;
+  limitReached: boolean;
+  nextReset: string;
   totalAdsWatched: number;
   totalAdEarnings: number;
-  remainingCoins: number;
 }
 
 interface MissionProgress {
@@ -160,24 +164,52 @@ function MiniStatBox({ icon, accent, label, value, sub }: { icon: string; accent
   );
 }
 
+function CountdownTimer({ targetIso }: { targetIso: string }) {
+  const [display, setDisplay] = useState("00:00:00");
+
+  useEffect(() => {
+    function tick() {
+      const diff = new Date(targetIso).getTime() - Date.now();
+      if (diff <= 0) {
+        setDisplay("00:00:00");
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setDisplay(
+        `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+      );
+    }
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [targetIso]);
+
+  return (
+    <span className="font-bold text-xl tabular-nums tracking-wider text-foreground">
+      {display}
+    </span>
+  );
+}
+
 export function EarnView() {
   const navigate = useNavigationStore((s) => s.navigate);
   const { setWallet } = useWalletStore();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
-  const [adStats, setAdStats] = useState<AdStats | null>(null);
+  const [adStatus, setAdStatus] = useState<AdStatus | null>(null);
   const [missions, setMissions] = useState<MissionProgress[]>([]);
   const [dailyLogin, setDailyLogin] = useState<DailyLoginStatus | null>(null);
   const [weeklyChart, setWeeklyChart] = useState<ChartData[]>([]);
-  const [recentHistory, setRecentHistory] = useState<Array<{ id: string; type: string; amount: number; description: string | null; status: string; createdAt: string }>>([]);
   const [watchLoading, setWatchLoading] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
 
   const fetchAll = useCallback(async () => {
     try {
       const [adResp, missionResp, loginResp, walletResp] = await Promise.all([
-        fetch("/api/ads/waterfall"),
+        fetch("/api/ads/status"),
         fetch("/api/missions"),
         fetch("/api/daily-login"),
         fetch("/api/wallet/summary"),
@@ -185,7 +217,7 @@ export function EarnView() {
 
       if (adResp.ok) {
         const json = await adResp.json();
-        if (json.success) setAdStats(json.data);
+        if (json.success) setAdStatus(json.data);
       }
       if (missionResp.ok) {
         const json = await missionResp.json();
@@ -209,13 +241,6 @@ export function EarnView() {
           if (json.data.weeklyChart) setWeeklyChart(json.data.weeklyChart);
         }
       }
-
-      // Recent history (last 5)
-      const histResp = await fetch("/api/earn/history?page=1&pageSize=5");
-      if (histResp.ok) {
-        const json = await histResp.json();
-        if (json.success) setRecentHistory(json.data);
-      }
     } catch {
       // silent
     } finally {
@@ -238,7 +263,13 @@ export function EarnView() {
         toast({ title: "Ad Reward!", description: `+${json.data.rewardAmount} coins earned`, variant: "default" });
         fetchAll();
       } else {
-        toast({ title: "Ad unavailable", description: json.message || "No ads available right now", variant: "warning" });
+        toast({
+          title: "Ad unavailable",
+          description: json.message || json.data?.code === "DAILY_LIMIT_REACHED"
+            ? "Daily limit reached. Come back tomorrow!" : "No ads available right now",
+          variant: "warning",
+        });
+        if (json.data?.code === "DAILY_LIMIT_REACHED") fetchAll();
       }
     } catch {
       toast({ title: "Network error", description: "Could not load ad", variant: "destructive" });
@@ -264,9 +295,6 @@ export function EarnView() {
       setLoginLoading(false);
     }
   };
-
-  const adProgressPercent = adStats ? Math.min(100, Math.round((adStats.adsWatchedToday / adStats.dailyLimit) * 100)) : 0;
-  const estimatedRemainingToday = adStats ? (adStats.remainingCoins || adStats.adsRemainingToday * adStats.rewardPerAd) : 0;
 
   const missionCategories = [
     { key: "daily", label: "Daily", missions: missions.filter(m => m.key.startsWith("DAILY_") || m.key.startsWith("WATCH_")) },
@@ -309,45 +337,70 @@ export function EarnView() {
                     <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Watch Rewarded Ads</h2>
                     <p className="text-sm text-muted-foreground max-w-md">Watch short video ads and earn coins instantly. New ad inventory refreshes every day.</p>
                   </div>
-                  {adStats && (
+                  {adStatus && (
                     <div className="inline-flex items-center gap-3 rounded-xl glass-2 ring-1 ring-gold/25 px-4 py-2.5 self-start">
                       <motion.div variants={floatingSmall} animate="animate" className="size-9 rounded-lg bg-gold/15 ring-1 ring-gold/25 flex items-center justify-center">
                         <Coins size={18} className="text-gold" />
                       </motion.div>
                       <div>
                         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Reward Per Ad</p>
-                        <p className="text-lg font-bold text-foreground">+<AnimatedCounter value={adStats.rewardPerAd} /> <span className="text-xs font-medium text-muted-foreground">coins</span></p>
+                        <p className="text-lg font-bold text-foreground">+<AnimatedCounter value={adStatus.rewardPerAd} /> <span className="text-xs font-medium text-muted-foreground">coins</span></p>
                       </div>
                     </div>
                   )}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <LootButton variant="electric" size="lg" leftIcon={<PlayCircle size={18} />} onClick={handleWatchAd} loading={watchLoading}>
-                      Watch Ad Now
+                    <LootButton
+                      variant="electric"
+                      size="lg"
+                      leftIcon={adStatus?.limitReached ? <Lock size={18} /> : <PlayCircle size={18} />}
+                      onClick={handleWatchAd}
+                      loading={watchLoading}
+                      disabled={adStatus?.limitReached}
+                    >
+                      {adStatus?.limitReached ? "Daily Limit Reached" : "Watch Ad Now"}
                     </LootButton>
                     <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
                       <Info size={11} /> Rewards credited after completion
                     </p>
                   </div>
+
+                  {/* Countdown when limit reached */}
+                  {adStatus?.limitReached && (
+                    <div className="rounded-xl glass-2 ring-1 ring-rose/25 px-5 py-4 self-start">
+                      <p className="text-sm font-semibold text-rose-400 mb-1">Daily limit reached</p>
+                      <p className="text-xs text-muted-foreground mb-2">Next reset in</p>
+                      <CountdownTimer targetIso={adStatus.nextReset} />
+                    </div>
+                  )}
                 </div>
-                {adStats && (
+                {adStatus && (
                   <div className="flex flex-col gap-4">
                     <div className="grid grid-cols-2 gap-3">
-                      <MiniStatBox icon="PlayCircle" accent="electric" label="Ads Remaining" value={`${adStats.adsRemainingToday}`} sub={`of ${adStats.dailyLimit}`} />
-                      <MiniStatBox icon="Coins" accent="gold" label="Earned Today" value={`${adStats.earningsToday}`} sub="coins" />
-                      <MiniStatBox icon="Clock" accent="cyan" label="Watched Today" value={`${adStats.adsWatchedToday}`} sub="ads" />
-                      <MiniStatBox icon="Zap" accent="purple" label="Daily Limit" value={`${adStats.dailyLimit}`} sub="ads" />
+                      <MiniStatBox icon="PlayCircle" accent="electric" label="Ads Remaining" value={`${adStatus.adsRemainingToday}`} sub={`of ${adStatus.dailyLimit}`} />
+                      <MiniStatBox icon="Coins" accent="gold" label="Earned Today" value={`${adStatus.earningsToday}`} sub="coins" />
+                      <MiniStatBox icon="Clock" accent="cyan" label="Watched Today" value={`${adStatus.adsWatchedToday}`} sub="ads" />
+                      <MiniStatBox icon="Zap" accent="purple" label="Daily Limit" value={`${adStatus.dailyLimit}`} sub="ads" />
                     </div>
                     <GlassCard level={3} className="p-4 space-y-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-medium text-foreground">Today&apos;s Ad Progress</span>
-                        <span className="text-muted-foreground">{adStats.adsWatchedToday} / {adStats.dailyLimit} watched</span>
+                        <span className="text-muted-foreground">{adStatus.adsWatchedToday} / {adStatus.dailyLimit} watched</span>
                       </div>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${adProgressPercent}%` }} transition={{ duration: 1, ease: [0.4, 0, 0.2, 1] }}
-                          className="h-full rounded-full bg-[linear-gradient(90deg,var(--electric),var(--cyan-brand))]" />
+                      <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${adStatus.progressPercent}%` }}
+                          transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
+                          className={cn(
+                            "h-full rounded-full",
+                            adStatus.limitReached
+                              ? "bg-rose-500"
+                              : "bg-[linear-gradient(90deg,var(--electric),var(--cyan-brand))]"
+                          )}
+                        />
                       </div>
                       <p className="text-[10px] text-muted-foreground">
-                        Estimated remaining: <span className="text-emerald-brand font-semibold">{estimatedRemainingToday.toLocaleString("en-IN")} coins</span>
+                        Estimated remaining: <span className="text-emerald-brand font-semibold">{adStatus.remainingCoins.toLocaleString("en-IN")} coins</span>
                       </p>
                     </GlassCard>
                   </div>
@@ -467,37 +520,8 @@ export function EarnView() {
             </WidgetCard>
           </motion.div>
 
-          {/* Recent History */}
-          <motion.div variants={cardReveal} custom={4}>
-            <WidgetCard
-              title="Reward History"
-              description="Recent completed earning activities"
-              icon={<Clock size={18} />}
-              action={<LootButton variant="ghost" size="sm" rightIcon={<ChevronRight size={14} />} onClick={() => navigate("history")}>View history</LootButton>}
-              index={0}
-            >
-              {recentHistory.length === 0 ? (
-                <EmptyState icon="Clock" title="No history yet" description="Your earning history appears here once you complete activities." />
-              ) : (
-                <div className="space-y-2">
-                  {recentHistory.map((h) => (
-                    <div key={h.id} className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{h.description || h.type}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(h.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
-                      </div>
-                      <span className={cn("text-sm font-bold shrink-0 ml-3", h.amount > 0 ? "text-emerald-brand" : "text-rose-500")}>
-                        {h.amount > 0 ? "+" : ""}{h.amount}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </WidgetCard>
-          </motion.div>
-
           {/* Tips */}
-          <motion.div variants={cardReveal} custom={5}>
+          <motion.div variants={cardReveal} custom={4}>
             <WidgetCard title="Tips & Recommendations" description="Optimize your earning strategy" icon={<Lightbulb size={18} />} index={0}>
               <Grid cols={4}>
                 {TIPS.map((t, i) => (

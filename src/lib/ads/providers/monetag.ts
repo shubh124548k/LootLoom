@@ -8,8 +8,16 @@ export class MonetagProvider extends BaseAdProvider {
   }
 
   get scriptUrl(): string | null {
-    if (!this.config?.publisherId) return null;
-    return `https://m.monetag.com/v2/${this.config.publisherId}`;
+    if (this.config?.zoneId && this.config?.publisherId) {
+      return `https://${this.config.publisherId}/act/files/tag.min.js?zoneId=${this.config.zoneId}`;
+    }
+    if (this.config?.publisherId) {
+      return `https://m.monetag.com/v2/${this.config.publisherId}`;
+    }
+    if (this.config?.zoneId) {
+      return `https://3nbf4.com/act/files/tag.min.js?zoneId=${this.config.zoneId}`;
+    }
+    return null;
   }
 
   protected getScriptOptions(url: string): ScriptOptions {

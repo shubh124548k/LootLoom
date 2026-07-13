@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { motion } from "framer-motion";
 import {
   Clock,
@@ -122,7 +122,7 @@ function formatTime(time: string): string {
    Notification item card
    ============================================================ */
 
-function NotificationCard({
+const NotificationCard = memo(function NotificationCard({
   item,
   index,
   onMarkRead,
@@ -197,7 +197,7 @@ function NotificationCard({
       </GlassCard>
     </motion.div>
   );
-}
+});
 
 /* ============================================================
    Notification list (with loading / empty / list states)

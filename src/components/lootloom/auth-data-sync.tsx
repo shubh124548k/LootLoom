@@ -3,7 +3,6 @@
 import { useSession } from "next-auth/react";
 import { useEffect, useRef } from "react";
 import { useAuthStore, useUserStore, useWalletStore, useNotificationStore, useActivityStore } from "@/stores";
-import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 import type { NotificationItem, ActivityItem } from "@/types";
 
 /**
@@ -115,8 +114,6 @@ async function fetchRealNotificationsAndActivity() {
  */
 export function AuthDataSync({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
-  // Connect to real-time service when authenticated (best-effort, non-blocking)
-  useRealtimeSync();
   const { setAuthenticated, setRole } = useAuthStore();
   const { setUser, resetUser } = useUserStore();
   const { setWallet, resetWallet } = useWalletStore();

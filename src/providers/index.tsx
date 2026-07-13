@@ -1,6 +1,7 @@
 "use client";
 
-import { Component, type ReactNode } from "react";
+import { Component, useState, type ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/lootloom/theme-provider";
 import { ViewTransitionProvider } from "@/components/lootloom/view-transition";
@@ -56,20 +57,32 @@ class SessionErrorBoundary extends Component<
  * the app continues to work in guest mode instead of crashing.
  */
 export function AppProviders({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 30 * 1000,
+        gcTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: true,
+        retry: 1,
+      },
+    },
+  }));
+
   return (
     <SessionErrorBoundary>
-      <SessionProvider
-        // Don't refetch on interval — avoids cascading failures in dev mode
-        refetchOnWindowFocus={true}
-        refetchInterval={0}
-      >
-        <ThemeProvider>
-          <ViewTransitionProvider>
-            <GlobalErrorHandler />
-            <AuthDataSync>{children}</AuthDataSync>
-          </ViewTransitionProvider>
-        </ThemeProvider>
-      </SessionProvider>
+      <QueryClientProvider client={queryClient}>
+        <SessionProvider
+          refetchOnWindowFocus={true}
+          refetchInterval={0}
+        >
+          <ThemeProvider>
+            <ViewTransitionProvider>
+              <GlobalErrorHandler />
+              <AuthDataSync>{children}</AuthDataSync>
+            </ViewTransitionProvider>
+          </ThemeProvider>
+        </SessionProvider>
+      </QueryClientProvider>
     </SessionErrorBoundary>
   );
 }

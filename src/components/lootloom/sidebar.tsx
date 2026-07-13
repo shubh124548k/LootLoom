@@ -161,24 +161,6 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
         );
       })}
 
-      {!collapsed && (
-        <div className="pt-4 px-2">
-          <div className="rounded-2xl glass-2 p-4 ring-1 ring-border/60 relative overflow-hidden">
-            <div className="absolute -top-6 -right-6 size-20 rounded-full bg-electric/15 blur-2xl" />
-            <p className="text-xs font-semibold text-foreground mb-1">LootLoom Pro</p>
-            <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
-              Unlock 2× earning multipliers & exclusive rewards.
-            </p>
-            <button
-              onClick={() => navigate("rewards")}
-              aria-label="Learn more about LootLoom Pro"
-              className="w-full h-8 rounded-lg text-xs font-semibold text-white bg-[linear-gradient(120deg,var(--electric),var(--purple-brand))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              Learn More
-            </button>
-          </div>
-        </div>
-      )}
     </nav>
   );
 }

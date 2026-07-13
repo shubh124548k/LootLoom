@@ -57,11 +57,10 @@ import {
   useWalletStore,
 } from "@/stores";
 import { useDashboardData } from "@/hooks/use-dashboard-data";
+import { COINS_PER_INR, coinsToInr, REWARD_TIERS } from "@/lib/coin-config";
 import type { ViewId } from "@/types";
 
-/* ============================================================
-   Helpers
-   ============================================================ */
+const COIN_TO_INR = 1 / COINS_PER_INR;
 
 function useGreeting() {
   const hour = new Date().getHours();
@@ -76,22 +75,6 @@ function getInitials(name: string) {
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
 }
-
-/** Coin → INR conversion (placeholder, backend-ready). 1 coin ≈ ₹0.10 */
-const COIN_TO_INR = 0.1;
-
-/** Reward denomination tiers (₹). Backend-ready: replace with API list. */
-const REWARD_TIERS: Array<{ value: number; coins: number }> = [
-  { value: 10, coins: 100 },
-  { value: 20, coins: 200 },
-  { value: 30, coins: 300 },
-  { value: 40, coins: 400 },
-  { value: 50, coins: 500 },
-  { value: 100, coins: 1000 },
-  { value: 200, coins: 2000 },
-  { value: 500, coins: 5000 },
-  { value: 1000, coins: 10000 },
-];
 
 /* ============================================================
    Section 1 — Welcome Hero

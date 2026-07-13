@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface DashboardData {
   user: {
@@ -46,54 +47,36 @@ interface DashboardData {
   chart: Array<{ day: string; value: number }>;
 }
 
-interface UseDashboardReturn {
-  data: DashboardData | null;
-  loading: boolean;
-  error: string | null;
-  refetch: () => void;
+async function fetchDashboard(): Promise<DashboardData> {
+  const resp = await fetch("/api/dashboard");
+  if (resp.status === 401) {
+    throw new Error("Session expired");
+  }
+  if (!resp.ok) {
+    throw new Error("Failed to load dashboard");
+  }
+  const json = await resp.json();
+  if (json.success && json.data) {
+    return json.data;
+  }
+  throw new Error("Failed to load dashboard");
 }
 
-/**
- * useDashboardData — fetches real aggregated dashboard data from /api/dashboard.
- *
- * - Initial load shows loading state (skeletons)
- * - New user with zero activity shows real empty data (0 coins, empty arrays)
- * - No fake data — everything from the backend
- * - Refetch on demand for refresh button
- */
-export function useDashboardData(): UseDashboardReturn {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function useDashboardData() {
+  const queryClient = useQueryClient();
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const resp = await fetch("/api/dashboard");
-      if (resp.status === 401) {
-        setError("Session expired");
-        setData(null);
-        return;
-      }
-      if (!resp.ok) {
-        setError("Failed to load dashboard");
-        return;
-      }
-      const json = await resp.json();
-      if (json.success && json.data) {
-        setData(json.data);
-      }
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, isLoading, error, refetch } = useQuery<DashboardData, Error>({
+    queryKey: ["dashboard"],
+    queryFn: fetchDashboard,
+    staleTime: 15 * 1000,
+    gcTime: 60 * 1000,
+    retry: 1,
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return { data, loading, error, refetch: fetchData };
+  return {
+    data: data ?? null,
+    loading: isLoading,
+    error: error?.message ?? null,
+    refetch: useCallback(() => refetch(), [refetch]),
+  };
 }

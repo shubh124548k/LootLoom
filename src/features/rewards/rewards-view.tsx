@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Gift,
@@ -29,6 +29,7 @@ import {
 import { useWalletStore } from "@/stores";
 import { useToast } from "@/hooks/use-toast";
 import { cardReveal, staggerContainer, modalPop, overlayFade } from "@/lib/animations";
+import { COINS_PER_INR, coinsToInr } from "@/lib/coin-config";
 
 // ============================================================
 // Types — backend-ready interfaces
@@ -61,17 +62,13 @@ interface SuccessDialogProps {
   onViewHistory: () => void;
 }
 
-// ============================================================
-// Constants — coin to cash conversion (backend will provide)
-// ============================================================
-
-const COIN_TO_INR = 30;
+const COIN_TO_INR = COINS_PER_INR;
 
 // ============================================================
 // REWARD CARD
 // ============================================================
 
-function RewardCard({
+const RewardCard = memo(function RewardCard({
   reward,
   currentCoins,
   onRedeem,
@@ -151,7 +148,7 @@ function RewardCard({
       </GlassCard>
     </motion.div>
   );
-}
+});
 
 // ============================================================
 // REDEEM CONFIRMATION DIALOG
@@ -357,7 +354,7 @@ export function RewardsView() {
           setRewards(json.data.map((rw: { id: string; name: string; coinCost: number; status: string }) => ({
             id: rw.id,
             name: rw.name,
-            cashValue: Math.round(rw.coinCost / 30),
+            cashValue: coinsToInr(rw.coinCost),
             requiredCoins: rw.coinCost,
             availability: rw.status === "ACTIVE" ? "available" : "disabled",
           })));

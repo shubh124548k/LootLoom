@@ -87,6 +87,15 @@ export class RewardHandler implements IRewardHandler {
           },
         });
 
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            adsWatchedToday: { increment: 1 },
+            dailyCoinsEarned: { increment: rewardAmount },
+            lastRewardTime: new Date(),
+          },
+        });
+
         await tx.auditLog.create({
           data: {
             actorId: userId,

@@ -4,18 +4,6 @@
  */
 import { db } from "@/lib/db";
 
-const CODE_REWARDS = [
-  { name: "Free Fire 100 Diamonds", description: "Free Fire 100 Diamond redeem code", coinCost: 500, category: "REDEEM_CODE", stock: 100, status: "ACTIVE" },
-  { name: "Free Fire 500 Diamonds", description: "Free Fire 500 Diamond redeem code", coinCost: 2000, category: "REDEEM_CODE", stock: 50, status: "ACTIVE" },
-  { name: "PUBG 60 UC", description: "PUBG 60 Unknown Cash redeem code", coinCost: 400, category: "REDEEM_CODE", stock: 100, status: "ACTIVE" },
-  { name: "PUBG 300 UC", description: "PUBG 300 Unknown Cash redeem code", coinCost: 1800, category: "REDEEM_CODE", stock: 50, status: "ACTIVE" },
-  { name: "BGMI 60 UC", description: "BGMI 60 Unknown Cash redeem code", coinCost: 400, category: "REDEEM_CODE", stock: 100, status: "ACTIVE" },
-  { name: "Google Play ₹50", description: "Google Play Gift Card redeem code", coinCost: 1500, category: "REDEEM_CODE", stock: 50, status: "ACTIVE" },
-  { name: "Google Play ₹100", description: "Google Play Gift Card redeem code", coinCost: 3000, category: "REDEEM_CODE", stock: 25, status: "ACTIVE" },
-  { name: "Steam Wallet ₹50", description: "Steam Wallet redeem code", coinCost: 1500, category: "REDEEM_CODE", stock: 50, status: "ACTIVE" },
-  { name: "Steam Wallet ₹100", description: "Steam Wallet redeem code", coinCost: 3000, category: "REDEEM_CODE", stock: 25, status: "ACTIVE" },
-];
-
 const UPI_REWARDS = [
   { name: "₹10 UPI", description: "Redeem ₹10 directly to your UPI account", coinCost: 300, category: "UPI", stock: -1, status: "ACTIVE" },
   { name: "₹20 UPI", description: "Redeem ₹20 directly to your UPI account", coinCost: 600, category: "UPI", stock: -1, status: "ACTIVE" },
@@ -51,21 +39,9 @@ async function main() {
     }
   }
 
-  // Code rewards
-  console.log("\nSeeding redeem code rewards...");
-  for (const reward of CODE_REWARDS) {
-    const existing = await db.reward.findFirst({ where: { name: reward.name } });
-    if (!existing) {
-      await db.reward.create({ data: reward });
-      console.log(`  + Created: ${reward.name} (${reward.coinCost} coins)`);
-    } else {
-      console.log(`  - Exists: ${reward.name}`);
-    }
-  }
-
-  // Disable rewards from other categories (not UPI or REDEEM_CODE)
-  const other = await db.reward.findMany({ where: { category: { notIn: ["UPI", "REDEEM_CODE"] } } });
-  for (const r of other) {
+  // Disable all non-UPI rewards (remove game/gift card options)
+  const nonUpi = await db.reward.findMany({ where: { category: { not: "UPI" } } });
+  for (const r of nonUpi) {
     await db.reward.update({ where: { id: r.id }, data: { status: "DISABLED" } });
     console.log(`  x Disabled: ${r.name}`);
   }

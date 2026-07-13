@@ -15,6 +15,7 @@ export async function GET() {
 
   const wallet = await db.wallet.findUnique({
     where: { userId: session.user.id },
+    select: { id: true, coinBalance: true, totalEarned: true, totalSpent: true, status: true, updatedAt: true },
   });
 
   if (!wallet) {
