@@ -52,6 +52,9 @@ export const metadata: Metadata = {
     title: "LootLoom — Premium Reward Platform",
     description: "Earn coins, manage your wallet, redeem rewards.",
   },
+  other: {
+    "google-adsense-account": "ca-pub-2800350032881174",
+  },
 };
 
 export default function RootLayout({
@@ -64,6 +67,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} antialiased bg-background text-foreground font-sans`}
       >
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2800350032881174" crossOrigin="anonymous" />
         <AppProviders>
           {children}
           <Toaster />
