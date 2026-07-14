@@ -15,38 +15,23 @@ export function getRenderer(key: string, sessionId: string): Renderer | null {
   return factory ? factory(sessionId) : null;
 }
 
-export const OFFICIAL_PROVIDER_KEYS = ["monetag", "adsterra"];
+export const OFFICIAL_PROVIDER_KEYS = ["adsterra"];
 
 export function hasOfficialRenderer(key: string): boolean {
   return rendererRegistry.has(key);
 }
 
-// ── Monetag: official tag script (in-page) ──
-registerRenderer("monetag", (_sessionId: string) => {
-  let cleaned = false;
-  const scriptId = "ad-monetag-tag";
-  const clean = () => { if (cleaned) return; cleaned = true; document.getElementById(scriptId)?.remove(); };
-  return {
-    key: "monetag",
-    async render() {
-      console.log("[AD] Monetag: loading official tag");
-      if (document.getElementById(scriptId)) document.getElementById(scriptId)?.remove();
-      return new Promise((resolve) => {
-        const s = document.createElement("script");
-        s.src = "https://quge5.com/88/tag.min.js";
-        s.setAttribute("data-zone", "259304");
-        s.async = true;
-        s.id = scriptId;
-        s.setAttribute("data-cfasync", "false");
-        const to = setTimeout(() => { clean(); resolve({ success: false, error: "SCRIPT_TIMEOUT" }); }, 20000);
-        s.onload = () => { clearTimeout(to); console.log("[AD] Monetag: loaded"); resolve({ success: true }); };
-        s.onerror = () => { clearTimeout(to); clean(); resolve({ success: false, error: "SCRIPT_FAILED" }); };
-        document.body.appendChild(s);
-      });
-    },
-    cleanup() { clean(); },
-  };
-});
+function removeProviderElements(providerSubstring: string): void {
+  document.querySelectorAll(`script[src*="${providerSubstring}"], iframe[src*="${providerSubstring}"]`).forEach((el) => el.remove());
+  document.querySelectorAll(`[id*="${providerSubstring}"], [class*="${providerSubstring}"]`).forEach((el) => el.remove());
+}
+
+function clearProviderGlobals(): void {
+  try {
+    delete (window as any).Adsterra;
+    delete (window as any).adsterra;
+  } catch { /* some globals may be non-configurable */ }
+}
 
 // ── Adsterra: social bar (in-page) ──
 registerRenderer("adsterra", (_sessionId: string) => {
@@ -55,20 +40,22 @@ registerRenderer("adsterra", (_sessionId: string) => {
   const clean = () => {
     if (cleaned) return; cleaned = true;
     document.getElementById(scriptId)?.remove();
-    document.querySelector("[id*='adsterra'], [class*='adsterra']")?.remove();
+    removeProviderElements("adsterra");
+    removeProviderElements("effectivecpmnetwork");
+    clearProviderGlobals();
   };
   return {
     key: "adsterra",
     async render() {
-      console.log("[AD] Adsterra: loading social bar");
       const s = document.createElement("script");
       s.src = "https://pl30349373.effectivecpmnetwork.com/2e/88/bc/2e88bc28cdbfdafc4b85833ebade6a5c.js";
       s.id = scriptId;
       s.async = true;
+      console.log("[ADSTERRA] Loading SDK");
       return new Promise((resolve) => {
-        const to = setTimeout(() => { clean(); resolve({ success: false, error: "SCRIPT_TIMEOUT" }); }, 20000);
-        s.onload = () => { clearTimeout(to); console.log("[AD] Adsterra: loaded"); resolve({ success: true }); };
-        s.onerror = () => { clearTimeout(to); clean(); resolve({ success: false, error: "SCRIPT_FAILED" }); };
+        const to = setTimeout(() => { clean(); console.log("[ADSTERRA] SDK Timeout"); resolve({ success: false, error: "SCRIPT_TIMEOUT" }); }, 20000);
+        s.onload = () => { clearTimeout(to); console.log("[ADSTERRA] SDK Loaded"); resolve({ success: true }); };
+        s.onerror = () => { clearTimeout(to); clean(); console.log("[ADSTERRA] SDK Failed"); resolve({ success: false, error: "SCRIPT_FAILED" }); };
         document.body.appendChild(s);
       });
     },

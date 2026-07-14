@@ -271,6 +271,8 @@ export function EarnView() {
   const handleWatchAd = async () => {
     setWatchLoading(true);
     let currentRenderer: { cleanup: () => void } | null = null;
+    const sessionId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
+    console.log(`[SESSION] ${sessionId}: starting`);
     try {
       const sessionResp = await fetch("/api/ads/session", {
         method: "POST",
@@ -279,27 +281,30 @@ export function EarnView() {
       });
       const sessionJson = await sessionResp.json();
       if (!sessionResp.ok || !sessionJson.success) {
+        const code = sessionJson.code || "";
+        console.log(`[SESSION] ${sessionId}: denied — ${code}`);
         toast({
           title: "Ad unavailable",
           description: sessionJson.message || "Daily limit reached. Come back tomorrow!",
           variant: "default",
         });
-        if (sessionJson.code === "DAILY_LIMIT_REACHED") fetchAll();
+        if (code === "DAILY_LIMIT_REACHED") fetchAll();
         return;
       }
 
-      const { sessionId } = sessionJson.data;
-      const providerKeys: string[] = sessionJson.data.providerKeys || ["monetag", "adsterra"];
+      const dbSessionId = sessionJson.data.sessionId;
+      const providerKeys: string[] = sessionJson.data.providerKeys || ["adsterra"];
+      console.log(`[SESSION] ${sessionId}: created, providers=${providerKeys.join(",")}`);
 
       const { getRenderer } = await import("@/lib/ads/client-renderer");
       let lastError = "";
       let adShown = false;
 
       for (const key of providerKeys) {
-        console.log(`[AD] Trying provider: ${key}`);
-        const renderer = getRenderer(key, sessionId);
+        console.log(`[SESSION] ${sessionId}: trying provider=${key}`);
+        const renderer = getRenderer(key, dbSessionId);
         if (!renderer) {
-          console.log(`[AD] ${key}: skip — no renderer`);
+          console.log(`[SESSION] ${sessionId}: ${key} — no renderer`);
           continue;
         }
         currentRenderer = renderer;
@@ -308,39 +313,50 @@ export function EarnView() {
         currentRenderer = null;
 
         if (result.success) {
-          console.log(`[AD] ${key}: SUCCESS`);
+          console.log(`[SESSION] ${sessionId}: ${key} — SUCCESS`);
+          console.log(`[ADSTERRA] Ad Started`);
           adShown = true;
           break;
         }
-        console.log(`[AD] ${key}: FAILED — ${result.error || "unknown"}`);
+        console.log(`[SESSION] ${sessionId}: ${key} — FAILED (${result.error})`);
         lastError = result.error || "FAILED";
       }
 
       if (!adShown) {
+        console.log(`[SESSION] ${sessionId}: all providers failed`);
         toast({ title: "No ads available", description: lastError || "All providers failed", variant: "destructive" });
         return;
       }
 
-      // Wait minimum ad duration (server verifies actual elapsed time)
+      console.log(`[SESSION] ${sessionId}: waiting 30s`);
       await new Promise((r) => setTimeout(r, 30000));
 
+      console.log(`[ADSTERRA] Ad Finished`);
+      console.log(`[SESSION] ${sessionId}: completing`);
+      console.log(`[ADSTERRA] Reward Request`);
       const creditResp = await fetch("/api/ads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
+        body: JSON.stringify({ sessionId: dbSessionId }),
       });
       const creditJson = await creditResp.json();
       if (creditResp.ok && creditJson.success) {
+        console.log(`[SESSION] ${sessionId}: reward granted — +${creditJson.data.rewardAmount}`);
+        console.log(`[ADSTERRA] Reward Granted`);
         toast({ title: "Ad Reward!", description: `+${creditJson.data.rewardAmount} coins earned`, variant: "default" });
       } else {
+        console.log(`[SESSION] ${sessionId}: reward denied — ${creditJson.message}`);
+        console.log(`[ADSTERRA] Reward Denied`);
         toast({ title: "Ad completed", description: creditJson.message || "Reward could not be credited", variant: "default" });
       }
       fetchAll();
-    } catch {
+    } catch (err) {
+      console.log(`[SESSION] ${sessionId}: error — ${err instanceof Error ? err.message : err}`);
       toast({ title: "Network error", description: "Could not load ad", variant: "destructive" });
     } finally {
       if (currentRenderer) currentRenderer.cleanup();
       setWatchLoading(false);
+      console.log(`[SESSION] ${sessionId}: ended`);
     }
   };
 

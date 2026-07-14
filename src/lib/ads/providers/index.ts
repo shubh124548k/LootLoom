@@ -1,4 +1,3 @@
-import { MonetagProvider } from "./monetag";
 import { AAdsProvider } from "./a-ads";
 import { YllixProvider } from "./yllix";
 import { PopAdsProvider } from "./popads";
@@ -13,7 +12,6 @@ import { AdsterraProvider } from "./adsterra";
 import { registerProvider } from "../provider";
 
 export function registerAllProviders(): void {
-  registerProvider(new MonetagProvider());
   registerProvider(new AAdsProvider());
   registerProvider(new YllixProvider());
   registerProvider(new PopAdsProvider());

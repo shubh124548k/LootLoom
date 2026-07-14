@@ -1,5 +1,4 @@
 export type AdProviderKey =
-  | "monetag"
   | "a-ads"
   | "yllix"
   | "popads"

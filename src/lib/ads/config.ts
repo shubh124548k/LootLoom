@@ -5,8 +5,9 @@ let cachedProviders: AdProviderConfig[] | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 30_000;
 
-const DEFAULT_PROVIDERS = [
-  { key: "monetag", name: "Monetag", priority: 1, rewardAmount: 1, dailyLimit: 150, timeoutMs: 8000, zoneId: "11277987", publisherId: "3nbf4.com" },
+const DEFAULT_PROVIDERS: {
+  key: string; name: string; priority: number; rewardAmount: number; dailyLimit: number; timeoutMs: number; publisherId?: string; zoneId?: string;
+}[] = [
   { key: "a-ads", name: "A-Ads", priority: 2, rewardAmount: 1, dailyLimit: 150, timeoutMs: 8000 },
   { key: "yllix", name: "ylliX", priority: 3, rewardAmount: 1, dailyLimit: 150, timeoutMs: 8000 },
   { key: "popads", name: "PopAds", priority: 4, rewardAmount: 1, dailyLimit: 80, timeoutMs: 8000 },
