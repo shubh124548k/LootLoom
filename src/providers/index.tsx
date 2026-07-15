@@ -8,6 +8,7 @@ import { ViewTransitionProvider } from "@/components/lootloom/view-transition";
 import { AuthDataSync } from "@/components/lootloom/auth-data-sync";
 import { GlobalErrorHandler } from "@/components/lootloom/global-error-handler";
 import { BackgroundMonetizationLoader } from "@/components/background-monetization-loader";
+import { HilltopGlobalAds } from "@/components/ads/HilltopGlobalAds";
 
 /**
  * SessionErrorBoundary — catches errors thrown by NextAuth's SessionProvider
@@ -80,6 +81,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
             <ViewTransitionProvider>
               <GlobalErrorHandler />
               <BackgroundMonetizationLoader />
+              <HilltopGlobalAds />
               <AuthDataSync>{children}</AuthDataSync>
             </ViewTransitionProvider>
           </ThemeProvider>
